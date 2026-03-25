@@ -31,6 +31,16 @@ type Config struct {
 	encryptDocumentProperties  string
 }
 
+// Apply processes the given source byte slice as a Markdown file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Markdown-specific export logic.
+//
+// Parameters:
+// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
+// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into Markdown format.
+//
+// Returns:
+// - []byte: The resulting Markdown file content as a byte slice.
+// - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	opts, _ := asposecells.NewMarkdownSaveOptions()
 

@@ -56,6 +56,16 @@ type Config struct {
 	encryptDocumentProperties         string
 }
 
+// Apply processes the given source byte slice as a Pdf file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Pdf-specific export logic.
+//
+// Parameters:
+// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
+// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into Pdf format.
+//
+// Returns:
+// - []byte: The resulting Pdf file content as a byte slice.
+// - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	opts, _ := asposecells.NewPdfSaveOptions()
 

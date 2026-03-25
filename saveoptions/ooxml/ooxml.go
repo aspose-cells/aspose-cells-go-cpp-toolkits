@@ -26,6 +26,16 @@ type Config struct {
 	encryptDocumentProperties string
 }
 
+// Apply processes the given source byte slice as an Ooxml file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Ooxml-specific export logic.
+//
+// Parameters:
+// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
+// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into Ooxml format(Xlsx, Xlsm, and so on).
+//
+// Returns:
+// - []byte: The resulting Ooxml file content as a byte slice.
+// - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	opts, _ := asposecells.NewOoxmlSaveOptions()
 

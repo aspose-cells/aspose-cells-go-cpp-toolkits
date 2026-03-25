@@ -21,6 +21,17 @@ type Config struct {
 	encryptDocumentProperties string
 }
 
+// Apply processes the given source byte slice as a DBF (dBASE) database file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling DBF-specific export logic.
+//
+// Parameters:
+// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
+// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into DBF format.
+//
+// Returns:
+// - []byte: The resulting DBF file content as a byte slice.
+// - error: An error if the input is invalid, unsupported, or if DBF serialization fails (e.g., due to data type
+// incompatibilities, missing fields, or encoding issues).
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	opts, _ := asposecells.NewDbfSaveOptions()
 

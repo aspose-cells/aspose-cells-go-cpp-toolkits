@@ -7,187 +7,196 @@ import (
 )
 
 type Config struct {
-	defaultFont string
-	checkWorkbookDefaultFont string
-	checkFontCompatibility string
+	defaultFont                       string
+	checkWorkbookDefaultFont          string
+	checkFontCompatibility            string
 	isFontSubstitutionCharGranularity string
-	onePagePerSheet string
-	allColumnsInOnePagePerSheet string
-	ignoreError string
+	onePagePerSheet                   string
+	allColumnsInOnePagePerSheet       string
+	ignoreError                       string
 	outputBlankPageWhenNothingToPrint string
-	pageIndex string
-	pageCount string
-	printingPageType string
-	gridlineType string
-	gridlineColor *asposecells.Color
-	textCrossType string
-	defaultEditLanguage string
-	sheetSet *asposecells.SheetSet
-	drawObjectEventHandler *asposecells.DrawObjectEventHandler
-	emfRenderSetting string
-	customRenderSettings *asposecells.CustomRenderSettings
-	clearData string
-	cachedFileFolder string
-	validateMergedAreas string
-	mergeAreas string
-	createDirectory string
-	sortNames string
-	sortExternalNames string
-	refreshChartCache string
-	checkExcelRestriction string
-	updateSmartArt string
-	encryptDocumentProperties string
-
+	pageIndex                         string
+	pageCount                         string
+	printingPageType                  string
+	gridlineType                      string
+	gridlineColor                     *asposecells.Color
+	textCrossType                     string
+	defaultEditLanguage               string
+	sheetSet                          *asposecells.SheetSet
+	drawObjectEventHandler            *asposecells.DrawObjectEventHandler
+	emfRenderSetting                  string
+	customRenderSettings              *asposecells.CustomRenderSettings
+	clearData                         string
+	cachedFileFolder                  string
+	validateMergedAreas               string
+	mergeAreas                        string
+	createDirectory                   string
+	sortNames                         string
+	sortExternalNames                 string
+	refreshChartCache                 string
+	checkExcelRestriction             string
+	updateSmartArt                    string
+	encryptDocumentProperties         string
 }
 
+// Apply processes the given source byte slice as a Xps file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Xps-specific export logic.
+//
+// Parameters:
+// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
+// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into Xps format.
+//
+// Returns:
+// - []byte: The resulting Xps file content as a byte slice.
+// - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	opts, _ := asposecells.NewXpsSaveOptions()
-    
+
 	if len(c.defaultFont) > 0 {
-        opts.SetDefaultFont(c.defaultFont)
+		opts.SetDefaultFont(c.defaultFont)
 	}
 	if len(c.checkWorkbookDefaultFont) > 0 {
 		if v, err := strconv.ParseBool(c.checkWorkbookDefaultFont); err == nil {
-    		opts.SetCheckWorkbookDefaultFont(v)
+			opts.SetCheckWorkbookDefaultFont(v)
 		}
 	}
 	if len(c.checkFontCompatibility) > 0 {
 		if v, err := strconv.ParseBool(c.checkFontCompatibility); err == nil {
-    		opts.SetCheckFontCompatibility(v)
+			opts.SetCheckFontCompatibility(v)
 		}
 	}
 	if len(c.isFontSubstitutionCharGranularity) > 0 {
 		if v, err := strconv.ParseBool(c.isFontSubstitutionCharGranularity); err == nil {
-    		opts.SetIsFontSubstitutionCharGranularity(v)
+			opts.SetIsFontSubstitutionCharGranularity(v)
 		}
 	}
 	if len(c.onePagePerSheet) > 0 {
 		if v, err := strconv.ParseBool(c.onePagePerSheet); err == nil {
-    		opts.SetOnePagePerSheet(v)
+			opts.SetOnePagePerSheet(v)
 		}
 	}
 	if len(c.allColumnsInOnePagePerSheet) > 0 {
 		if v, err := strconv.ParseBool(c.allColumnsInOnePagePerSheet); err == nil {
-    		opts.SetAllColumnsInOnePagePerSheet(v)
+			opts.SetAllColumnsInOnePagePerSheet(v)
 		}
 	}
 	if len(c.ignoreError) > 0 {
 		if v, err := strconv.ParseBool(c.ignoreError); err == nil {
-    		opts.SetIgnoreError(v)
+			opts.SetIgnoreError(v)
 		}
 	}
 	if len(c.outputBlankPageWhenNothingToPrint) > 0 {
 		if v, err := strconv.ParseBool(c.outputBlankPageWhenNothingToPrint); err == nil {
-    		opts.SetOutputBlankPageWhenNothingToPrint(v)
+			opts.SetOutputBlankPageWhenNothingToPrint(v)
 		}
 	}
 	if len(c.pageIndex) > 0 {
-		if v, err := strconv.ParseInt(c.pageIndex,10,32); err == nil {
-    		opts.SetPageIndex(int32(v))
+		if v, err := strconv.ParseInt(c.pageIndex, 10, 32); err == nil {
+			opts.SetPageIndex(int32(v))
 		}
 	}
 	if len(c.pageCount) > 0 {
-		if v, err := strconv.ParseInt(c.pageCount,10,32); err == nil {
-    		opts.SetPageCount(int32(v))
+		if v, err := strconv.ParseInt(c.pageCount, 10, 32); err == nil {
+			opts.SetPageCount(int32(v))
 		}
 	}
-    if v, err := strconv.ParseInt(c.printingPageType, 10, 32); err == nil {
-        if vv, err2 := asposecells.Int32ToPrintingPageType(int32(v)); err2 == nil {
-            opts.SetPrintingPageType(vv)
-        }
-    }
+	if v, err := strconv.ParseInt(c.printingPageType, 10, 32); err == nil {
+		if vv, err2 := asposecells.Int32ToPrintingPageType(int32(v)); err2 == nil {
+			opts.SetPrintingPageType(vv)
+		}
+	}
 
-    if v, err := strconv.ParseInt(c.gridlineType, 10, 32); err == nil {
-        if vv, err2 := asposecells.Int32ToGridlineType(int32(v)); err2 == nil {
-            opts.SetGridlineType(vv)
-        }
-    }
+	if v, err := strconv.ParseInt(c.gridlineType, 10, 32); err == nil {
+		if vv, err2 := asposecells.Int32ToGridlineType(int32(v)); err2 == nil {
+			opts.SetGridlineType(vv)
+		}
+	}
 
-    if c.gridlineColor != nil {
-        opts.SetGridlineColor(c.gridlineColor)
-    }
-	
-    if v, err := strconv.ParseInt(c.textCrossType, 10, 32); err == nil {
-        if vv, err2 := asposecells.Int32ToTextCrossType(int32(v)); err2 == nil {
-            opts.SetTextCrossType(vv)
-        }
-    }
+	if c.gridlineColor != nil {
+		opts.SetGridlineColor(c.gridlineColor)
+	}
 
-    if v, err := strconv.ParseInt(c.defaultEditLanguage, 10, 32); err == nil {
-        if vv, err2 := asposecells.Int32ToDefaultEditLanguage(int32(v)); err2 == nil {
-            opts.SetDefaultEditLanguage(vv)
-        }
-    }
+	if v, err := strconv.ParseInt(c.textCrossType, 10, 32); err == nil {
+		if vv, err2 := asposecells.Int32ToTextCrossType(int32(v)); err2 == nil {
+			opts.SetTextCrossType(vv)
+		}
+	}
 
-    if c.sheetSet != nil {
-        opts.SetSheetSet(c.sheetSet)
-    }
-	
-    if c.drawObjectEventHandler != nil {
-        opts.SetDrawObjectEventHandler(c.drawObjectEventHandler)
-    }
-	
-    if v, err := strconv.ParseInt(c.emfRenderSetting, 10, 32); err == nil {
-        if vv, err2 := asposecells.Int32ToEmfRenderSetting(int32(v)); err2 == nil {
-            opts.SetEmfRenderSetting(vv)
-        }
-    }
+	if v, err := strconv.ParseInt(c.defaultEditLanguage, 10, 32); err == nil {
+		if vv, err2 := asposecells.Int32ToDefaultEditLanguage(int32(v)); err2 == nil {
+			opts.SetDefaultEditLanguage(vv)
+		}
+	}
 
-    if c.customRenderSettings != nil {
-        opts.SetCustomRenderSettings(c.customRenderSettings)
-    }
-	
+	if c.sheetSet != nil {
+		opts.SetSheetSet(c.sheetSet)
+	}
+
+	if c.drawObjectEventHandler != nil {
+		opts.SetDrawObjectEventHandler(c.drawObjectEventHandler)
+	}
+
+	if v, err := strconv.ParseInt(c.emfRenderSetting, 10, 32); err == nil {
+		if vv, err2 := asposecells.Int32ToEmfRenderSetting(int32(v)); err2 == nil {
+			opts.SetEmfRenderSetting(vv)
+		}
+	}
+
+	if c.customRenderSettings != nil {
+		opts.SetCustomRenderSettings(c.customRenderSettings)
+	}
+
 	if len(c.clearData) > 0 {
 		if v, err := strconv.ParseBool(c.clearData); err == nil {
-    		opts.SetClearData(v)
+			opts.SetClearData(v)
 		}
 	}
 	if len(c.cachedFileFolder) > 0 {
-        opts.SetCachedFileFolder(c.cachedFileFolder)
+		opts.SetCachedFileFolder(c.cachedFileFolder)
 	}
 	if len(c.validateMergedAreas) > 0 {
 		if v, err := strconv.ParseBool(c.validateMergedAreas); err == nil {
-    		opts.SetValidateMergedAreas(v)
+			opts.SetValidateMergedAreas(v)
 		}
 	}
 	if len(c.mergeAreas) > 0 {
 		if v, err := strconv.ParseBool(c.mergeAreas); err == nil {
-    		opts.SetMergeAreas(v)
+			opts.SetMergeAreas(v)
 		}
 	}
 	if len(c.createDirectory) > 0 {
 		if v, err := strconv.ParseBool(c.createDirectory); err == nil {
-    		opts.SetCreateDirectory(v)
+			opts.SetCreateDirectory(v)
 		}
 	}
 	if len(c.sortNames) > 0 {
 		if v, err := strconv.ParseBool(c.sortNames); err == nil {
-    		opts.SetSortNames(v)
+			opts.SetSortNames(v)
 		}
 	}
 	if len(c.sortExternalNames) > 0 {
 		if v, err := strconv.ParseBool(c.sortExternalNames); err == nil {
-    		opts.SetSortExternalNames(v)
+			opts.SetSortExternalNames(v)
 		}
 	}
 	if len(c.refreshChartCache) > 0 {
 		if v, err := strconv.ParseBool(c.refreshChartCache); err == nil {
-    		opts.SetRefreshChartCache(v)
+			opts.SetRefreshChartCache(v)
 		}
 	}
 	if len(c.checkExcelRestriction) > 0 {
 		if v, err := strconv.ParseBool(c.checkExcelRestriction); err == nil {
-    		opts.SetCheckExcelRestriction(v)
+			opts.SetCheckExcelRestriction(v)
 		}
 	}
 	if len(c.updateSmartArt) > 0 {
 		if v, err := strconv.ParseBool(c.updateSmartArt); err == nil {
-    		opts.SetUpdateSmartArt(v)
+			opts.SetUpdateSmartArt(v)
 		}
 	}
 	if len(c.encryptDocumentProperties) > 0 {
 		if v, err := strconv.ParseBool(c.encryptDocumentProperties); err == nil {
-    		opts.SetEncryptDocumentProperties(v)
+			opts.SetEncryptDocumentProperties(v)
 		}
 	}
 	workbook, _ := asposecells.NewWorkbook_Stream(source)
@@ -200,7 +209,7 @@ type Option func(*Config)
 
 func New(opts ...Option) SaveOption {
 
-	cfg := &Config{	}
+	cfg := &Config{}
 
 	for _, o := range opts {
 		o(cfg)
@@ -208,7 +217,6 @@ func New(opts ...Option) SaveOption {
 
 	return cfg
 }
-
 
 func WithDefaultFont(value string) Option {
 	return func(c *Config) {
@@ -272,12 +280,12 @@ func WithPageCount(value int32) Option {
 
 func WithPrintingPageType(value asposecells.PrintingPageType) Option {
 	return func(c *Config) {
-        c.printingPageType = strconv.FormatInt(int64(value), 10)        
+		c.printingPageType = strconv.FormatInt(int64(value), 10)
 	}
 }
 func WithGridlineType(value asposecells.GridlineType) Option {
 	return func(c *Config) {
-        c.gridlineType = strconv.FormatInt(int64(value), 10)        
+		c.gridlineType = strconv.FormatInt(int64(value), 10)
 	}
 }
 func WithGridlineColor(value *asposecells.Color) Option {
@@ -287,12 +295,12 @@ func WithGridlineColor(value *asposecells.Color) Option {
 }
 func WithTextCrossType(value asposecells.TextCrossType) Option {
 	return func(c *Config) {
-        c.textCrossType = strconv.FormatInt(int64(value), 10)        
+		c.textCrossType = strconv.FormatInt(int64(value), 10)
 	}
 }
 func WithDefaultEditLanguage(value asposecells.DefaultEditLanguage) Option {
 	return func(c *Config) {
-        c.defaultEditLanguage = strconv.FormatInt(int64(value), 10)        
+		c.defaultEditLanguage = strconv.FormatInt(int64(value), 10)
 	}
 }
 func WithSheetSet(value *asposecells.SheetSet) Option {
@@ -307,7 +315,7 @@ func WithDrawObjectEventHandler(value *asposecells.DrawObjectEventHandler) Optio
 }
 func WithEmfRenderSetting(value asposecells.EmfRenderSetting) Option {
 	return func(c *Config) {
-        c.emfRenderSetting = strconv.FormatInt(int64(value), 10)        
+		c.emfRenderSetting = strconv.FormatInt(int64(value), 10)
 	}
 }
 func WithCustomRenderSettings(value *asposecells.CustomRenderSettings) Option {
@@ -380,5 +388,3 @@ func WithEncryptDocumentProperties(value bool) Option {
 		c.encryptDocumentProperties = strconv.FormatBool(value)
 	}
 }
-
-    
