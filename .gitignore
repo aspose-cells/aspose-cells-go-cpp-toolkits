@@ -233,5 +233,6 @@ _testmain.go
 Data/
 samples/go.sum
 ResultOutput/
-TestData/Output
+TestData
 agent/logs/
+main.go

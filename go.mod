@@ -1,4 +1,4 @@
-module github.com/aspose-cells/aspose-cells-go-cpp-toolkits
+module github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26
 
 go 1.13
 
