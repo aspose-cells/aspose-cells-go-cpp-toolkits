@@ -1,7 +1,7 @@
 package xps
 
 import (
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
+	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"strconv"
 )
