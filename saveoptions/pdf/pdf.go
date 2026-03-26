@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 

@@ -35,8 +35,8 @@ While the official Go via C++ version of Aspose.Cells is powerful, its API desig
 package main
 
 import (
-  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/converter"
-  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/core"
+  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
+  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
   "os"
 )
 
