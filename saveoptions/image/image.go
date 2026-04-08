@@ -1,10 +1,12 @@
 package image
 
 import (
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"strconv"
 	"strings"
+
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
+	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 type Config struct {
@@ -97,14 +99,41 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	result, _ := workbook.Save_SaveOptions(saveOption)
 	return result, nil
 }
+func (c *Config) GetFormat() string {
+	return c.imageType
+}
 
 type Option func(*Config)
+
+func init() {
+	formats.Register("png", func() SaveOption {
+		return New(WithImageType("png"))
+	})
+	formats.Register("jpg", func() SaveOption {
+		return New(WithImageType("jpg"))
+	})
+	formats.Register("svg", func() SaveOption {
+		return New(WithImageType("svg"))
+	})
+	formats.Register("bmp", func() SaveOption {
+		return New(WithImageType("bmp"))
+	})
+	formats.Register("tif", func() SaveOption {
+		return New(WithImageType("tif"))
+	})
+	formats.Register("tiff", func() SaveOption {
+		return New(WithImageType("tiff"))
+	})
+
+}
+
 // New creates a new instance of image save options
 //
 // The New function creates an instance of image SaveOption using the Functional Options Pattern. This function accepts a variable number of Option function parameters, and each Option function modifies the configuration of SaveOption.
 //
 // Parameters:
-//   opts ... Option - A variable number of option functions used to configure SaveOption
+//
+//	opts ... Option - A variable number of option functions used to configure SaveOption
 //
 // Return value:
 // image SaveOption - Configured instance of the saved option
@@ -112,25 +141,30 @@ type Option func(*Config)
 // Usage example:
 //
 // create default options
-//   opts := New()
+//
+//	opts := New()
 //
 // create an instance with custom options
-//   opts := New(
-//       WithExportAsString(true),
-//       WithCachedFileFolder("D:\\cached_folder"),
-//       WithClearData(true),
-//)
+//
+//	opts := New(
+//	    WithExportAsString(true),
+//	    WithCachedFileFolder("D:\\cached_folder"),
+//	    WithClearData(true),
+//
+// )
 //
 // // use the option to perform the save operation
-//   err := SaveFile(data, opts)
+//
+//	err := SaveFile(data, opts)
 //
 // Precautions:
 // - If no options are provided, return the default configured SaveOption
 // - Options are applied in the order provided, and the later applied options will overwrite the previous Settings All Option functions are thread-safe, but the SaveOption instance itself is not
 //
 // Related types:
-//   type Option func(*Config)
-//   type Config struct { ...  }
+//
+//	type Option func(*Config)
+//	type Config struct { ...  }
 func New(opts ...Option) SaveOption {
 
 	cfg := &Config{}

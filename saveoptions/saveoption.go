@@ -17,4 +17,5 @@ type SaveOption interface {
 	// Apply transforms the given input byte slice (representing a spreadsheet) into the desired output format.
 	// It returns the resulting byte slice and any error encountered during processing.
 	Apply([]byte) ([]byte, error)
+	GetFormat() string
 }

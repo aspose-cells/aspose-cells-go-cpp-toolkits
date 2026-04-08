@@ -1,9 +1,11 @@
 package dif
 
 import (
+	"strconv"
+
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
 	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"strconv"
 )
 
 type Config struct {
@@ -91,14 +93,25 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	result, _ := workbook.Save_SaveOptions(saveOption)
 	return result, nil
 }
+func (c *Config) GetFormat() string {
+	return "dif"
+}
 
 type Option func(*Config)
+
+func init() {
+	formats.Register("dif", func() SaveOption {
+		return New()
+	})
+}
+
 // New creates a new instance of dif save options
 //
 // The New function creates an instance of dif SaveOption using the Functional Options Pattern. This function accepts a variable number of Option function parameters, and each Option function modifies the configuration of SaveOption.
 //
 // Parameters:
-//   opts ... Option - A variable number of option functions used to configure SaveOption
+//
+//	opts ... Option - A variable number of option functions used to configure SaveOption
 //
 // Return value:
 // dif SaveOption - Configured instance of the saved option
@@ -106,25 +119,30 @@ type Option func(*Config)
 // Usage example:
 //
 // create default options
-//   opts := New()
+//
+//	opts := New()
 //
 // create an instance with custom options
-//   opts := New(
-//       WithExportAsString(true),
-//       WithCachedFileFolder("D:\\cached_folder"),
-//       WithClearData(true),
-//)
+//
+//	opts := New(
+//	    WithExportAsString(true),
+//	    WithCachedFileFolder("D:\\cached_folder"),
+//	    WithClearData(true),
+//
+// )
 //
 // // use the option to perform the save operation
-//   err := SaveFile(data, opts)
+//
+//	err := SaveFile(data, opts)
 //
 // Precautions:
 // - If no options are provided, return the default configured SaveOption
 // - Options are applied in the order provided, and the later applied options will overwrite the previous Settings All Option functions are thread-safe, but the SaveOption instance itself is not
 //
 // Related types:
-//   type Option func(*Config)
-//   type Config struct { ...  }
+//
+//	type Option func(*Config)
+//	type Config struct { ...  }
 func New(opts ...Option) SaveOption {
 
 	cfg := &Config{}
@@ -200,10 +218,4 @@ func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
 		c.encryptDocumentProperties = strconv.FormatBool(value)
 	}
-}
-
-func init() {
-	Register("dif", func() SaveOption {
-		return New()
-	})
 }
