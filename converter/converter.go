@@ -58,10 +58,10 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 // Parameters:
 //   - source: A data source implementing the datasource.DataSource interface, which supplies the input
 //     spreadsheet content (e.g., from a file, bytes buffer, or network stream).
-//   - opt: Conversion settings that determine the output format and behavior, implementing the
-//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption).
 //   - w: An io.Writer (such as a file, bytes.Buffer, or HTTP response writer) where the converted
 //     output will be written.
+//   - opt: Conversion settings that determine the output format and behavior, implementing the
+//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption).
 //
 // Returns:
 //   - error: An error if conversion or writing fails. Possible causes include invalid input data,
@@ -79,7 +79,7 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 // return
 // }
 // defer file.Close()
-func ConvertToWriter(source datasource.DataSource, opt saveoptions.SaveOption, w io.Writer) error {
+func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
 
 	reader, errOpen := source.Open()
 	if errOpen != nil {
@@ -120,7 +120,7 @@ func ConvertToWriter(source datasource.DataSource, opt saveoptions.SaveOption, w
 //	if err != nil {
 //	    log.Fatalf("Conversion failed: %v", err)
 //	}
-func ConvertFile(inputPath string, outputPath string) error {
+func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
 
 	source := datasource.FilePathSource(inputPath)
 	ext := filepath.Ext(outputPath)

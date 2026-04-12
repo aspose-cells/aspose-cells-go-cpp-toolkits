@@ -1,4 +1,4 @@
-package splitter
+package manipulator
 
 import (
 	"archive/zip"
@@ -12,6 +12,29 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// SplitSpreadsheet Splits a spreadsheet by worksheet into multiple files in the specified output format.Returns a []byte containing all output files compressed into a ZIP archive.
+//
+// Parameters:
+//   - source: A data source implementing the datasource.DataSource interface, which provides the input
+//     spreadsheet content (e.g., from a file, in-memory buffer, HTTP URL, etc.).
+//   - outSaveOption: Split outfile options that define the output format and behavior, implementing the
+//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption, etc.).
+//
+// Returns:
+//   - []byte: The converted file content as a byte slice in the target format.
+//   - error: An error if the conversion fails due to reasons such as unreadable source,
+//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+//
+// Example:
+//
+// save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
+// bytes_data, err = manipulator.SplitSpreadsheet(datasource.FilePathSource("TestData/Source/BookText.xlsx"), save_option)
+// if err != nil {
+// println(err)
+// return
+// }
+// os.WriteFile("TestData/Output/output5.zip", bytes_data, 0644)
 
 func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
 
@@ -52,7 +75,31 @@ func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.Sa
 	return buf.Bytes(), nil
 }
 
-func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter zip.Writer, outSaveOption saveoptions.SaveOption) error {
+// SplitSpreadsheetToZipWriter Splits a spreadsheet by worksheet into multiple files in the specified output format. All output files write into a ZIP archive.
+//
+// Parameters:
+//   - source: A data source implementing the datasource.DataSource interface, which provides the input
+//     spreadsheet content (e.g., from a file, in-memory buffer, HTTP URL, etc.).
+//   - outSaveOption: Split outfile options that define the output format and behavior, implementing the
+//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption, etc.).
+//
+// Returns:
+//   - error: An error if the conversion fails due to reasons such as unreadable source,
+//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+//
+// Example:
+//
+// zipWriter := zip.NewWriter(zipFile)
+// save_option = image.New(image.WithImageType("png"))
+// err = manipulator.SplitSpreadsheetToZipWriter(datasource.FilePathSource("TestData/Source/BookText.xlsx"), zipWriter, save_option)
+// if err != nil {
+// println(err)
+// return
+// }
+// zipWriter.Flush()
+// zipWriter.Close()
+// zipFile.Close()
+func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Writer, outSaveOption saveoptions.SaveOption) error {
 
 	reader, errOpen := source.Open()
 	if errOpen != nil {
@@ -87,13 +134,26 @@ func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter zip.Wri
 	}
 	return nil
 }
-func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
 
+// SplitSpreadsheetToFolder Splits a spreadsheet by worksheet into multiple files in a folder.
+//
+// Parameters:
+//   - inputPath: A data source implementing the datasource.DataSource interface, which provides the input
+//     spreadsheet content (e.g., from a file, in-memory buffer, HTTP URL, etc.).
+//   - outputFolder: The output folder which store split result files.
+//
+// Returns:
+//   - error: An error if the conversion fails due to reasons such as unreadable source,
+//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+//
+// Example:
+//
+// manipulator.SplitSpreadsheetToFolder("TestData/Source/BookText.xlsx", "TestData/Output")
+func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
 	workbook, _ := asposecells.NewWorkbook_String(inputPath)
 	defaultStyle, _ := workbook.GetDefaultStyle()
 	worksheets, _ := workbook.GetWorksheets()
 	filename, _ := workbook.GetFileName()
-	// print("filename:" + filename + ".")
 	baseName := filepath.Base(filename)
 	name := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 	ext := filepath.Ext(baseName)
