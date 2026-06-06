@@ -1,11 +1,11 @@
 package dbf
 
 import (
-	"strconv"
-
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+
+	"strconv"
 )
 
 type Config struct {
@@ -145,7 +145,7 @@ type Option func(*Config)
 //
 //	type Option func(*Config)
 //	type Config struct { ...  }
-func New(opts ...Option) SaveOption {
+func New(opts ...Option) saveoptions.SaveOption {
 
 	cfg := &Config{}
 
@@ -156,7 +156,7 @@ func New(opts ...Option) SaveOption {
 	return cfg
 }
 func init() {
-	formats.Register("dbf", func() SaveOption {
+	formats.Register("dbf", func() saveoptions.SaveOption {
 		return New()
 	})
 }

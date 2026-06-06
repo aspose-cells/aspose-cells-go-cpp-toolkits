@@ -1,11 +1,10 @@
 package pptx
 
 import (
-	"strconv"
-
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+	"strconv"
 )
 
 type Config struct {
@@ -251,7 +250,7 @@ func (c *Config) GetFormat() string {
 type Option func(*Config)
 
 func init() {
-	formats.Register("pptx", func() SaveOption {
+	formats.Register("pptx", func() saveoptions.SaveOption {
 		return New()
 	})
 }
@@ -294,7 +293,7 @@ func init() {
 //
 //	type Option func(*Config)
 //	type Config struct { ...  }
-func New(opts ...Option) SaveOption {
+func New(opts ...Option) saveoptions.SaveOption {
 
 	cfg := &Config{}
 

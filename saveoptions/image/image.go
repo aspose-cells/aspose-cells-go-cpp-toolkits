@@ -1,12 +1,11 @@
 package image
 
 import (
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"strconv"
 	"strings"
-
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 type Config struct {
@@ -106,22 +105,22 @@ func (c *Config) GetFormat() string {
 type Option func(*Config)
 
 func init() {
-	formats.Register("png", func() SaveOption {
+	formats.Register("png", func() saveoptions.SaveOption {
 		return New(WithImageType("png"))
 	})
-	formats.Register("jpg", func() SaveOption {
+	formats.Register("jpg", func() saveoptions.SaveOption {
 		return New(WithImageType("jpg"))
 	})
-	formats.Register("svg", func() SaveOption {
+	formats.Register("svg", func() saveoptions.SaveOption {
 		return New(WithImageType("svg"))
 	})
-	formats.Register("bmp", func() SaveOption {
+	formats.Register("bmp", func() saveoptions.SaveOption {
 		return New(WithImageType("bmp"))
 	})
-	formats.Register("tif", func() SaveOption {
+	formats.Register("tif", func() saveoptions.SaveOption {
 		return New(WithImageType("tif"))
 	})
-	formats.Register("tiff", func() SaveOption {
+	formats.Register("tiff", func() saveoptions.SaveOption {
 		return New(WithImageType("tiff"))
 	})
 
@@ -165,7 +164,7 @@ func init() {
 //
 //	type Option func(*Config)
 //	type Config struct { ...  }
-func New(opts ...Option) SaveOption {
+func New(opts ...Option) saveoptions.SaveOption {
 
 	cfg := &Config{}
 

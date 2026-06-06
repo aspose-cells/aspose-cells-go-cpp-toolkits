@@ -3,7 +3,7 @@ package formats
 import (
 	"strings"
 
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 )
 
 var registry = make(map[string]func() saveoptions.SaveOption)

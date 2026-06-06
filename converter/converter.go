@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/datasource"
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/formats"
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/saveoptions"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 )
 
 // ConvertSpreadsheet converts a spreadsheet from the given data source into the specified output format
