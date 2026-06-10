@@ -6,11 +6,12 @@
 - Convert Spreadsheet
 - Merge Spreadsheet
 - Split Spreadsheet
-- Set Value for Cell/Range
 - Clear Contents/Formats
 - Insert Rows/Columns
 - Delete Rows/Columns
-- 
+- Set Value
+- Set Style
+
 ## Overview
 
 **Aspose.Cells for Go via C++ Toolkits** is a wrapper toolkit based on [Aspose.Cells for Go via C++](https://products.aspose.com/cells/go-cpp/), designed to provide more Go-idiomatic APIs for Excel document processing. It makes Excel manipulation simpler and more efficient in Go projects.
