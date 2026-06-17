@@ -4,7 +4,7 @@ package editor
 
 import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 
-//func WithDefaultStyle(defaultStyle *asposecells.Style) WorkbookAction {
+//func WithDefaultStyle(styleAction StyleAction) WorkbookAction {
 //	return func(workbook *asposecells.Workbook) error {
 //		workbook.SetDefaultStyle(defaultStyle)
 //		return nil
