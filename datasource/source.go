@@ -45,3 +45,64 @@ type ReaderSource struct {
 func (r ReaderSource) Open() (io.ReadCloser, error) {
 	return r.reader, nil
 }
+
+// DataSink defines the general interface for data destinations.
+// Any type that implements this interface can serve as a data writer.
+// The Write method returns an io.WriteCloser, and the caller must close it after writing.
+type DataSink interface {
+	Write() (io.WriteCloser, error)
+}
+
+// FilePathSink is an implementation of a data sink based on local file system paths.
+// It implements the DataSink interface and is used to write data to the specified file path.
+type FilePathSink string
+
+// Write creates or truncates the file at the specified path and returns a WriteCloser.
+// It directly calls os.Create, so if the directory does not exist or lacks permissions, it will return an error.
+func (p FilePathSink) Write() (io.WriteCloser, error) {
+	return os.Create(string(p))
+}
+
+// BytesSink is an in-memory implementation of a data sink.
+// It is useful for capturing written data into a byte slice, typically used in testing or buffering.
+type BytesSink struct {
+	buf bytes.Buffer
+}
+
+// Write returns a wrapper around the internal buffer.
+// The internal buffer is reset before writing to ensure a clean state.
+func (b *BytesSink) Write() (io.WriteCloser, error) {
+	b.buf.Reset()
+	return nopWriteCloser{&b.buf}, nil
+}
+
+// Bytes returns the accumulated bytes written to the sink.
+func (b *BytesSink) Bytes() []byte {
+	return b.buf.Bytes()
+}
+
+// nopWriteCloser wraps an io.Writer to satisfy the io.WriteCloser interface.
+// Its Close method is a no-op.
+type nopWriteCloser struct {
+	io.Writer
+}
+
+// Close is a no-op for in-memory buffers.
+func (nopWriteCloser) Close() error {
+	return nil
+}
+
+// FileStore is an implementation that supports both reading and writing to a local file.
+// It implements both DataSource and DataSink interfaces.
+// This is useful when a single entity represents a file that needs to be both read from and written to.
+type FileStore string
+
+// Open opens the file at the specified path for reading.
+func (f FileStore) Open() (io.ReadCloser, error) {
+	return os.Open(string(f))
+}
+
+// Write creates or truncates the file at the specified path for writing.
+func (f FileStore) Write() (io.WriteCloser, error) {
+	return os.Create(string(f))
+}
