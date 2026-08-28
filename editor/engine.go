@@ -2,6 +2,7 @@ package editor
 
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	formats "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"io"
 )
@@ -60,5 +61,5 @@ func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([
 		}
 	}
 	fileFormat, _ := workbook.GetFileFormat()
-	return workbook.Save_SaveFormat(fileFormatToSaveFormat(fileFormat))
+	return workbook.Save_SaveFormat(formats.FileFormatToSaveFormat(fileFormat))
 }

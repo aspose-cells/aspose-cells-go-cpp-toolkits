@@ -129,17 +129,5 @@ func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
 	if err != nil {
 		return err
 	}
-	file, errCreate := os.Create(outputPath)
-	if errCreate != nil {
-		panic(errCreate)
-	}
-	defer file.Close()
-
-	_, err = file.Write(data)
-	if err != nil {
-		panic(err)
-	}
-
-	err = file.Sync()
-	return err
+	return os.WriteFile(outputPath, data, os.ModeType)
 }

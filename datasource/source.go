@@ -11,6 +11,7 @@ import (
 // The Open method is responsible for returning an io.ReadCloser, and the caller must close it after
 type DataSource interface {
 	Open() (io.ReadCloser, error)
+	ByteData() []byte
 }
 
 // FilePathSource is an implementation of a data source based on local file system paths.
@@ -21,6 +22,19 @@ type FilePathSource string
 // It directly calls os.Open, so if the file does not exist or does not have the required permissions, it will return the corresponding system error.
 func (p FilePathSource) Open() (io.ReadCloser, error) {
 	return os.Open(string(p))
+}
+
+func (p FilePathSource) ByteData() []byte {
+	reader, errOpen := p.Open()
+	if errOpen != nil {
+		return nil
+	}
+	data, errRead := io.ReadAll(reader)
+	if errRead != nil {
+		return nil
+	}
+	reader.Close()
+	return data
 }
 
 // BytesSource is an implementation of a data source based on in-memory byte slices.
@@ -34,6 +48,10 @@ func (b BytesSource) Open() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(b)), nil
 }
 
+func (b BytesSource) ByteData() []byte {
+	return b
+}
+
 // ReaderSource is an adapter for the existing io.ReadCloser.
 // When you already have an open stream (such as an HTTP response body), but the function signature requires a DataSource, use this.
 type ReaderSource struct {
@@ -44,6 +62,14 @@ type ReaderSource struct {
 // Note: ReaderSource is usually used to wrap already opened streams, so the Open method itself does not return an error.
 func (r ReaderSource) Open() (io.ReadCloser, error) {
 	return r.reader, nil
+}
+func (r ReaderSource) ByteData() []byte {
+	data, errRead := io.ReadAll(r.reader)
+	if errRead != nil {
+		return nil
+	}
+	r.reader.Close()
+	return data
 }
 
 // DataSink defines the general interface for data destinations.
