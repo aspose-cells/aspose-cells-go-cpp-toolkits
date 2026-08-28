@@ -40,16 +40,12 @@ func ExportRangeToJson(source datasource.DataSource, worksheet string, startCell
 		worksheet, err := worksheets.Get_String(worksheet)
 		if err == nil {
 			sheetIndex, _ := worksheet.GetIndex()
-			println("sheetIndex:", sheetIndex, startCellName, endCellName)
-			cellArea, err := asposecells.CellArea_CreateCellArea_String_String(startCellName, endCellName)
-			if err == nil {
-				println(cellArea.ToString())
+			start_row_index, start_column_index, _ := asposecells.CellsHelper_CellNameToIndex(startCellName)
+			end_row_index, end_column_index, _ := asposecells.CellsHelper_CellNameToIndex(endCellName)
+			cellArea, err := asposecells.CellArea_CreateCellArea_Int_Int_Int_Int(start_row_index, start_column_index, end_row_index, end_column_index)
+			if err != nil {
+				println(startCellName, endCellName)
 			}
-			name, err := cellArea.ToString()
-			if err == nil {
-				println(name)
-			}
-
 			saveoptions := jsonsaveoptions.New(jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex}), jsonsaveoptions.WithExportArea(cellArea))
 			return saveoptions.Apply(data)
 		}

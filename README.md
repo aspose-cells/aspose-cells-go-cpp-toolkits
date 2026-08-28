@@ -4,11 +4,12 @@
 ## Features
 
 - Convert Spreadsheet
+- Export worksheet/range
 - Merge/UnMerge Spreadsheet
 - Split Spreadsheet
 - Clear Contents/Formats
 - Insert Rows/Columns
-- Delete Rows/Columns
+- Delete Rows/Columns/Range
 - Set Value
 - Set Style
 

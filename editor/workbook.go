@@ -20,10 +20,59 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 // Returns:
 //   - WorkbookAction: A function that modifies the workbook by setting
 //     the active sheet index.
-func WithActiveSheet(sheetIndex int) WorkbookAction {
+func WithActiveSheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
 		wss, _ := workbook.GetWorksheets()
-		wss.SetActiveSheetIndex(int32(sheetIndex))
+		wss.SetActiveSheetName(sheetName)
+		return nil
+	}
+}
+
+// WithAddWorksheet creates a WorkbookAction that add the worksheet
+//
+// Parameters:
+//   - sheetName: The name of the worksheet to add.
+//
+// Returns:
+//   - WorkbookAction: A function that adds the workbook by the sheet name.
+
+func WithAddWorksheet(newSheetName string) WorkbookAction {
+	return func(workbook *asposecells.Workbook) error {
+		wss, _ := workbook.GetWorksheets()
+		_, err := wss.Add_String(newSheetName)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+// WithDeleteWorksheet creates a WorkbookAction that delete the worksheet
+//
+// Parameters:
+//   - sheetName: The name of the worksheet to delete.
+//
+// Returns:
+//   - WorkbookAction: A function that deletes the workbook by the sheet name.
+func WithDeleteWorksheet(sheetName string) WorkbookAction {
+	return func(workbook *asposecells.Workbook) error {
+		wss, _ := workbook.GetWorksheets()
+		return wss.RemoveAt_String(sheetName)
+	}
+}
+
+// WithDeleteWorksheetWithName creates a WorkbookAction that delete the worksheet
+//
+// Parameters:
+//   - sheetName: The name of the worksheet to delete.
+//
+// Returns:
+//   - WorkbookAction: A function that deletes the workbook by the sheet index.
+func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
+	return func(workbook *asposecells.Workbook) error {
+		wss, _ := workbook.GetWorksheets()
+		ws, _ := wss.Get_String(sheetName)
+		ws.SetName(newSheetName)
 		return nil
 	}
 }
