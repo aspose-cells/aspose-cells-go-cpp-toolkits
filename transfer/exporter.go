@@ -2,41 +2,26 @@ package transfer
 
 import (
 	"fmt"
-	. "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
-	"io"
 	"os"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	jsonsaveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/json"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 func ExportSpreadsheetToXml(source datasource.DataSource, mapName string) ([]byte, error) {
-	reader, errOpen := source.Open()
-	if errOpen != nil {
-		return nil, errOpen
-	}
-	data, errRead := io.ReadAll(reader)
-	if errRead != nil {
-		return nil, errRead
-	}
-	reader.Close()
-	workbook, err := asposecells.NewWorkbook_Stream(data)
+	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {
 		return nil, err
 	}
 	return workbook.ExportXml_String(mapName)
 }
 func ExportRangeToJson(source datasource.DataSource, worksheet string, startCellName string, endCellName string) ([]byte, error) {
-	reader, errOpen := source.Open()
-	if errOpen != nil {
-		return nil, errOpen
+	data, err := cells.ReadSource(source)
+	if err != nil {
+		return nil, err
 	}
-	data, errRead := io.ReadAll(reader)
-	if errRead != nil {
-		return nil, errRead
-	}
-	reader.Close()
 	workbook, err := asposecells.NewWorkbook_Stream(data)
 	if err != nil {
 		return nil, err
@@ -69,17 +54,20 @@ func ExportRangeToJson(source datasource.DataSource, worksheet string, startCell
 	return saveoptions.Apply(data)
 }
 func ExportWorksheetToJson(source datasource.DataSource, worksheet string) ([]byte, error) {
-
-	workbook, err := GetWorkbookWithDataSource(source)
+	data, err := cells.ReadSource(source)
 	if err != nil {
 		return nil, err
 	}
-	sheetIndex, cellArea, err := GetCellAreaWithWorksheet(workbook, worksheet)
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return nil, err
+	}
+	sheetIndex, cellArea, err := cells.GetCellAreaWithWorksheet(workbook, worksheet)
 	if err != nil {
 		return nil, err
 	}
 	saveoptions := jsonsaveoptions.New(jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex}), jsonsaveoptions.WithExportArea(cellArea))
-	return saveoptions.Apply(source.ByteData())
+	return saveoptions.Apply(data)
 }
 
 func ExportWorksheetToJsonFile(spreadsheet string, worksheet string, outputPath string) error {

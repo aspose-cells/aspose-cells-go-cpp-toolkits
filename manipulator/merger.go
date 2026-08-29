@@ -8,6 +8,7 @@ import (
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -53,16 +54,7 @@ func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions
 	}
 	count := len(source)
 	for i := 0; i < count; i++ {
-		reader, errOpen := source[i].Open()
-		if errOpen != nil {
-			return nil, errOpen
-		}
-		data, errRead := io.ReadAll(reader)
-		reader.Close()
-		if errRead != nil {
-			return nil, errRead
-		}
-		workbook, err := asposecells.NewWorkbook_Stream(data)
+		workbook, err := cells.GetWorkbookWithDataSource(source[i])
 		if err != nil {
 			return nil, err
 		}
@@ -125,16 +117,7 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 	}
 	count := len(source)
 	for i := 0; i < count; i++ {
-		reader, errOpen := source[i].Open()
-		if errOpen != nil {
-			return errOpen
-		}
-		data, errRead := io.ReadAll(reader)
-		reader.Close()
-		if errRead != nil {
-			return errRead
-		}
-		workbook, err := asposecells.NewWorkbook_Stream(data)
+		workbook, err := cells.GetWorkbookWithDataSource(source[i])
 		if err != nil {
 			return err
 		}

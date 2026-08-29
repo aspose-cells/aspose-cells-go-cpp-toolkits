@@ -12,14 +12,14 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 //}
 
 // WithActiveSheet creates a WorkbookAction that activates the worksheet
-// at the specified zero-based index.
+// with the given name.
 //
 // Parameters:
-//   - sheetIndex: The zero-based index of the worksheet to activate.
+//   - sheetName: The name of the worksheet to activate.
 //
 // Returns:
 //   - WorkbookAction: A function that modifies the workbook by setting
-//     the active sheet index.
+//     the active sheet.
 func WithActiveSheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
 		wss, err := workbook.GetWorksheets()
@@ -66,13 +66,14 @@ func WithDeleteWorksheet(sheetName string) WorkbookAction {
 	}
 }
 
-// WithDeleteWorksheetWithName creates a WorkbookAction that delete the worksheet
+// WithRenameWorksheet creates a WorkbookAction that renames an existing worksheet.
 //
 // Parameters:
-//   - sheetName: The name of the worksheet to delete.
+//   - sheetName: The current name of the worksheet to rename.
+//   - newSheetName: The new name to assign to the worksheet.
 //
 // Returns:
-//   - WorkbookAction: A function that deletes the workbook by the sheet index.
+//   - WorkbookAction: A function that renames the specified worksheet.
 func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
 		wss, err := workbook.GetWorksheets()

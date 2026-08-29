@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Updated `go.mod` to Go 1.21 and bumped the `aspose-cells-go-cpp` dependency to v26.7.0
+
+---
+
+## [v26.6.1] - 2026-06-10
+
+### Changed
+- **ISSUE-CELLSGO-260**: Updated README documentation and bumped the version badge to v26.6.1
+
+---
+
 ## [v26.6.0] - 2026-06-07
 
 ### Added
@@ -72,6 +86,7 @@ All notable changes to this project are documented in this file.
 
 | Version Tag | Release Date | Key Features |
 |-------------|--------------|--------------|
+| v26.6.1 | 2026-06-10 | README and CHANGELOG updates |
 | v26.6.0 | 2026-06-07 | Editor package, style support, enhanced docs |
 | v26.4.0 | 2026-04-19 | Dependency updates |
 | v26.3.1 | 2026-04-05 | Splitter package, enhanced SaveOption |
@@ -92,6 +107,7 @@ All changes are tracked under the **CELLSGO** issue prefix. For more details, pl
 - **CELLSGO-254**: Editor package and README updates
 - **CELLSGO-256**: Style support and function descriptions
 - **CELLSGO-259**: Package documentation (converter, datasource, editor, manipulator, saveoptions)
+- **CELLSGO-260**: README and CHANGELOG updates
 
 ---
 
@@ -104,4 +120,4 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 ---
 
-*This changelog is automatically maintained based on commit history. Last updated: 2026-06-10*
+*This changelog is automatically maintained based on commit history. Last updated: 2026-08-30*

@@ -7,16 +7,27 @@ import (
 	"io"
 )
 
-func GetWorkbookWithDataSource(source datasource.DataSource) (*asposecells.Workbook, error) {
+// ReadSource reads all bytes from a datasource.DataSource. It opens the source,
+// drains it fully into memory, and closes it. This is the single place where a
+// DataSource is turned into raw bytes, so every package reads sources the same way.
+func ReadSource(source datasource.DataSource) ([]byte, error) {
 	reader, errOpen := source.Open()
 	if errOpen != nil {
 		return nil, errOpen
 	}
+	defer reader.Close()
 	data, errRead := io.ReadAll(reader)
 	if errRead != nil {
 		return nil, errRead
 	}
-	reader.Close()
+	return data, nil
+}
+
+func GetWorkbookWithDataSource(source datasource.DataSource) (*asposecells.Workbook, error) {
+	data, err := ReadSource(source)
+	if err != nil {
+		return nil, err
+	}
 	return asposecells.NewWorkbook_Stream(data)
 }
 

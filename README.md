@@ -3,15 +3,13 @@
 
 ## Features
 
-- Convert Spreadsheet
-- Export worksheet/range
-- Merge/UnMerge Spreadsheet
-- Split Spreadsheet
-- Clear Contents/Formats
-- Insert Rows/Columns
-- Delete Rows/Columns/Range
-- Set Value
-- Set Style
+**Aspose.Cells for Go via C++ Toolkits** is a Go library for reading, creating, editing, converting, and exporting Excel spreadsheets with clean, Go-idiomatic APIs.
+
+- **Convert Excel to PDF, images & more** — 28+ output formats: XLS, XLSX, XLSB, XLSM, XLTX, XLTM, CSV, TXT, ODS, DIF, DBF, SQL, XML, PDF, DOCX, PPTX, XPS, PCL, EPUB, HTML, JSON, Markdown, PNG, JPG, SVG, BMP, TIF/TIFF.
+- **Import & export data** — Export worksheets or cell ranges to JSON / XML; import CSV / XML / JSON data into a worksheet.
+- **Merge & split workbooks** — Merge multiple spreadsheets into one; split a workbook into per-sheet files, a ZIP archive, or in-memory bytes.
+- **Fluent spreadsheet editing** — Set cell values, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, and add / delete / rename worksheets.
+- **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction for files, bytes, and streams.
 
 ## Overview
 
@@ -32,8 +30,8 @@ While the official Go via C++ version of Aspose.Cells is powerful, its API desig
 
 ### Environments and versions
 
-- Go 1.16 or greater
-- Aspose.Cells for Go via C++ v26.1.0
+- Go 1.21 or greater
+- Aspose.Cells for Go via C++ v26.7.0
 
 ## Quick Start
 
@@ -50,8 +48,8 @@ import (
 
 func main() {
   core.SetLicense(os.Getenv("LicensePath"))
-  converter.ConvertFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.pdf")
-  converter.ConvertFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.md")
+  converter.ConvertSpreadsheetToFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.pdf")
+  converter.ConvertSpreadsheetToFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.md")
 }
 
 ```
@@ -65,9 +63,9 @@ go mod init main
 ```
 module github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26
 
-go 1.13
+go 1.21
 
-require github.com/aspose-cells/aspose-cells-go-cpp/v26 v26.1.0
+require github.com/aspose-cells/aspose-cells-go-cpp/v26 v26.7.0
 
 ```
 ### Fetch the dependencies for your project.
@@ -78,12 +76,10 @@ go mod tidy
 ### Set your PATH to point to the shared libraries in Aspose.Cells for Go via C++ in your current command shell.
 
 ```powershell
-$env:Path = $env:Path+ ";${env:GOPATH}\github.com\aspose-cells\aspose-cells-go-cpp\v26@v26.1.0\lib\win_x86_64\"
+$env:Path = $env:Path+ ";${env:GOPATH}\github.com\aspose-cells\aspose-cells-go-cpp\v26@v26.7.0\lib\win_x86_64\"
 ```
 
-## Features
-
-### Conversion Spreadsheet
+## Supported Formats
 
 ### Support file format
 

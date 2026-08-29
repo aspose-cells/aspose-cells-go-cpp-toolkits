@@ -3,8 +3,7 @@ package editor
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	formats "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"io"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 )
 
 // EditSpreadsheet is the core entry point for the spreadsheet editing DSL.
@@ -42,16 +41,7 @@ import (
 //	   log.Fatal(err)
 //	}
 func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([]byte, error) {
-	reader, errOpen := source.Open()
-	if errOpen != nil {
-		return nil, errOpen
-	}
-	data, errRead := io.ReadAll(reader)
-	reader.Close()
-	if errRead != nil {
-		return nil, errRead
-	}
-	workbook, err := asposecells.NewWorkbook_Stream(data)
+	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {
 		return nil, err
 	}

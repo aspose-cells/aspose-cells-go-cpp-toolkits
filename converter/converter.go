@@ -8,6 +8,7 @@ import (
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 )
 
@@ -38,15 +39,10 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 	if opt == nil {
 		return nil, fmt.Errorf("save option is nil")
 	}
-	reader, errOpen := source.Open()
-	if errOpen != nil {
-		return nil, errOpen
-	}
-	data, errRead := io.ReadAll(reader)
+	data, errRead := cells.ReadSource(source)
 	if errRead != nil {
 		return nil, errRead
 	}
-	reader.Close()
 	result, errApply := opt.Apply(data)
 
 	if errApply != nil {
@@ -86,15 +82,10 @@ func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.
 	if opt == nil {
 		return fmt.Errorf("save option is nil")
 	}
-	reader, errOpen := source.Open()
-	if errOpen != nil {
-		return errOpen
-	}
-	data, errRead := io.ReadAll(reader)
+	data, errRead := cells.ReadSource(source)
 	if errRead != nil {
 		return errRead
 	}
-	reader.Close()
 
 	result, errApply := opt.Apply(data)
 	if errApply != nil {
