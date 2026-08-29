@@ -34,23 +34,36 @@ func ExportRangeToJson(source datasource.DataSource, worksheet string, startCell
 		return nil, errRead
 	}
 	reader.Close()
-	workbook, _ := asposecells.NewWorkbook_Stream(data)
-	worksheets, err := workbook.GetWorksheets()
-	if err == nil {
-		worksheet, err := worksheets.Get_String(worksheet)
-		if err == nil {
-			sheetIndex, _ := worksheet.GetIndex()
-			start_row_index, start_column_index, _ := asposecells.CellsHelper_CellNameToIndex(startCellName)
-			end_row_index, end_column_index, _ := asposecells.CellsHelper_CellNameToIndex(endCellName)
-			cellArea, err := asposecells.CellArea_CreateCellArea_Int_Int_Int_Int(start_row_index, start_column_index, end_row_index, end_column_index)
-			if err != nil {
-				println(startCellName, endCellName)
-			}
-			saveoptions := jsonsaveoptions.New(jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex}), jsonsaveoptions.WithExportArea(cellArea))
-			return saveoptions.Apply(data)
-		}
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	worksheets, err := workbook.GetWorksheets()
+	if err != nil {
+		return nil, err
+	}
+	ws, err := worksheets.Get_String(worksheet)
+	if err != nil {
+		return nil, err
+	}
+	sheetIndex, err := ws.GetIndex()
+	if err != nil {
+		return nil, err
+	}
+	start_row_index, start_column_index, err := asposecells.CellsHelper_CellNameToIndex(startCellName)
+	if err != nil {
+		return nil, err
+	}
+	end_row_index, end_column_index, err := asposecells.CellsHelper_CellNameToIndex(endCellName)
+	if err != nil {
+		return nil, err
+	}
+	cellArea, err := asposecells.CellArea_CreateCellArea_Int_Int_Int_Int(start_row_index, start_column_index, end_row_index, end_column_index)
+	if err != nil {
+		return nil, err
+	}
+	saveoptions := jsonsaveoptions.New(jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex}), jsonsaveoptions.WithExportArea(cellArea))
+	return saveoptions.Apply(data)
 }
 func ExportWorksheetToJson(source datasource.DataSource, worksheet string) ([]byte, error) {
 
@@ -75,19 +88,10 @@ func ExportWorksheetToJsonFile(spreadsheet string, worksheet string, outputPath 
 		return fmt.Errorf("The %s is folder.", spreadsheet)
 	}
 	data, err := ExportWorksheetToJson(datasource.FilePathSource(spreadsheet), worksheet)
-	if err == nil {
-		file, errCreate := os.Create(outputPath)
-		if errCreate != nil {
-			panic(errCreate)
-		}
-		defer file.Close()
-
-		_, err = file.Write(data)
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	return os.WriteFile(outputPath, data, 0644)
 }
 func ExportSpreadsheetToXmlFile(spreadsheet string, mapName string, outputPath string) error {
 	fileInfo, err := os.Stat(spreadsheet)
@@ -98,20 +102,10 @@ func ExportSpreadsheetToXmlFile(spreadsheet string, mapName string, outputPath s
 		return fmt.Errorf("The %s is folder.", spreadsheet)
 	}
 	data, err := ExportSpreadsheetToXml(datasource.FilePathSource(spreadsheet), mapName)
-	if err == nil {
-		file, errCreate := os.Create(outputPath)
-		if errCreate != nil {
-			panic(errCreate)
-		}
-		defer file.Close()
-
-		_, err = file.Write(data)
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		return err
 	}
-	return err
-
+	return os.WriteFile(outputPath, data, 0644)
 }
 func ExportRangeToJsonFile(spreadsheet string, worksheet string, startCellName string, endCellName string, outputPath string) error {
 	fileInfo, err := os.Stat(spreadsheet)
@@ -122,17 +116,8 @@ func ExportRangeToJsonFile(spreadsheet string, worksheet string, startCellName s
 		return fmt.Errorf("The %s is folder.", spreadsheet)
 	}
 	data, err := ExportRangeToJson(datasource.FilePathSource(spreadsheet), worksheet, startCellName, endCellName)
-	if err == nil {
-		file, errCreate := os.Create(outputPath)
-		if errCreate != nil {
-			panic(errCreate)
-		}
-		defer file.Close()
-
-		_, err = file.Write(data)
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	return os.WriteFile(outputPath, data, 0644)
 }

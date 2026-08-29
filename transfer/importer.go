@@ -9,6 +9,9 @@ import (
 
 func ImportCSVDataIntoSpreadsheet(source datasource.DataSource, csvDataSource datasource.DataSource, worksheet string, beginRow int, beginColumn int, convertNumericData bool, splitter string) ([]byte, error) {
 	workbook, err := GetWorkbookWithDataSource(source)
+	if err != nil {
+		return nil, err
+	}
 	cells, err := GetCellsWithWorksheet(workbook, worksheet)
 	if err != nil {
 		return nil, err
@@ -39,6 +42,9 @@ func ImportJsonDataIntoSpreadsheet(source datasource.DataSource, jsonDataSource 
 		return nil, err
 	}
 	cells, err := GetCellsWithWorksheet(workbook, worksheet)
+	if err != nil {
+		return nil, err
+	}
 
 	options, err := asposecells.NewJsonLayoutOptions()
 	if err != nil {

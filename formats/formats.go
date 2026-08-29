@@ -29,139 +29,84 @@ func List() []string {
 }
 
 func FileFormatToSaveFormat(formatType asposecells.FileFormatType) asposecells.SaveFormat {
-	if formatType == asposecells.FileFormatType_Azw3 {
+	switch formatType {
+	case asposecells.FileFormatType_Azw3:
 		return asposecells.SaveFormat_Azw3
-	}
-	if formatType == asposecells.FileFormatType_Bmp {
+	case asposecells.FileFormatType_Bmp:
 		return asposecells.SaveFormat_Bmp
-	}
-	if formatType == asposecells.FileFormatType_Csv {
+	case asposecells.FileFormatType_Csv:
 		return asposecells.SaveFormat_Csv
-	}
-	if formatType == asposecells.FileFormatType_Docx {
+	case asposecells.FileFormatType_Docx,
+		asposecells.FileFormatType_Docm,
+		asposecells.FileFormatType_Doc,
+		asposecells.FileFormatType_Dotm,
+		asposecells.FileFormatType_Rtf:
 		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Docm {
-		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Doc {
-		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Dotm {
-		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Dif {
+	case asposecells.FileFormatType_Dif:
 		return asposecells.SaveFormat_Dif
-	}
-	if formatType == asposecells.FileFormatType_Dbf {
+	case asposecells.FileFormatType_Dbf:
 		return asposecells.SaveFormat_Dbf
-	}
-	if formatType == asposecells.FileFormatType_Epub {
+	case asposecells.FileFormatType_Epub:
 		return asposecells.SaveFormat_Epub
-	}
-	if formatType == asposecells.FileFormatType_Emf {
+	case asposecells.FileFormatType_Emf:
 		return asposecells.SaveFormat_Emf
-	}
-	if formatType == asposecells.FileFormatType_Excel97To2003 {
+	case asposecells.FileFormatType_Excel97To2003:
 		return asposecells.SaveFormat_Excel97To2003
-	}
-	if formatType == asposecells.FileFormatType_Fods {
+	case asposecells.FileFormatType_Fods:
 		return asposecells.SaveFormat_Fods
-	}
-	if formatType == asposecells.FileFormatType_Gif {
+	case asposecells.FileFormatType_Gif:
 		return asposecells.SaveFormat_Gif
-	}
-	if formatType == asposecells.FileFormatType_Html {
+	case asposecells.FileFormatType_Html:
 		return asposecells.SaveFormat_Html
-	}
-	if formatType == asposecells.FileFormatType_MHtml {
+	case asposecells.FileFormatType_MHtml:
 		return asposecells.SaveFormat_MHtml
-	}
-	if formatType == asposecells.FileFormatType_Json {
+	case asposecells.FileFormatType_Json:
 		return asposecells.SaveFormat_Json
-	}
-	if formatType == asposecells.FileFormatType_Jpg {
+	case asposecells.FileFormatType_Jpg:
 		return asposecells.SaveFormat_Jpg
-	}
-	if formatType == asposecells.FileFormatType_Markdown {
+	case asposecells.FileFormatType_Markdown:
 		return asposecells.SaveFormat_Markdown
-	}
-	if formatType == asposecells.FileFormatType_Numbers35 {
+	case asposecells.FileFormatType_Numbers35:
 		return asposecells.SaveFormat_Numbers
-	}
-	if formatType == asposecells.FileFormatType_Numbers35 {
-		return asposecells.SaveFormat_Numbers
-	}
-	if formatType == asposecells.FileFormatType_Ods {
+	case asposecells.FileFormatType_Ods:
 		return asposecells.SaveFormat_Ods
-	}
-	if formatType == asposecells.FileFormatType_Ots {
+	case asposecells.FileFormatType_Ots:
 		return asposecells.SaveFormat_Ots
-	}
-	if formatType == asposecells.FileFormatType_Png {
+	case asposecells.FileFormatType_Png:
 		return asposecells.SaveFormat_Png
-	}
-	if formatType == asposecells.FileFormatType_Pdf {
+	case asposecells.FileFormatType_Pdf:
 		return asposecells.SaveFormat_Pdf
-	}
-	if formatType == asposecells.FileFormatType_Ppt {
+	case asposecells.FileFormatType_Ppt,
+		asposecells.FileFormatType_Pptx,
+		asposecells.FileFormatType_Ppsm:
 		return asposecells.SaveFormat_Pptx
-	}
-	if formatType == asposecells.FileFormatType_Pptx {
-		return asposecells.SaveFormat_Pptx
-	}
-	if formatType == asposecells.FileFormatType_Ppsm {
-		return asposecells.SaveFormat_Pptx
-	}
-	if formatType == asposecells.FileFormatType_Rtf {
-		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Rtf {
-		return asposecells.SaveFormat_Docx
-	}
-	if formatType == asposecells.FileFormatType_Sxc {
+	case asposecells.FileFormatType_Sxc:
 		return asposecells.SaveFormat_Sxc
-	}
-	if formatType == asposecells.FileFormatType_Svg {
+	case asposecells.FileFormatType_Svg:
 		return asposecells.SaveFormat_Svg
-	}
-	if formatType == asposecells.FileFormatType_SqlScript {
+	case asposecells.FileFormatType_SqlScript:
 		return asposecells.SaveFormat_SqlScript
-	}
-	if formatType == asposecells.FileFormatType_SpreadsheetML {
+	case asposecells.FileFormatType_SpreadsheetML:
 		return asposecells.SaveFormat_SpreadsheetML
-	}
-	if formatType == asposecells.FileFormatType_Tsv {
+	case asposecells.FileFormatType_Tsv:
 		return asposecells.SaveFormat_Tsv
-	}
-	if formatType == asposecells.FileFormatType_Tiff {
+	case asposecells.FileFormatType_Tiff:
 		return asposecells.SaveFormat_Tiff
-	}
-	if formatType == asposecells.FileFormatType_Tsv {
-		return asposecells.SaveFormat_Tsv
-	}
-	if formatType == asposecells.FileFormatType_Xlsm {
+	case asposecells.FileFormatType_Xlsm:
 		return asposecells.SaveFormat_Xlsm
-	}
-	if formatType == asposecells.FileFormatType_Xlsx {
+	case asposecells.FileFormatType_Xlsx:
 		return asposecells.SaveFormat_Xlsx
-	}
-	if formatType == asposecells.FileFormatType_Xlsb {
+	case asposecells.FileFormatType_Xlsb:
 		return asposecells.SaveFormat_Xlsb
-	}
-	if formatType == asposecells.FileFormatType_Xlam {
+	case asposecells.FileFormatType_Xlam:
 		return asposecells.SaveFormat_Xlam
-	}
-	if formatType == asposecells.FileFormatType_Xlt {
+	case asposecells.FileFormatType_Xlt:
 		return asposecells.SaveFormat_Xlt
-	}
-	if formatType == asposecells.FileFormatType_Xltx {
+	case asposecells.FileFormatType_Xltx:
 		return asposecells.SaveFormat_Xltx
-	}
-	if formatType == asposecells.FileFormatType_Xml {
+	case asposecells.FileFormatType_Xml:
 		return asposecells.SaveFormat_Xml
-	}
-	if formatType == asposecells.FileFormatType_Xps {
+	case asposecells.FileFormatType_Xps:
 		return asposecells.SaveFormat_Xps
 	}
 

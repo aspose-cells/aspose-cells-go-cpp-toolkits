@@ -47,19 +47,23 @@ func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([
 		return nil, errOpen
 	}
 	data, errRead := io.ReadAll(reader)
+	reader.Close()
 	if errRead != nil {
 		return nil, errRead
 	}
-	reader.Close()
-	workbook, _ := asposecells.NewWorkbook_Stream(data)
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, action := range actions {
 		if err := action(workbook); err != nil {
-			print("----")
-			print(err)
 			return nil, err
 		}
 	}
-	fileFormat, _ := workbook.GetFileFormat()
+	fileFormat, err := workbook.GetFileFormat()
+	if err != nil {
+		return nil, err
+	}
 	return workbook.Save_SaveFormat(formats.FileFormatToSaveFormat(fileFormat))
 }

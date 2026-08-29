@@ -8,7 +8,10 @@ import (
 )
 
 func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Worksheet, error) {
-	wss, _ := wb.GetWorksheets()
+	wss, err := wb.GetWorksheets()
+	if err != nil {
+		return nil, err
+	}
 	switch v := id.(type) {
 	case int:
 		return wss.Get_Int(int32(v))
@@ -19,16 +22,18 @@ func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Wo
 	case string:
 		return wss.Get_String(v)
 	default:
-		println("default")
 		return nil, fmt.Errorf("invalid sheet identifier: %v", id)
 	}
-	return nil, fmt.Errorf("invalid sheet identifier: %v", id)
 }
 func resolveColor(value interface{}) (*asposecells.Color, error) {
 	if strVal, ok := value.(string); ok {
-		_, err := hex.DecodeString(strVal)
-		if err == nil {
-			return asposecells.Color_FromHex(strVal)
+		// Only treat 6/8-digit hex strings (RGB/RGBA) as colors,
+		// otherwise a color name made of hex chars (e.g. "face") would be misread.
+		h := strings.TrimPrefix(strVal, "#")
+		if len(h) == 6 || len(h) == 8 {
+			if _, err := hex.DecodeString(h); err == nil {
+				return asposecells.Color_FromHex(h)
+			}
 		}
 		return asposecells.Color_FromName(strVal)
 	} else if intVal, ok := value.(int); ok {

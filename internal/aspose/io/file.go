@@ -3,15 +3,12 @@ package io
 import "os"
 
 func WriteFile(data []byte, path string) error {
-	file, errCreate := os.Create(path)
-	if errCreate != nil {
-		panic(errCreate)
+	file, err := os.Create(path)
+	if err != nil {
+		return err
 	}
 	defer file.Close()
 
-	_, err := file.Write(data)
-	if err != nil {
-		panic(err)
-	}
+	_, err = file.Write(data)
 	return err
 }

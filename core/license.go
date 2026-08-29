@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"os"
 
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
@@ -32,6 +33,6 @@ func SetLicense(licensePath string) {
 	lic, _ := asposecells.NewLicense()
 	err := lic.SetLicense_String(licensePath)
 	if err != nil {
-		println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }

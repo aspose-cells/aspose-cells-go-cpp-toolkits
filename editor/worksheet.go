@@ -22,8 +22,14 @@ import (
 //     if the provided value type is unsupported.
 func SetCellValue(row, column int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cell, _ := cells.Get_Int_Int(int32(row), int32(column))
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		cell, err := cells.Get_Int_Int(int32(row), int32(column))
+		if err != nil {
+			return err
+		}
 		switch v := value.(type) {
 		case int8:
 			obj, _ := asposecells.NewObject_Integer8(v)
@@ -45,6 +51,9 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 			cell.PutValue_Int(v)
 			break
 		case int:
+			obj, _ := asposecells.NewObject_Int64(int64(v))
+			cell.PutValue_Object(obj)
+			break
 		case int64:
 			obj, _ := asposecells.NewObject_Int64(v)
 			cell.PutValue_Object(obj)
@@ -69,7 +78,6 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 			break
 		default:
 			return fmt.Errorf("invalid value: %v", value)
-			break
 		}
 		return nil
 	}
@@ -90,8 +98,14 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 //     Returns an error if the value type is unsupported.
 func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cellsRange, _ := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		cellsRange, err := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
+		if err != nil {
+			return err
+		}
 		switch v := value.(type) {
 		case int8:
 			obj, _ := asposecells.NewObject_Integer8(v)
@@ -114,6 +128,9 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 			cellsRange.SetValue(obj)
 			break
 		case int:
+			obj, _ := asposecells.NewObject_Int64(int64(v))
+			cellsRange.SetValue(obj)
+			break
 		case int64:
 			obj, _ := asposecells.NewObject_Int64(v)
 			cellsRange.SetValue(obj)
@@ -140,7 +157,6 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 			break
 		default:
 			return fmt.Errorf("invalid value: %v", value)
-			break
 		}
 		return nil
 	}

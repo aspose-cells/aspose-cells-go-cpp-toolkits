@@ -37,41 +37,102 @@ import (
 // os.WriteFile("TestData/Output/output5.zip", bytes_data, 0644)
 
 func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
-
+	if outSaveOption == nil {
+		return nil, fmt.Errorf("save option is nil")
+	}
 	reader, errOpen := source.Open()
 	if errOpen != nil {
 		return nil, errOpen
 	}
 	data, errRead := io.ReadAll(reader)
+	reader.Close()
 	if errRead != nil {
 		return nil, errRead
 	}
-	reader.Close()
-	workbook, _ := asposecells.NewWorkbook_Stream(data)
-	defaultStyle, _ := workbook.GetDefaultStyle()
-	worksheets, _ := workbook.GetWorksheets()
-	count, _ := worksheets.GetCount()
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return nil, err
+	}
+	defaultStyle, err := workbook.GetDefaultStyle()
+	if err != nil {
+		return nil, err
+	}
+	worksheets, err := workbook.GetWorksheets()
+	if err != nil {
+		return nil, err
+	}
+	count, err := worksheets.GetCount()
+	if err != nil {
+		return nil, err
+	}
 	buf := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buf)
 	for i := int32(0); i < count; i++ {
-		worksheet, _ := worksheets.Get_Int(i)
-		sheetname, _ := worksheet.GetName()
-		newWorkbook, _ := asposecells.NewWorkbook()
-		newWorkbook.CopyTheme(workbook)
-		newDefaultStyle, _ := newWorkbook.GetDefaultStyle()
-		newDefaultStyle.Copy(defaultStyle)
-		newWorksheets, _ := newWorkbook.GetWorksheets()
-		newWorksheet, _ := newWorksheets.Get_Int(int32(0))
-		newWorksheet.SetName(sheetname)
-		newWorksheet.Copy_Worksheet(worksheet)
+		worksheet, err := worksheets.Get_Int(i)
+		if err != nil {
+			return nil, err
+		}
+		sheetname, err := worksheet.GetName()
+		if err != nil {
+			return nil, err
+		}
+		newWorkbook, err := asposecells.NewWorkbook()
+		if err != nil {
+			return nil, err
+		}
+		err = newWorkbook.CopyTheme(workbook)
+		if err != nil {
+			return nil, err
+		}
+		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
+		if err != nil {
+			return nil, err
+		}
+		err = newDefaultStyle.Copy(defaultStyle)
+		if err != nil {
+			return nil, err
+		}
+		newWorksheets, err := newWorkbook.GetWorksheets()
+		if err != nil {
+			return nil, err
+		}
+		newWorksheet, err := newWorksheets.Get_Int(int32(0))
+		if err != nil {
+			return nil, err
+		}
+		err = newWorksheet.SetName(sheetname)
+		if err != nil {
+			return nil, err
+		}
+		err = newWorksheet.Copy_Worksheet(worksheet)
+		if err != nil {
+			return nil, err
+		}
 		newFilename := sheetname + "." + outSaveOption.GetFormat()
-		newWorkbook.SetFileName(newFilename)
-		newData, _ := newWorkbook.SaveToStream()
-		subFile, _ := zipWriter.Create(newFilename)
-		outData, _ := outSaveOption.Apply(newData)
-		subFile.Write(outData)
+		err = newWorkbook.SetFileName(newFilename)
+		if err != nil {
+			return nil, err
+		}
+		newData, err := newWorkbook.SaveToStream()
+		if err != nil {
+			return nil, err
+		}
+		subFile, err := zipWriter.Create(newFilename)
+		if err != nil {
+			return nil, err
+		}
+		outData, err := outSaveOption.Apply(newData)
+		if err != nil {
+			return nil, err
+		}
+		if _, err = subFile.Write(outData); err != nil {
+			return nil, err
+		}
 	}
-	zipWriter.Close()
+	err = zipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
@@ -100,37 +161,95 @@ func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.Sa
 // zipWriter.Close()
 // zipFile.Close()
 func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Writer, outSaveOption saveoptions.SaveOption) error {
-
+	if outSaveOption == nil {
+		return fmt.Errorf("save option is nil")
+	}
 	reader, errOpen := source.Open()
 	if errOpen != nil {
 		return errOpen
 	}
 	data, errRead := io.ReadAll(reader)
+	reader.Close()
 	if errRead != nil {
 		return errRead
 	}
-	reader.Close()
-	workbook, _ := asposecells.NewWorkbook_Stream(data)
-	defaultStyle, _ := workbook.GetDefaultStyle()
-	worksheets, _ := workbook.GetWorksheets()
-	count, _ := worksheets.GetCount()
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return err
+	}
+	defaultStyle, err := workbook.GetDefaultStyle()
+	if err != nil {
+		return err
+	}
+	worksheets, err := workbook.GetWorksheets()
+	if err != nil {
+		return err
+	}
+	count, err := worksheets.GetCount()
+	if err != nil {
+		return err
+	}
 	for i := int32(0); i < count; i++ {
-		worksheet, _ := worksheets.Get_Int(i)
-		sheetname, _ := worksheet.GetName()
-		newWorkbook, _ := asposecells.NewWorkbook()
-		newWorkbook.CopyTheme(workbook)
-		newDefaultStyle, _ := newWorkbook.GetDefaultStyle()
-		newDefaultStyle.Copy(defaultStyle)
-		newWorksheets, _ := newWorkbook.GetWorksheets()
-		newWorksheet, _ := newWorksheets.Get_Int(int32(0))
-		newWorksheet.SetName(sheetname)
-		newWorksheet.Copy_Worksheet(worksheet)
+		worksheet, err := worksheets.Get_Int(i)
+		if err != nil {
+			return err
+		}
+		sheetname, err := worksheet.GetName()
+		if err != nil {
+			return err
+		}
+		newWorkbook, err := asposecells.NewWorkbook()
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.CopyTheme(workbook)
+		if err != nil {
+			return err
+		}
+		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
+		if err != nil {
+			return err
+		}
+		err = newDefaultStyle.Copy(defaultStyle)
+		if err != nil {
+			return err
+		}
+		newWorksheets, err := newWorkbook.GetWorksheets()
+		if err != nil {
+			return err
+		}
+		newWorksheet, err := newWorksheets.Get_Int(int32(0))
+		if err != nil {
+			return err
+		}
+		err = newWorksheet.SetName(sheetname)
+		if err != nil {
+			return err
+		}
+		err = newWorksheet.Copy_Worksheet(worksheet)
+		if err != nil {
+			return err
+		}
 		newFilename := sheetname + "." + outSaveOption.GetFormat()
-		newWorkbook.SetFileName(newFilename)
-		newData, _ := newWorkbook.SaveToStream()
-		subFile, _ := zipWriter.Create(newFilename)
-		outData, _ := outSaveOption.Apply(newData)
-		subFile.Write(outData)
+		err = newWorkbook.SetFileName(newFilename)
+		if err != nil {
+			return err
+		}
+		newData, err := newWorkbook.SaveToStream()
+		if err != nil {
+			return err
+		}
+		subFile, err := zipWriter.Create(newFilename)
+		if err != nil {
+			return err
+		}
+		outData, err := outSaveOption.Apply(newData)
+		if err != nil {
+			return err
+		}
+		if _, err = subFile.Write(outData); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -150,31 +269,88 @@ func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Wr
 //
 // manipulator.SplitSpreadsheetToFolder("TestData/Source/BookText.xlsx", "TestData/Output")
 func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
-	workbook, _ := asposecells.NewWorkbook_String(inputPath)
-	defaultStyle, _ := workbook.GetDefaultStyle()
-	worksheets, _ := workbook.GetWorksheets()
-	filename, _ := workbook.GetFileName()
+	workbook, err := asposecells.NewWorkbook_String(inputPath)
+	if err != nil {
+		return err
+	}
+	defaultStyle, err := workbook.GetDefaultStyle()
+	if err != nil {
+		return err
+	}
+	worksheets, err := workbook.GetWorksheets()
+	if err != nil {
+		return err
+	}
+	filename, err := workbook.GetFileName()
+	if err != nil {
+		return err
+	}
 	baseName := filepath.Base(filename)
 	name := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 	ext := filepath.Ext(baseName)
-	count, _ := worksheets.GetCount()
-	fileFormat, _ := workbook.GetFileFormat()
+	count, err := worksheets.GetCount()
+	if err != nil {
+		return err
+	}
+	fileFormat, err := workbook.GetFileFormat()
+	if err != nil {
+		return err
+	}
 	for i := int32(0); i < count; i++ {
-		worksheet, _ := worksheets.Get_Int(i)
-		sheetname, _ := worksheet.GetName()
-		newWorkbook, _ := asposecells.NewWorkbook()
-		newWorkbook.CopyTheme(workbook)
-		newDefaultStyle, _ := newWorkbook.GetDefaultStyle()
-		newDefaultStyle.Copy(defaultStyle)
+		worksheet, err := worksheets.Get_Int(i)
+		if err != nil {
+			return err
+		}
+		sheetname, err := worksheet.GetName()
+		if err != nil {
+			return err
+		}
+		newWorkbook, err := asposecells.NewWorkbook()
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.CopyTheme(workbook)
+		if err != nil {
+			return err
+		}
+		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
+		if err != nil {
+			return err
+		}
+		err = newDefaultStyle.Copy(defaultStyle)
+		if err != nil {
+			return err
+		}
 		newFilename := fmt.Sprintf("%s_%s%s", name, sheetname, ext)
 		newPath := filepath.Join(outputFolder, newFilename)
-		newWorkbook.SetFileName(newFilename)
-		newWorkbook.SetFileFormat(fileFormat)
-		newWorksheets, _ := newWorkbook.GetWorksheets()
-		newWorksheet, _ := newWorksheets.Get_Int(int32(0))
-		newWorksheet.SetName(sheetname)
-		newWorksheet.Copy_Worksheet(worksheet)
-		newWorkbook.Save_String(newPath)
+		err = newWorkbook.SetFileName(newFilename)
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.SetFileFormat(fileFormat)
+		if err != nil {
+			return err
+		}
+		newWorksheets, err := newWorkbook.GetWorksheets()
+		if err != nil {
+			return err
+		}
+		newWorksheet, err := newWorksheets.Get_Int(int32(0))
+		if err != nil {
+			return err
+		}
+		err = newWorksheet.SetName(sheetname)
+		if err != nil {
+			return err
+		}
+		err = newWorksheet.Copy_Worksheet(worksheet)
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.Save_String(newPath)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

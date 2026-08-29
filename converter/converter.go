@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -34,7 +35,9 @@ import (
 // }
 // os.WriteFile("TestData/Output/output2.pdf", bytes_data, 0644)
 func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
-
+	if opt == nil {
+		return nil, fmt.Errorf("save option is nil")
+	}
 	reader, errOpen := source.Open()
 	if errOpen != nil {
 		return nil, errOpen
@@ -80,7 +83,9 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 // }
 // defer file.Close()
 func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
-
+	if opt == nil {
+		return fmt.Errorf("save option is nil")
+	}
 	reader, errOpen := source.Open()
 	if errOpen != nil {
 		return errOpen
@@ -124,10 +129,16 @@ func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
 
 	source := datasource.FilePathSource(inputPath)
 	ext := filepath.Ext(outputPath)
+	if len(ext) <= 1 {
+		return fmt.Errorf("invalid output path %q: missing file extension", outputPath)
+	}
 	save_option := formats.Get(ext[1:])
+	if save_option == nil {
+		return fmt.Errorf("unsupported output format %q", ext[1:])
+	}
 	data, err := ConvertSpreadsheet(source, save_option)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(outputPath, data, os.ModeType)
+	return os.WriteFile(outputPath, data, 0644)
 }

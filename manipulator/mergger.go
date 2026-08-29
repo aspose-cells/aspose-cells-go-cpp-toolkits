@@ -1,6 +1,7 @@
 package manipulator
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,9 +36,21 @@ import (
 //	}
 //	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
-	newWorkbook, _ := asposecells.NewWorkbook()
-	worksheets, _ := newWorkbook.GetWorksheets()
-	worksheets.RemoveAt_Int(0)
+	if outSaveOption == nil {
+		return nil, fmt.Errorf("save option is nil")
+	}
+	newWorkbook, err := asposecells.NewWorkbook()
+	if err != nil {
+		return nil, err
+	}
+	worksheets, err := newWorkbook.GetWorksheets()
+	if err != nil {
+		return nil, err
+	}
+	err = worksheets.RemoveAt_Int(0)
+	if err != nil {
+		return nil, err
+	}
 	count := len(source)
 	for i := 0; i < count; i++ {
 		reader, errOpen := source[i].Open()
@@ -45,17 +58,28 @@ func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions
 			return nil, errOpen
 		}
 		data, errRead := io.ReadAll(reader)
+		reader.Close()
 		if errRead != nil {
-
 			return nil, errRead
 		}
-		reader.Close()
-		workbook, _ := asposecells.NewWorkbook_Stream(data)
-		newWorkbook.Combine(workbook)
+		workbook, err := asposecells.NewWorkbook_Stream(data)
+		if err != nil {
+			return nil, err
+		}
+		err = newWorkbook.Combine(workbook)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	newData, _ := newWorkbook.SaveToStream()
-	outData, _ := outSaveOption.Apply(newData)
+	newData, err := newWorkbook.SaveToStream()
+	if err != nil {
+		return nil, err
+	}
+	outData, err := outSaveOption.Apply(newData)
+	if err != nil {
+		return nil, err
+	}
 	return outData, nil
 }
 
@@ -84,9 +108,21 @@ func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions
 //	}
 //	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outSaveOption saveoptions.SaveOption) error {
-	newWorkbook, _ := asposecells.NewWorkbook()
-	worksheets, _ := newWorkbook.GetWorksheets()
-	worksheets.RemoveAt_Int(0)
+	if outSaveOption == nil {
+		return fmt.Errorf("save option is nil")
+	}
+	newWorkbook, err := asposecells.NewWorkbook()
+	if err != nil {
+		return err
+	}
+	worksheets, err := newWorkbook.GetWorksheets()
+	if err != nil {
+		return err
+	}
+	err = worksheets.RemoveAt_Int(0)
+	if err != nil {
+		return err
+	}
 	count := len(source)
 	for i := 0; i < count; i++ {
 		reader, errOpen := source[i].Open()
@@ -94,14 +130,23 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 			return errOpen
 		}
 		data, errRead := io.ReadAll(reader)
+		reader.Close()
 		if errRead != nil {
 			return errRead
 		}
-		reader.Close()
-		workbook, _ := asposecells.NewWorkbook_Stream(data)
-		newWorkbook.Combine(workbook)
+		workbook, err := asposecells.NewWorkbook_Stream(data)
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.Combine(workbook)
+		if err != nil {
+			return err
+		}
 	}
-	newData, _ := newWorkbook.SaveToStream()
+	newData, err := newWorkbook.SaveToStream()
+	if err != nil {
+		return err
+	}
 	outData, errApply := outSaveOption.Apply(newData)
 	if errApply != nil {
 		return errApply
@@ -126,32 +171,44 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 // manipulator.MergeSpreadsheetsToFile([]string{"TestData/Source/CompanySales.xlsx", "TestData/Source/BookText.xlsx", "TestData/Source/EmployeeSalesSummary.xlsx"}, "TestData/Output/MergeBook.xlsx")
 func MergeSpreadsheetsToFile(inputPaths []string, outputPath string) error {
 	ext := filepath.Ext(outputPath)
+	if len(ext) <= 1 {
+		return fmt.Errorf("invalid output path %q: missing file extension", outputPath)
+	}
 	outSaveOption := formats.Get(ext[1:])
+	if outSaveOption == nil {
+		return fmt.Errorf("unsupported output format %q", ext[1:])
+	}
 
-	newWorkbook, _ := asposecells.NewWorkbook()
-	worksheets, _ := newWorkbook.GetWorksheets()
-	worksheets.RemoveAt_Int(0)
+	newWorkbook, err := asposecells.NewWorkbook()
+	if err != nil {
+		return err
+	}
+	worksheets, err := newWorkbook.GetWorksheets()
+	if err != nil {
+		return err
+	}
+	err = worksheets.RemoveAt_Int(0)
+	if err != nil {
+		return err
+	}
 	count := len(inputPaths)
 	for i := 0; i < count; i++ {
-		inputPath := inputPaths[i]
-		workbook, _ := asposecells.NewWorkbook_String(inputPath)
-		newWorkbook.Combine(workbook)
+		workbook, err := asposecells.NewWorkbook_String(inputPaths[i])
+		if err != nil {
+			return err
+		}
+		err = newWorkbook.Combine(workbook)
+		if err != nil {
+			return err
+		}
 	}
-	newData, _ := newWorkbook.SaveToStream()
-	outData, errApply := outSaveOption.Apply(newData)
-	if errApply != nil {
-		return errApply
-	}
-	file, errCreate := os.Create(outputPath)
-	if errCreate != nil {
-		panic(errCreate)
-	}
-	defer file.Close()
-
-	_, err := file.Write(outData)
+	newData, err := newWorkbook.SaveToStream()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	err = file.Sync()
-	return err
+	outData, err := outSaveOption.Apply(newData)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outputPath, outData, 0644)
 }
