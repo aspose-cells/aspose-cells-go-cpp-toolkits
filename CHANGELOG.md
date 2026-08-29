@@ -2,10 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [v26.8.0] - 2026-08-30
+
+### Added
+- **ISSUE-CELLSGO-263**: Export features — export worksheets or cell ranges to JSON / XML (`transfer.ExportRangeToJson`, `ExportWorksheetToJson`, `ExportSpreadsheetToXml`, and their `*File` variants)
+- **ISSUE-CELLSGO-266**: Write / import interface — import CSV / XML / JSON data into a worksheet (`transfer.ImportCSVDataIntoSpreadsheet`, `ImportXMLDataIntoSpreadsheet`, `ImportJsonDataIntoSpreadsheet`, and their `*File` variants)
+- **ISSUE-CELLSGO-279**: Add / delete / rename worksheets (`editor.WithAddWorksheet`, `editor.WithDeleteWorksheet`, `editor.WithRenameWorksheet`)
+- **ISSUE-CELLSGO-279**: `errors` package with sentinel errors (`ErrSaveOptionNil`, `ErrUnsupportedFormat`, `ErrInvalidOutputPath`, `ErrInvalidSheetID`, `ErrInvalidValue`, `ErrInvalidColor`, `ErrInputIsFolder`) so failures can be classified with `errors.Is`
+- **ISSUE-CELLSGO-279**: Package-level documentation for every package
+- **ISSUE-CELLSGO-279**: `examples/` covering convert, edit, merge-split, and transfer
+- **ISSUE-CELLSGO-279**: GitHub Actions CI (build, vet, gofmt, test) on Windows and Linux
 
 ### Changed
 - Updated `go.mod` to Go 1.21 and bumped the `aspose-cells-go-cpp` dependency to v26.7.0
+- **ISSUE-CELLSGO-279**: Replaced the duplicated `Open() → ReadAll → NewWorkbook_Stream` pattern with shared `internal/aspose/cells` helpers
+- **ISSUE-CELLSGO-279**: Deduplicated `SplitSpreadsheet` / `SplitSpreadsheetToZipWriter` via a shared `renderWorksheetOutputs` helper
+- **ISSUE-CELLSGO-279**: Removed dot-imports in `transfer`, qualifying internal helpers explicitly
+- **ISSUE-CELLSGO-279**: Made the `formats` registry concurrency-safe (`Register` / `Unregister` / `Get` / `List`, sorted `List`)
+- **ISSUE-CELLSGO-279**: Buffered `datasource.ReaderSource` so `ByteData()` / `Open()` are repeatable; added `NewReaderSource`
+- **ISSUE-CELLSGO-279**: Deduplicated the `SetCellValue` / `SetValue` type switch into a shared `toObject` helper
 
 ---
 
@@ -86,6 +101,7 @@ All notable changes to this project are documented in this file.
 
 | Version Tag | Release Date | Key Features |
 |-------------|--------------|--------------|
+| v26.8.0 | 2026-08-30 | Export/import features, worksheet management, sentinel errors, CI, examples |
 | v26.6.1 | 2026-06-10 | README and CHANGELOG updates |
 | v26.6.0 | 2026-06-07 | Editor package, style support, enhanced docs |
 | v26.4.0 | 2026-04-19 | Dependency updates |
@@ -108,6 +124,9 @@ All changes are tracked under the **CELLSGO** issue prefix. For more details, pl
 - **CELLSGO-256**: Style support and function descriptions
 - **CELLSGO-259**: Package documentation (converter, datasource, editor, manipulator, saveoptions)
 - **CELLSGO-260**: README and CHANGELOG updates
+- **CELLSGO-263**: Export features (JSON / XML)
+- **CELLSGO-266**: Write / import interface (CSV / XML / JSON)
+- **CELLSGO-279**: Worksheet management and code enhancements
 
 ---
 
@@ -115,7 +134,7 @@ All changes are tracked under the **CELLSGO** issue prefix. For more details, pl
 
 This project follows [Semantic Versioning](https://semver.org/):
 - **Major version (v26)**: Breaking changes
-- **Minor version (6,4,3,2)**: New features and enhancements
+- **Minor version (8,6,4,3,2)**: New features and enhancements
 - **Patch version (0,1)**: Bug fixes and documentation updates
 
 ---
