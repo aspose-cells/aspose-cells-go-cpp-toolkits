@@ -21,7 +21,10 @@ func ExportSpreadsheetToXml(source datasource.DataSource, mapName string) ([]byt
 		return nil, errRead
 	}
 	reader.Close()
-	workbook, _ := asposecells.NewWorkbook_Stream(data)
+	workbook, err := asposecells.NewWorkbook_Stream(data)
+	if err != nil {
+		return nil, err
+	}
 	return workbook.ExportXml_String(mapName)
 }
 func ExportRangeToJson(source datasource.DataSource, worksheet string, startCellName string, endCellName string) ([]byte, error) {

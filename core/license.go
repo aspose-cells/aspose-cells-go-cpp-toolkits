@@ -30,8 +30,12 @@ func SetLicense(licensePath string) {
 	if licensePath == "" {
 		licensePath = os.Getenv("LicensePath")
 	}
-	lic, _ := asposecells.NewLicense()
-	err := lic.SetLicense_String(licensePath)
+	lic, err := asposecells.NewLicense()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	err = lic.SetLicense_String(licensePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}

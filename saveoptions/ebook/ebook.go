@@ -4,89 +4,93 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"strconv"
 )
 
+// Config holds the native-typed option values for Ebook save options.
+//
+// Pointer fields carry presence semantics: a nil pointer means the option
+// was never set (so the native default is kept), while a non-nil pointer
+// means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	ignoreInvisibleShapes            string
-	pageTitle                        string
-	attachedFilesDirectory           string
-	attachedFilesUrlPrefix           string
-	defaultFontName                  string
-	addGenericFont                   string
-	worksheetScalable                string
-	isExportComments                 string
-	exportCommentsType               string
-	disableDownlevelRevealedComments string
-	isExpImageToTempDir              string
-	imageScalable                    string
-	widthScalable                    string
-	exportSingleTab                  string
-	exportImagesAsBase64             string
-	exportActiveWorksheetOnly        string
-	exportPrintAreaOnly              string
+	ignoreInvisibleShapes            *bool
+	pageTitle                        *string
+	attachedFilesDirectory           *string
+	attachedFilesUrlPrefix           *string
+	defaultFontName                  *string
+	addGenericFont                   *bool
+	worksheetScalable                *bool
+	isExportComments                 *bool
+	exportCommentsType               *asposecells.PrintCommentsType
+	disableDownlevelRevealedComments *bool
+	isExpImageToTempDir              *bool
+	imageScalable                    *bool
+	widthScalable                    *bool
+	exportSingleTab                  *bool
+	exportImagesAsBase64             *bool
+	exportActiveWorksheetOnly        *bool
+	exportPrintAreaOnly              *bool
 	exportArea                       *asposecells.CellArea
-	parseHtmlTagInCell               string
-	htmlCrossStringType              string
-	hiddenColDisplayType             string
-	hiddenRowDisplayType             string
-	encoding                         string
-	saveAsSingleFile                 string
-	showAllSheets                    string
-	exportPageHeaders                string
-	exportPageFooters                string
-	exportHiddenWorksheet            string
-	presentationPreference           string
-	cellCssPrefix                    string
-	tableCssId                       string
-	isFullPathLink                   string
-	exportWorksheetCSSSeparately     string
-	exportSimilarBorderStyle         string
-	mergeEmptyTdType                 string
-	exportCellCoordinate             string
-	exportExtraHeadings              string
-	exportRowColumnHeadings          string
-	exportFormula                    string
-	addTooltipText                   string
-	exportGridLines                  string
-	exportBogusRowData               string
-	excludeUnusedStyles              string
-	exportDocumentProperties         string
-	exportWorksheetProperties        string
-	exportWorkbookProperties         string
-	exportFrameScriptsAndProperties  string
-	exportDataOptions                string
-	linkTargetType                   string
-	isIECompatible                   string
-	formatDataIgnoreColumnWidth      string
-	calculateFormula                 string
-	isJsBrowserCompatible            string
-	isMobileCompatible               string
-	cssStyles                        string
-	hideOverflowWrappedText          string
-	isBorderCollapsed                string
-	encodeEntityAsCode               string
-	officeMathOutputMode             string
-	cellNameAttribute                string
-	disableCss                       string
-	enableCssCustomProperties        string
-	htmlVersion                      string
+	parseHtmlTagInCell               *bool
+	htmlCrossStringType              *asposecells.HtmlCrossType
+	hiddenColDisplayType             *asposecells.HtmlHiddenColDisplayType
+	hiddenRowDisplayType             *asposecells.HtmlHiddenRowDisplayType
+	encoding                         *asposecells.EncodingType
+	saveAsSingleFile                 *bool
+	showAllSheets                    *bool
+	exportPageHeaders                *bool
+	exportPageFooters                *bool
+	exportHiddenWorksheet            *bool
+	presentationPreference           *bool
+	cellCssPrefix                    *string
+	tableCssId                       *string
+	isFullPathLink                   *bool
+	exportWorksheetCSSSeparately     *bool
+	exportSimilarBorderStyle         *bool
+	mergeEmptyTdType                 *asposecells.MergeEmptyTdType
+	exportCellCoordinate             *bool
+	exportExtraHeadings              *bool
+	exportRowColumnHeadings          *bool
+	exportFormula                    *bool
+	addTooltipText                   *bool
+	exportGridLines                  *bool
+	exportBogusRowData               *bool
+	excludeUnusedStyles              *bool
+	exportDocumentProperties         *bool
+	exportWorksheetProperties        *bool
+	exportWorkbookProperties         *bool
+	exportFrameScriptsAndProperties  *bool
+	exportDataOptions                *asposecells.HtmlExportDataOptions
+	linkTargetType                   *asposecells.HtmlLinkTargetType
+	isIECompatible                   *bool
+	formatDataIgnoreColumnWidth      *bool
+	calculateFormula                 *bool
+	isJsBrowserCompatible            *bool
+	isMobileCompatible               *bool
+	cssStyles                        *string
+	hideOverflowWrappedText          *bool
+	isBorderCollapsed                *bool
+	encodeEntityAsCode               *bool
+	officeMathOutputMode             *asposecells.HtmlOfficeMathOutputType
+	cellNameAttribute                *string
+	disableCss                       *bool
+	enableCssCustomProperties        *bool
+	htmlVersion                      *asposecells.HtmlVersion
 	sheetSet                         *asposecells.SheetSet
-	layoutMode                       string
-	embeddedFontType                 string
-	exportNamedRangeAnchors          string
-	dataBarRenderMode                string
-	clearData                        string
-	cachedFileFolder                 string
-	validateMergedAreas              string
-	mergeAreas                       string
-	createDirectory                  string
-	sortNames                        string
-	sortExternalNames                string
-	refreshChartCache                string
-	checkExcelRestriction            string
-	updateSmartArt                   string
-	encryptDocumentProperties        string
+	layoutMode                       *asposecells.HtmlLayoutMode
+	embeddedFontType                 *asposecells.HtmlEmbeddedFontType
+	exportNamedRangeAnchors          *bool
+	dataBarRenderMode                *asposecells.DataBarRenderMode
+	clearData                        *bool
+	cachedFileFolder                 *string
+	validateMergedAreas              *bool
+	mergeAreas                       *bool
+	createDirectory                  *bool
+	sortNames                        *bool
+	sortExternalNames                *bool
+	refreshChartCache                *bool
+	checkExcelRestriction            *bool
+	updateSmartArt                   *bool
+	encryptDocumentProperties        *bool
 }
 
 // Apply processes the given source byte slice as a ebook file and returns the converted output.
@@ -100,399 +104,415 @@ type Config struct {
 // - []byte: The resulting ebook file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, _ := asposecells.NewEbookSaveOptions()
-
-	if len(c.ignoreInvisibleShapes) > 0 {
-		if v, err := strconv.ParseBool(c.ignoreInvisibleShapes); err == nil {
-			opts.SetIgnoreInvisibleShapes(v)
-		}
-	}
-	if len(c.pageTitle) > 0 {
-		opts.SetPageTitle(c.pageTitle)
-	}
-	if len(c.attachedFilesDirectory) > 0 {
-		opts.SetAttachedFilesDirectory(c.attachedFilesDirectory)
-	}
-	if len(c.attachedFilesUrlPrefix) > 0 {
-		opts.SetAttachedFilesUrlPrefix(c.attachedFilesUrlPrefix)
-	}
-	if len(c.defaultFontName) > 0 {
-		opts.SetDefaultFontName(c.defaultFontName)
-	}
-	if len(c.addGenericFont) > 0 {
-		if v, err := strconv.ParseBool(c.addGenericFont); err == nil {
-			opts.SetAddGenericFont(v)
-		}
-	}
-	if len(c.worksheetScalable) > 0 {
-		if v, err := strconv.ParseBool(c.worksheetScalable); err == nil {
-			opts.SetWorksheetScalable(v)
-		}
-	}
-	if len(c.isExportComments) > 0 {
-		if v, err := strconv.ParseBool(c.isExportComments); err == nil {
-			opts.SetIsExportComments(v)
-		}
-	}
-	if v, err := strconv.ParseInt(c.exportCommentsType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToPrintCommentsType(int32(v)); err2 == nil {
-			opts.SetExportCommentsType(vv)
-		}
+	opts, err := asposecells.NewEbookSaveOptions()
+	if err != nil {
+		return nil, err
 	}
 
-	if len(c.disableDownlevelRevealedComments) > 0 {
-		if v, err := strconv.ParseBool(c.disableDownlevelRevealedComments); err == nil {
-			opts.SetDisableDownlevelRevealedComments(v)
+	if c.ignoreInvisibleShapes != nil {
+		if err := opts.SetIgnoreInvisibleShapes(*c.ignoreInvisibleShapes); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.isExpImageToTempDir) > 0 {
-		if v, err := strconv.ParseBool(c.isExpImageToTempDir); err == nil {
-			opts.SetIsExpImageToTempDir(v)
+	if c.pageTitle != nil {
+		if err := opts.SetPageTitle(*c.pageTitle); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.imageScalable) > 0 {
-		if v, err := strconv.ParseBool(c.imageScalable); err == nil {
-			opts.SetImageScalable(v)
+	if c.attachedFilesDirectory != nil {
+		if err := opts.SetAttachedFilesDirectory(*c.attachedFilesDirectory); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.widthScalable) > 0 {
-		if v, err := strconv.ParseBool(c.widthScalable); err == nil {
-			opts.SetWidthScalable(v)
+	if c.attachedFilesUrlPrefix != nil {
+		if err := opts.SetAttachedFilesUrlPrefix(*c.attachedFilesUrlPrefix); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportSingleTab) > 0 {
-		if v, err := strconv.ParseBool(c.exportSingleTab); err == nil {
-			opts.SetExportSingleTab(v)
+	if c.defaultFontName != nil {
+		if err := opts.SetDefaultFontName(*c.defaultFontName); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportImagesAsBase64) > 0 {
-		if v, err := strconv.ParseBool(c.exportImagesAsBase64); err == nil {
-			opts.SetExportImagesAsBase64(v)
+	if c.addGenericFont != nil {
+		if err := opts.SetAddGenericFont(*c.addGenericFont); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportActiveWorksheetOnly) > 0 {
-		if v, err := strconv.ParseBool(c.exportActiveWorksheetOnly); err == nil {
-			opts.SetExportActiveWorksheetOnly(v)
+	if c.worksheetScalable != nil {
+		if err := opts.SetWorksheetScalable(*c.worksheetScalable); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportPrintAreaOnly) > 0 {
-		if v, err := strconv.ParseBool(c.exportPrintAreaOnly); err == nil {
-			opts.SetExportPrintAreaOnly(v)
+	if c.isExportComments != nil {
+		if err := opts.SetIsExportComments(*c.isExportComments); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportCommentsType != nil {
+		if err := opts.SetExportCommentsType(*c.exportCommentsType); err != nil {
+			return nil, err
+		}
+	}
+	if c.disableDownlevelRevealedComments != nil {
+		if err := opts.SetDisableDownlevelRevealedComments(*c.disableDownlevelRevealedComments); err != nil {
+			return nil, err
+		}
+	}
+	if c.isExpImageToTempDir != nil {
+		if err := opts.SetIsExpImageToTempDir(*c.isExpImageToTempDir); err != nil {
+			return nil, err
+		}
+	}
+	if c.imageScalable != nil {
+		if err := opts.SetImageScalable(*c.imageScalable); err != nil {
+			return nil, err
+		}
+	}
+	if c.widthScalable != nil {
+		if err := opts.SetWidthScalable(*c.widthScalable); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportSingleTab != nil {
+		if err := opts.SetExportSingleTab(*c.exportSingleTab); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportImagesAsBase64 != nil {
+		if err := opts.SetExportImagesAsBase64(*c.exportImagesAsBase64); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportActiveWorksheetOnly != nil {
+		if err := opts.SetExportActiveWorksheetOnly(*c.exportActiveWorksheetOnly); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportPrintAreaOnly != nil {
+		if err := opts.SetExportPrintAreaOnly(*c.exportPrintAreaOnly); err != nil {
+			return nil, err
 		}
 	}
 	if c.exportArea != nil {
-		opts.SetExportArea(c.exportArea)
-	}
-
-	if len(c.parseHtmlTagInCell) > 0 {
-		if v, err := strconv.ParseBool(c.parseHtmlTagInCell); err == nil {
-			opts.SetParseHtmlTagInCell(v)
+		if err := opts.SetExportArea(c.exportArea); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.htmlCrossStringType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlCrossType(int32(v)); err2 == nil {
-			opts.SetHtmlCrossStringType(vv)
+	if c.parseHtmlTagInCell != nil {
+		if err := opts.SetParseHtmlTagInCell(*c.parseHtmlTagInCell); err != nil {
+			return nil, err
 		}
 	}
-
-	if v, err := strconv.ParseInt(c.hiddenColDisplayType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlHiddenColDisplayType(int32(v)); err2 == nil {
-			opts.SetHiddenColDisplayType(vv)
+	if c.htmlCrossStringType != nil {
+		if err := opts.SetHtmlCrossStringType(*c.htmlCrossStringType); err != nil {
+			return nil, err
 		}
 	}
-
-	if v, err := strconv.ParseInt(c.hiddenRowDisplayType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlHiddenRowDisplayType(int32(v)); err2 == nil {
-			opts.SetHiddenRowDisplayType(vv)
+	if c.hiddenColDisplayType != nil {
+		if err := opts.SetHiddenColDisplayType(*c.hiddenColDisplayType); err != nil {
+			return nil, err
 		}
 	}
-
-	if v, err := strconv.ParseInt(c.encoding, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToEncodingType(int32(v)); err2 == nil {
-			opts.SetEncoding(vv)
+	if c.hiddenRowDisplayType != nil {
+		if err := opts.SetHiddenRowDisplayType(*c.hiddenRowDisplayType); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.saveAsSingleFile) > 0 {
-		if v, err := strconv.ParseBool(c.saveAsSingleFile); err == nil {
-			opts.SetSaveAsSingleFile(v)
+	if c.encoding != nil {
+		if err := opts.SetEncoding(*c.encoding); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.showAllSheets) > 0 {
-		if v, err := strconv.ParseBool(c.showAllSheets); err == nil {
-			opts.SetShowAllSheets(v)
+	if c.saveAsSingleFile != nil {
+		if err := opts.SetSaveAsSingleFile(*c.saveAsSingleFile); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportPageHeaders) > 0 {
-		if v, err := strconv.ParseBool(c.exportPageHeaders); err == nil {
-			opts.SetExportPageHeaders(v)
+	if c.showAllSheets != nil {
+		if err := opts.SetShowAllSheets(*c.showAllSheets); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportPageFooters) > 0 {
-		if v, err := strconv.ParseBool(c.exportPageFooters); err == nil {
-			opts.SetExportPageFooters(v)
+	if c.exportPageHeaders != nil {
+		if err := opts.SetExportPageHeaders(*c.exportPageHeaders); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportHiddenWorksheet) > 0 {
-		if v, err := strconv.ParseBool(c.exportHiddenWorksheet); err == nil {
-			opts.SetExportHiddenWorksheet(v)
+	if c.exportPageFooters != nil {
+		if err := opts.SetExportPageFooters(*c.exportPageFooters); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.presentationPreference) > 0 {
-		if v, err := strconv.ParseBool(c.presentationPreference); err == nil {
-			opts.SetPresentationPreference(v)
+	if c.exportHiddenWorksheet != nil {
+		if err := opts.SetExportHiddenWorksheet(*c.exportHiddenWorksheet); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.cellCssPrefix) > 0 {
-		opts.SetCellCssPrefix(c.cellCssPrefix)
-	}
-	if len(c.tableCssId) > 0 {
-		opts.SetTableCssId(c.tableCssId)
-	}
-	if len(c.isFullPathLink) > 0 {
-		if v, err := strconv.ParseBool(c.isFullPathLink); err == nil {
-			opts.SetIsFullPathLink(v)
+	if c.presentationPreference != nil {
+		if err := opts.SetPresentationPreference(*c.presentationPreference); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportWorksheetCSSSeparately) > 0 {
-		if v, err := strconv.ParseBool(c.exportWorksheetCSSSeparately); err == nil {
-			opts.SetExportWorksheetCSSSeparately(v)
+	if c.cellCssPrefix != nil {
+		if err := opts.SetCellCssPrefix(*c.cellCssPrefix); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportSimilarBorderStyle) > 0 {
-		if v, err := strconv.ParseBool(c.exportSimilarBorderStyle); err == nil {
-			opts.SetExportSimilarBorderStyle(v)
+	if c.tableCssId != nil {
+		if err := opts.SetTableCssId(*c.tableCssId); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.mergeEmptyTdType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToMergeEmptyTdType(int32(v)); err2 == nil {
-			opts.SetMergeEmptyTdType(vv)
+	if c.isFullPathLink != nil {
+		if err := opts.SetIsFullPathLink(*c.isFullPathLink); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.exportCellCoordinate) > 0 {
-		if v, err := strconv.ParseBool(c.exportCellCoordinate); err == nil {
-			opts.SetExportCellCoordinate(v)
+	if c.exportWorksheetCSSSeparately != nil {
+		if err := opts.SetExportWorksheetCSSSeparately(*c.exportWorksheetCSSSeparately); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportExtraHeadings) > 0 {
-		if v, err := strconv.ParseBool(c.exportExtraHeadings); err == nil {
-			opts.SetExportExtraHeadings(v)
+	if c.exportSimilarBorderStyle != nil {
+		if err := opts.SetExportSimilarBorderStyle(*c.exportSimilarBorderStyle); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportRowColumnHeadings) > 0 {
-		if v, err := strconv.ParseBool(c.exportRowColumnHeadings); err == nil {
-			opts.SetExportRowColumnHeadings(v)
+	if c.mergeEmptyTdType != nil {
+		if err := opts.SetMergeEmptyTdType(*c.mergeEmptyTdType); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportFormula) > 0 {
-		if v, err := strconv.ParseBool(c.exportFormula); err == nil {
-			opts.SetExportFormula(v)
+	if c.exportCellCoordinate != nil {
+		if err := opts.SetExportCellCoordinate(*c.exportCellCoordinate); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.addTooltipText) > 0 {
-		if v, err := strconv.ParseBool(c.addTooltipText); err == nil {
-			opts.SetAddTooltipText(v)
+	if c.exportExtraHeadings != nil {
+		if err := opts.SetExportExtraHeadings(*c.exportExtraHeadings); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportGridLines) > 0 {
-		if v, err := strconv.ParseBool(c.exportGridLines); err == nil {
-			opts.SetExportGridLines(v)
+	if c.exportRowColumnHeadings != nil {
+		if err := opts.SetExportRowColumnHeadings(*c.exportRowColumnHeadings); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportBogusRowData) > 0 {
-		if v, err := strconv.ParseBool(c.exportBogusRowData); err == nil {
-			opts.SetExportBogusRowData(v)
+	if c.exportFormula != nil {
+		if err := opts.SetExportFormula(*c.exportFormula); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.excludeUnusedStyles) > 0 {
-		if v, err := strconv.ParseBool(c.excludeUnusedStyles); err == nil {
-			opts.SetExcludeUnusedStyles(v)
+	if c.addTooltipText != nil {
+		if err := opts.SetAddTooltipText(*c.addTooltipText); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportDocumentProperties) > 0 {
-		if v, err := strconv.ParseBool(c.exportDocumentProperties); err == nil {
-			opts.SetExportDocumentProperties(v)
+	if c.exportGridLines != nil {
+		if err := opts.SetExportGridLines(*c.exportGridLines); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportWorksheetProperties) > 0 {
-		if v, err := strconv.ParseBool(c.exportWorksheetProperties); err == nil {
-			opts.SetExportWorksheetProperties(v)
+	if c.exportBogusRowData != nil {
+		if err := opts.SetExportBogusRowData(*c.exportBogusRowData); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportWorkbookProperties) > 0 {
-		if v, err := strconv.ParseBool(c.exportWorkbookProperties); err == nil {
-			opts.SetExportWorkbookProperties(v)
+	if c.excludeUnusedStyles != nil {
+		if err := opts.SetExcludeUnusedStyles(*c.excludeUnusedStyles); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.exportFrameScriptsAndProperties) > 0 {
-		if v, err := strconv.ParseBool(c.exportFrameScriptsAndProperties); err == nil {
-			opts.SetExportFrameScriptsAndProperties(v)
+	if c.exportDocumentProperties != nil {
+		if err := opts.SetExportDocumentProperties(*c.exportDocumentProperties); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.exportDataOptions, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlExportDataOptions(int32(v)); err2 == nil {
-			opts.SetExportDataOptions(vv)
+	if c.exportWorksheetProperties != nil {
+		if err := opts.SetExportWorksheetProperties(*c.exportWorksheetProperties); err != nil {
+			return nil, err
 		}
 	}
-
-	if v, err := strconv.ParseInt(c.linkTargetType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlLinkTargetType(int32(v)); err2 == nil {
-			opts.SetLinkTargetType(vv)
+	if c.exportWorkbookProperties != nil {
+		if err := opts.SetExportWorkbookProperties(*c.exportWorkbookProperties); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.isIECompatible) > 0 {
-		if v, err := strconv.ParseBool(c.isIECompatible); err == nil {
-			opts.SetIsIECompatible(v)
+	if c.exportFrameScriptsAndProperties != nil {
+		if err := opts.SetExportFrameScriptsAndProperties(*c.exportFrameScriptsAndProperties); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.formatDataIgnoreColumnWidth) > 0 {
-		if v, err := strconv.ParseBool(c.formatDataIgnoreColumnWidth); err == nil {
-			opts.SetFormatDataIgnoreColumnWidth(v)
+	if c.exportDataOptions != nil {
+		if err := opts.SetExportDataOptions(*c.exportDataOptions); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.calculateFormula) > 0 {
-		if v, err := strconv.ParseBool(c.calculateFormula); err == nil {
-			opts.SetCalculateFormula(v)
+	if c.linkTargetType != nil {
+		if err := opts.SetLinkTargetType(*c.linkTargetType); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.isJsBrowserCompatible) > 0 {
-		if v, err := strconv.ParseBool(c.isJsBrowserCompatible); err == nil {
-			opts.SetIsJsBrowserCompatible(v)
+	if c.isIECompatible != nil {
+		if err := opts.SetIsIECompatible(*c.isIECompatible); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.isMobileCompatible) > 0 {
-		if v, err := strconv.ParseBool(c.isMobileCompatible); err == nil {
-			opts.SetIsMobileCompatible(v)
+	if c.formatDataIgnoreColumnWidth != nil {
+		if err := opts.SetFormatDataIgnoreColumnWidth(*c.formatDataIgnoreColumnWidth); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.cssStyles) > 0 {
-		opts.SetCssStyles(c.cssStyles)
-	}
-	if len(c.hideOverflowWrappedText) > 0 {
-		if v, err := strconv.ParseBool(c.hideOverflowWrappedText); err == nil {
-			opts.SetHideOverflowWrappedText(v)
+	if c.calculateFormula != nil {
+		if err := opts.SetCalculateFormula(*c.calculateFormula); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.isBorderCollapsed) > 0 {
-		if v, err := strconv.ParseBool(c.isBorderCollapsed); err == nil {
-			opts.SetIsBorderCollapsed(v)
+	if c.isJsBrowserCompatible != nil {
+		if err := opts.SetIsJsBrowserCompatible(*c.isJsBrowserCompatible); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.encodeEntityAsCode) > 0 {
-		if v, err := strconv.ParseBool(c.encodeEntityAsCode); err == nil {
-			opts.SetEncodeEntityAsCode(v)
+	if c.isMobileCompatible != nil {
+		if err := opts.SetIsMobileCompatible(*c.isMobileCompatible); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.officeMathOutputMode, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlOfficeMathOutputType(int32(v)); err2 == nil {
-			opts.SetOfficeMathOutputMode(vv)
+	if c.cssStyles != nil {
+		if err := opts.SetCssStyles(*c.cssStyles); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.cellNameAttribute) > 0 {
-		opts.SetCellNameAttribute(c.cellNameAttribute)
-	}
-	if len(c.disableCss) > 0 {
-		if v, err := strconv.ParseBool(c.disableCss); err == nil {
-			opts.SetDisableCss(v)
+	if c.hideOverflowWrappedText != nil {
+		if err := opts.SetHideOverflowWrappedText(*c.hideOverflowWrappedText); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.enableCssCustomProperties) > 0 {
-		if v, err := strconv.ParseBool(c.enableCssCustomProperties); err == nil {
-			opts.SetEnableCssCustomProperties(v)
+	if c.isBorderCollapsed != nil {
+		if err := opts.SetIsBorderCollapsed(*c.isBorderCollapsed); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.htmlVersion, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlVersion(int32(v)); err2 == nil {
-			opts.SetHtmlVersion(vv)
+	if c.encodeEntityAsCode != nil {
+		if err := opts.SetEncodeEntityAsCode(*c.encodeEntityAsCode); err != nil {
+			return nil, err
 		}
 	}
-
+	if c.officeMathOutputMode != nil {
+		if err := opts.SetOfficeMathOutputMode(*c.officeMathOutputMode); err != nil {
+			return nil, err
+		}
+	}
+	if c.cellNameAttribute != nil {
+		if err := opts.SetCellNameAttribute(*c.cellNameAttribute); err != nil {
+			return nil, err
+		}
+	}
+	if c.disableCss != nil {
+		if err := opts.SetDisableCss(*c.disableCss); err != nil {
+			return nil, err
+		}
+	}
+	if c.enableCssCustomProperties != nil {
+		if err := opts.SetEnableCssCustomProperties(*c.enableCssCustomProperties); err != nil {
+			return nil, err
+		}
+	}
+	if c.htmlVersion != nil {
+		if err := opts.SetHtmlVersion(*c.htmlVersion); err != nil {
+			return nil, err
+		}
+	}
 	if c.sheetSet != nil {
-		opts.SetSheetSet(c.sheetSet)
-	}
-
-	if v, err := strconv.ParseInt(c.layoutMode, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlLayoutMode(int32(v)); err2 == nil {
-			opts.SetLayoutMode(vv)
+		if err := opts.SetSheetSet(c.sheetSet); err != nil {
+			return nil, err
 		}
 	}
-
-	if v, err := strconv.ParseInt(c.embeddedFontType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToHtmlEmbeddedFontType(int32(v)); err2 == nil {
-			opts.SetEmbeddedFontType(vv)
+	if c.layoutMode != nil {
+		if err := opts.SetLayoutMode(*c.layoutMode); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.exportNamedRangeAnchors) > 0 {
-		if v, err := strconv.ParseBool(c.exportNamedRangeAnchors); err == nil {
-			opts.SetExportNamedRangeAnchors(v)
+	if c.embeddedFontType != nil {
+		if err := opts.SetEmbeddedFontType(*c.embeddedFontType); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.dataBarRenderMode, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToDataBarRenderMode(int32(v)); err2 == nil {
-			opts.SetDataBarRenderMode(vv)
+	if c.exportNamedRangeAnchors != nil {
+		if err := opts.SetExportNamedRangeAnchors(*c.exportNamedRangeAnchors); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.clearData) > 0 {
-		if v, err := strconv.ParseBool(c.clearData); err == nil {
-			opts.SetClearData(v)
+	if c.dataBarRenderMode != nil {
+		if err := opts.SetDataBarRenderMode(*c.dataBarRenderMode); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.cachedFileFolder) > 0 {
-		opts.SetCachedFileFolder(c.cachedFileFolder)
-	}
-	if len(c.validateMergedAreas) > 0 {
-		if v, err := strconv.ParseBool(c.validateMergedAreas); err == nil {
-			opts.SetValidateMergedAreas(v)
+	if c.clearData != nil {
+		if err := opts.SetClearData(*c.clearData); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.mergeAreas) > 0 {
-		if v, err := strconv.ParseBool(c.mergeAreas); err == nil {
-			opts.SetMergeAreas(v)
+	if c.cachedFileFolder != nil {
+		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.createDirectory) > 0 {
-		if v, err := strconv.ParseBool(c.createDirectory); err == nil {
-			opts.SetCreateDirectory(v)
+	if c.validateMergedAreas != nil {
+		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortNames); err == nil {
-			opts.SetSortNames(v)
+	if c.mergeAreas != nil {
+		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortExternalNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortExternalNames); err == nil {
-			opts.SetSortExternalNames(v)
+	if c.createDirectory != nil {
+		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.refreshChartCache) > 0 {
-		if v, err := strconv.ParseBool(c.refreshChartCache); err == nil {
-			opts.SetRefreshChartCache(v)
+	if c.sortNames != nil {
+		if err := opts.SetSortNames(*c.sortNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.checkExcelRestriction) > 0 {
-		if v, err := strconv.ParseBool(c.checkExcelRestriction); err == nil {
-			opts.SetCheckExcelRestriction(v)
+	if c.sortExternalNames != nil {
+		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.updateSmartArt) > 0 {
-		if v, err := strconv.ParseBool(c.updateSmartArt); err == nil {
-			opts.SetUpdateSmartArt(v)
+	if c.refreshChartCache != nil {
+		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.encryptDocumentProperties) > 0 {
-		if v, err := strconv.ParseBool(c.encryptDocumentProperties); err == nil {
-			opts.SetEncryptDocumentProperties(v)
+	if c.checkExcelRestriction != nil {
+		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
+			return nil, err
 		}
 	}
-	workbook, _ := asposecells.NewWorkbook_Stream(source)
+	if c.updateSmartArt != nil {
+		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
+			return nil, err
+		}
+	}
+	if c.encryptDocumentProperties != nil {
+		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
+			return nil, err
+		}
+	}
+	workbook, err := asposecells.NewWorkbook_Stream(source)
+	if err != nil {
+		return nil, err
+	}
 	saveOption := opts.ToSaveOptions()
-	result, _ := workbook.Save_SaveOptions(saveOption)
+	result, err := workbook.Save_SaveOptions(saveOption)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 func (c *Config) GetFormat() string {
@@ -558,102 +578,102 @@ func New(opts ...Option) saveoptions.SaveOption {
 
 func WithIgnoreInvisibleShapes(value bool) Option {
 	return func(c *Config) {
-		c.ignoreInvisibleShapes = strconv.FormatBool(value)
+		c.ignoreInvisibleShapes = &value
 	}
 }
 
 func WithPageTitle(value string) Option {
 	return func(c *Config) {
-		c.pageTitle = value
+		c.pageTitle = &value
 	}
 }
 
 func WithAttachedFilesDirectory(value string) Option {
 	return func(c *Config) {
-		c.attachedFilesDirectory = value
+		c.attachedFilesDirectory = &value
 	}
 }
 
 func WithAttachedFilesUrlPrefix(value string) Option {
 	return func(c *Config) {
-		c.attachedFilesUrlPrefix = value
+		c.attachedFilesUrlPrefix = &value
 	}
 }
 
 func WithDefaultFontName(value string) Option {
 	return func(c *Config) {
-		c.defaultFontName = value
+		c.defaultFontName = &value
 	}
 }
 
 func WithAddGenericFont(value bool) Option {
 	return func(c *Config) {
-		c.addGenericFont = strconv.FormatBool(value)
+		c.addGenericFont = &value
 	}
 }
 
 func WithWorksheetScalable(value bool) Option {
 	return func(c *Config) {
-		c.worksheetScalable = strconv.FormatBool(value)
+		c.worksheetScalable = &value
 	}
 }
 
 func WithIsExportComments(value bool) Option {
 	return func(c *Config) {
-		c.isExportComments = strconv.FormatBool(value)
+		c.isExportComments = &value
 	}
 }
 
 func WithExportCommentsType(value asposecells.PrintCommentsType) Option {
 	return func(c *Config) {
-		c.exportCommentsType = strconv.FormatInt(int64(value), 10)
+		c.exportCommentsType = &value
 	}
 }
 func WithDisableDownlevelRevealedComments(value bool) Option {
 	return func(c *Config) {
-		c.disableDownlevelRevealedComments = strconv.FormatBool(value)
+		c.disableDownlevelRevealedComments = &value
 	}
 }
 
 func WithIsExpImageToTempDir(value bool) Option {
 	return func(c *Config) {
-		c.isExpImageToTempDir = strconv.FormatBool(value)
+		c.isExpImageToTempDir = &value
 	}
 }
 
 func WithImageScalable(value bool) Option {
 	return func(c *Config) {
-		c.imageScalable = strconv.FormatBool(value)
+		c.imageScalable = &value
 	}
 }
 
 func WithWidthScalable(value bool) Option {
 	return func(c *Config) {
-		c.widthScalable = strconv.FormatBool(value)
+		c.widthScalable = &value
 	}
 }
 
 func WithExportSingleTab(value bool) Option {
 	return func(c *Config) {
-		c.exportSingleTab = strconv.FormatBool(value)
+		c.exportSingleTab = &value
 	}
 }
 
 func WithExportImagesAsBase64(value bool) Option {
 	return func(c *Config) {
-		c.exportImagesAsBase64 = strconv.FormatBool(value)
+		c.exportImagesAsBase64 = &value
 	}
 }
 
 func WithExportActiveWorksheetOnly(value bool) Option {
 	return func(c *Config) {
-		c.exportActiveWorksheetOnly = strconv.FormatBool(value)
+		c.exportActiveWorksheetOnly = &value
 	}
 }
 
 func WithExportPrintAreaOnly(value bool) Option {
 	return func(c *Config) {
-		c.exportPrintAreaOnly = strconv.FormatBool(value)
+		c.exportPrintAreaOnly = &value
 	}
 }
 
@@ -664,263 +684,263 @@ func WithExportArea(value *asposecells.CellArea) Option {
 }
 func WithParseHtmlTagInCell(value bool) Option {
 	return func(c *Config) {
-		c.parseHtmlTagInCell = strconv.FormatBool(value)
+		c.parseHtmlTagInCell = &value
 	}
 }
 
 func WithHtmlCrossStringType(value asposecells.HtmlCrossType) Option {
 	return func(c *Config) {
-		c.htmlCrossStringType = strconv.FormatInt(int64(value), 10)
+		c.htmlCrossStringType = &value
 	}
 }
 func WithHiddenColDisplayType(value asposecells.HtmlHiddenColDisplayType) Option {
 	return func(c *Config) {
-		c.hiddenColDisplayType = strconv.FormatInt(int64(value), 10)
+		c.hiddenColDisplayType = &value
 	}
 }
 func WithHiddenRowDisplayType(value asposecells.HtmlHiddenRowDisplayType) Option {
 	return func(c *Config) {
-		c.hiddenRowDisplayType = strconv.FormatInt(int64(value), 10)
+		c.hiddenRowDisplayType = &value
 	}
 }
 func WithEncoding(value asposecells.EncodingType) Option {
 	return func(c *Config) {
-		c.encoding = strconv.FormatInt(int64(value), 10)
+		c.encoding = &value
 	}
 }
 func WithSaveAsSingleFile(value bool) Option {
 	return func(c *Config) {
-		c.saveAsSingleFile = strconv.FormatBool(value)
+		c.saveAsSingleFile = &value
 	}
 }
 
 func WithShowAllSheets(value bool) Option {
 	return func(c *Config) {
-		c.showAllSheets = strconv.FormatBool(value)
+		c.showAllSheets = &value
 	}
 }
 
 func WithExportPageHeaders(value bool) Option {
 	return func(c *Config) {
-		c.exportPageHeaders = strconv.FormatBool(value)
+		c.exportPageHeaders = &value
 	}
 }
 
 func WithExportPageFooters(value bool) Option {
 	return func(c *Config) {
-		c.exportPageFooters = strconv.FormatBool(value)
+		c.exportPageFooters = &value
 	}
 }
 
 func WithExportHiddenWorksheet(value bool) Option {
 	return func(c *Config) {
-		c.exportHiddenWorksheet = strconv.FormatBool(value)
+		c.exportHiddenWorksheet = &value
 	}
 }
 
 func WithPresentationPreference(value bool) Option {
 	return func(c *Config) {
-		c.presentationPreference = strconv.FormatBool(value)
+		c.presentationPreference = &value
 	}
 }
 
 func WithCellCssPrefix(value string) Option {
 	return func(c *Config) {
-		c.cellCssPrefix = value
+		c.cellCssPrefix = &value
 	}
 }
 
 func WithTableCssId(value string) Option {
 	return func(c *Config) {
-		c.tableCssId = value
+		c.tableCssId = &value
 	}
 }
 
 func WithIsFullPathLink(value bool) Option {
 	return func(c *Config) {
-		c.isFullPathLink = strconv.FormatBool(value)
+		c.isFullPathLink = &value
 	}
 }
 
 func WithExportWorksheetCSSSeparately(value bool) Option {
 	return func(c *Config) {
-		c.exportWorksheetCSSSeparately = strconv.FormatBool(value)
+		c.exportWorksheetCSSSeparately = &value
 	}
 }
 
 func WithExportSimilarBorderStyle(value bool) Option {
 	return func(c *Config) {
-		c.exportSimilarBorderStyle = strconv.FormatBool(value)
+		c.exportSimilarBorderStyle = &value
 	}
 }
 
 func WithMergeEmptyTdType(value asposecells.MergeEmptyTdType) Option {
 	return func(c *Config) {
-		c.mergeEmptyTdType = strconv.FormatInt(int64(value), 10)
+		c.mergeEmptyTdType = &value
 	}
 }
 func WithExportCellCoordinate(value bool) Option {
 	return func(c *Config) {
-		c.exportCellCoordinate = strconv.FormatBool(value)
+		c.exportCellCoordinate = &value
 	}
 }
 
 func WithExportExtraHeadings(value bool) Option {
 	return func(c *Config) {
-		c.exportExtraHeadings = strconv.FormatBool(value)
+		c.exportExtraHeadings = &value
 	}
 }
 
 func WithExportRowColumnHeadings(value bool) Option {
 	return func(c *Config) {
-		c.exportRowColumnHeadings = strconv.FormatBool(value)
+		c.exportRowColumnHeadings = &value
 	}
 }
 
 func WithExportFormula(value bool) Option {
 	return func(c *Config) {
-		c.exportFormula = strconv.FormatBool(value)
+		c.exportFormula = &value
 	}
 }
 
 func WithAddTooltipText(value bool) Option {
 	return func(c *Config) {
-		c.addTooltipText = strconv.FormatBool(value)
+		c.addTooltipText = &value
 	}
 }
 
 func WithExportGridLines(value bool) Option {
 	return func(c *Config) {
-		c.exportGridLines = strconv.FormatBool(value)
+		c.exportGridLines = &value
 	}
 }
 
 func WithExportBogusRowData(value bool) Option {
 	return func(c *Config) {
-		c.exportBogusRowData = strconv.FormatBool(value)
+		c.exportBogusRowData = &value
 	}
 }
 
 func WithExcludeUnusedStyles(value bool) Option {
 	return func(c *Config) {
-		c.excludeUnusedStyles = strconv.FormatBool(value)
+		c.excludeUnusedStyles = &value
 	}
 }
 
 func WithExportDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.exportDocumentProperties = strconv.FormatBool(value)
+		c.exportDocumentProperties = &value
 	}
 }
 
 func WithExportWorksheetProperties(value bool) Option {
 	return func(c *Config) {
-		c.exportWorksheetProperties = strconv.FormatBool(value)
+		c.exportWorksheetProperties = &value
 	}
 }
 
 func WithExportWorkbookProperties(value bool) Option {
 	return func(c *Config) {
-		c.exportWorkbookProperties = strconv.FormatBool(value)
+		c.exportWorkbookProperties = &value
 	}
 }
 
 func WithExportFrameScriptsAndProperties(value bool) Option {
 	return func(c *Config) {
-		c.exportFrameScriptsAndProperties = strconv.FormatBool(value)
+		c.exportFrameScriptsAndProperties = &value
 	}
 }
 
 func WithExportDataOptions(value asposecells.HtmlExportDataOptions) Option {
 	return func(c *Config) {
-		c.exportDataOptions = strconv.FormatInt(int64(value), 10)
+		c.exportDataOptions = &value
 	}
 }
 func WithLinkTargetType(value asposecells.HtmlLinkTargetType) Option {
 	return func(c *Config) {
-		c.linkTargetType = strconv.FormatInt(int64(value), 10)
+		c.linkTargetType = &value
 	}
 }
 func WithIsIECompatible(value bool) Option {
 	return func(c *Config) {
-		c.isIECompatible = strconv.FormatBool(value)
+		c.isIECompatible = &value
 	}
 }
 
 func WithFormatDataIgnoreColumnWidth(value bool) Option {
 	return func(c *Config) {
-		c.formatDataIgnoreColumnWidth = strconv.FormatBool(value)
+		c.formatDataIgnoreColumnWidth = &value
 	}
 }
 
 func WithCalculateFormula(value bool) Option {
 	return func(c *Config) {
-		c.calculateFormula = strconv.FormatBool(value)
+		c.calculateFormula = &value
 	}
 }
 
 func WithIsJsBrowserCompatible(value bool) Option {
 	return func(c *Config) {
-		c.isJsBrowserCompatible = strconv.FormatBool(value)
+		c.isJsBrowserCompatible = &value
 	}
 }
 
 func WithIsMobileCompatible(value bool) Option {
 	return func(c *Config) {
-		c.isMobileCompatible = strconv.FormatBool(value)
+		c.isMobileCompatible = &value
 	}
 }
 
 func WithCssStyles(value string) Option {
 	return func(c *Config) {
-		c.cssStyles = value
+		c.cssStyles = &value
 	}
 }
 
 func WithHideOverflowWrappedText(value bool) Option {
 	return func(c *Config) {
-		c.hideOverflowWrappedText = strconv.FormatBool(value)
+		c.hideOverflowWrappedText = &value
 	}
 }
 
 func WithIsBorderCollapsed(value bool) Option {
 	return func(c *Config) {
-		c.isBorderCollapsed = strconv.FormatBool(value)
+		c.isBorderCollapsed = &value
 	}
 }
 
 func WithEncodeEntityAsCode(value bool) Option {
 	return func(c *Config) {
-		c.encodeEntityAsCode = strconv.FormatBool(value)
+		c.encodeEntityAsCode = &value
 	}
 }
 
 func WithOfficeMathOutputMode(value asposecells.HtmlOfficeMathOutputType) Option {
 	return func(c *Config) {
-		c.officeMathOutputMode = strconv.FormatInt(int64(value), 10)
+		c.officeMathOutputMode = &value
 	}
 }
 func WithCellNameAttribute(value string) Option {
 	return func(c *Config) {
-		c.cellNameAttribute = value
+		c.cellNameAttribute = &value
 	}
 }
 
 func WithDisableCss(value bool) Option {
 	return func(c *Config) {
-		c.disableCss = strconv.FormatBool(value)
+		c.disableCss = &value
 	}
 }
 
 func WithEnableCssCustomProperties(value bool) Option {
 	return func(c *Config) {
-		c.enableCssCustomProperties = strconv.FormatBool(value)
+		c.enableCssCustomProperties = &value
 	}
 }
 
 func WithHtmlVersion(value asposecells.HtmlVersion) Option {
 	return func(c *Config) {
-		c.htmlVersion = strconv.FormatInt(int64(value), 10)
+		c.htmlVersion = &value
 	}
 }
 func WithSheetSet(value *asposecells.SheetSet) Option {
@@ -930,87 +950,87 @@ func WithSheetSet(value *asposecells.SheetSet) Option {
 }
 func WithLayoutMode(value asposecells.HtmlLayoutMode) Option {
 	return func(c *Config) {
-		c.layoutMode = strconv.FormatInt(int64(value), 10)
+		c.layoutMode = &value
 	}
 }
 func WithEmbeddedFontType(value asposecells.HtmlEmbeddedFontType) Option {
 	return func(c *Config) {
-		c.embeddedFontType = strconv.FormatInt(int64(value), 10)
+		c.embeddedFontType = &value
 	}
 }
 func WithExportNamedRangeAnchors(value bool) Option {
 	return func(c *Config) {
-		c.exportNamedRangeAnchors = strconv.FormatBool(value)
+		c.exportNamedRangeAnchors = &value
 	}
 }
 
 func WithDataBarRenderMode(value asposecells.DataBarRenderMode) Option {
 	return func(c *Config) {
-		c.dataBarRenderMode = strconv.FormatInt(int64(value), 10)
+		c.dataBarRenderMode = &value
 	}
 }
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = strconv.FormatBool(value)
+		c.clearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = value
+		c.cachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = strconv.FormatBool(value)
+		c.validateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = strconv.FormatBool(value)
+		c.mergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = strconv.FormatBool(value)
+		c.createDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = strconv.FormatBool(value)
+		c.sortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = strconv.FormatBool(value)
+		c.sortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = strconv.FormatBool(value)
+		c.refreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = strconv.FormatBool(value)
+		c.checkExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = strconv.FormatBool(value)
+		c.updateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = strconv.FormatBool(value)
+		c.encryptDocumentProperties = &value
 	}
 }

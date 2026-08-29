@@ -11,9 +11,11 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 //   - StyleAction: A function that modifies the font name of the target style.
 func WithFontName(fontName string) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
-		font.SetName_String(fontName)
-		return nil
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
+		return font.SetName_String(fontName)
 	}
 }
 
@@ -26,9 +28,11 @@ func WithFontName(fontName string) StyleAction {
 //   - StyleAction: A function that modifies the font size of the target style.
 func WithFontSize(size int) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
-		font.SetSize(int32(size))
-		return nil
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
+		return font.SetSize(int32(size))
 	}
 }
 
@@ -41,7 +45,10 @@ func WithFontSize(size int) StyleAction {
 //   - StyleAction: A function that modifies the bold property of the target style.
 func WithFontIsBold(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
 		return font.SetIsBold(value)
 	}
 }
@@ -55,7 +62,10 @@ func WithFontIsBold(value bool) StyleAction {
 //   - StyleAction: A function that modifies the italic property of the target style.
 func WithFontIsItalic(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
 		return font.SetIsItalic(value)
 	}
 }
@@ -69,7 +79,10 @@ func WithFontIsItalic(value bool) StyleAction {
 //   - StyleAction: A function that modifies the superscript property of the target style.
 func WithFontIsSuperscript(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
 		return font.SetIsSuperscript(value)
 	}
 }
@@ -83,7 +96,10 @@ func WithFontIsSuperscript(value bool) StyleAction {
 //   - StyleAction: A function that modifies the subscript property of the target style.
 func WithFontIsSubscript(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
 		return font.SetIsSubscript(value)
 	}
 }
@@ -97,7 +113,10 @@ func WithFontIsSubscript(value bool) StyleAction {
 //   - StyleAction: A function that modifies the strikeout property of the target style.
 func WithFontIsStrikeout(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
 		return font.SetIsStrikeout(value)
 	}
 }
@@ -115,13 +134,14 @@ func WithFontIsStrikeout(value bool) StyleAction {
 func WithFontColor(color interface{}) StyleAction {
 	return func(style *asposecells.Style) error {
 		v, err := resolveColor(color)
-		if err == nil {
-			font, err := style.GetFont()
-			if err == nil {
-				return font.SetColor(v)
-			}
+		if err != nil {
+			return err
 		}
-		return err
+		font, err := style.GetFont()
+		if err != nil {
+			return err
+		}
+		return font.SetColor(v)
 	}
 }
 
@@ -137,8 +157,11 @@ func WithFontColor(color interface{}) StyleAction {
 //   - StyleAction: A function that modifies the font underline style of the target style.
 func WithFontUnderline(value interface{}) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, _ := style.GetFont()
 		line, err := resolveFontUnderline(value)
+		if err != nil {
+			return err
+		}
+		font, err := style.GetFont()
 		if err != nil {
 			return err
 		}
@@ -160,12 +183,13 @@ func WithFontUnderline(value interface{}) StyleAction {
 func WithBackgroundColor(color interface{}) StyleAction {
 	return func(style *asposecells.Style) error {
 		v, err := resolveColor(color)
-		if err == nil {
-			style.SetForegroundColor(v)
-			style.SetPattern(asposecells.BackgroundType_Solid)
-			return nil
+		if err != nil {
+			return err
 		}
-		return err
+		if err := style.SetForegroundColor(v); err != nil {
+			return err
+		}
+		return style.SetPattern(asposecells.BackgroundType_Solid)
 	}
 }
 
@@ -181,10 +205,10 @@ func WithBackgroundColor(color interface{}) StyleAction {
 func WithHorizontalAlignment(alignment interface{}) StyleAction {
 	return func(style *asposecells.Style) error {
 		v, err := resolveTextAlignmentType(alignment)
-		if err == nil {
-			return style.SetHorizontalAlignment(v)
+		if err != nil {
+			return err
 		}
-		return err
+		return style.SetHorizontalAlignment(v)
 	}
 }
 
@@ -200,10 +224,10 @@ func WithHorizontalAlignment(alignment interface{}) StyleAction {
 func WithVerticalAlignment(alignment interface{}) StyleAction {
 	return func(style *asposecells.Style) error {
 		v, err := resolveTextAlignmentType(alignment)
-		if err == nil {
-			return style.SetVerticalAlignment(v)
+		if err != nil {
+			return err
 		}
-		return err
+		return style.SetVerticalAlignment(v)
 	}
 }
 
@@ -216,8 +240,7 @@ func WithVerticalAlignment(alignment interface{}) StyleAction {
 //   - StyleAction: A function that modifies the text wrapping property of the target style.
 func WithIsTextWrapped(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIsTextWrapped(value)
-		return nil
+		return style.SetIsTextWrapped(value)
 	}
 }
 
@@ -232,8 +255,7 @@ func WithIsTextWrapped(value bool) StyleAction {
 //   - StyleAction: A function that updates the style's applied flags.
 func WithIsAlignmentApplied(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIsAlignmentApplied(value)
-		return nil
+		return style.SetIsAlignmentApplied(value)
 	}
 }
 
@@ -247,8 +269,7 @@ func WithIsAlignmentApplied(value bool) StyleAction {
 //   - StyleAction: A function that updates the style's applied flags.
 func WithIsBorderApplied(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIsBorderApplied(value)
-		return nil
+		return style.SetIsBorderApplied(value)
 	}
 }
 
@@ -262,8 +283,7 @@ func WithIsBorderApplied(value bool) StyleAction {
 //   - StyleAction: A function that updates the style's applied flags.
 func WithIsFillApplied(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIsFillApplied(value)
-		return nil
+		return style.SetIsFillApplied(value)
 	}
 }
 
@@ -277,8 +297,7 @@ func WithIsFillApplied(value bool) StyleAction {
 //   - StyleAction: A function that updates the style's applied flags.
 func WithIsProtectionApplied(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIsProtectionApplied(value)
-		return nil
+		return style.SetIsProtectionApplied(value)
 	}
 }
 
@@ -291,7 +310,6 @@ func WithIsProtectionApplied(value bool) StyleAction {
 //   - StyleAction: A function that modifies the text indentation of the target style.
 func WithIndentLevel(value int) StyleAction {
 	return func(style *asposecells.Style) error {
-		style.SetIndentLevel(int32(value))
-		return nil
+		return style.SetIndentLevel(int32(value))
 	}
 }

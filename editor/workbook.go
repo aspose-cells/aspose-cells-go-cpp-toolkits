@@ -22,9 +22,11 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 //     the active sheet index.
 func WithActiveSheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, _ := workbook.GetWorksheets()
-		wss.SetActiveSheetName(sheetName)
-		return nil
+		wss, err := workbook.GetWorksheets()
+		if err != nil {
+			return err
+		}
+		return wss.SetActiveSheetName(sheetName)
 	}
 }
 
@@ -38,12 +40,12 @@ func WithActiveSheet(sheetName string) WorkbookAction {
 
 func WithAddWorksheet(newSheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, _ := workbook.GetWorksheets()
-		_, err := wss.Add_String(newSheetName)
+		wss, err := workbook.GetWorksheets()
 		if err != nil {
 			return err
 		}
-		return nil
+		_, err = wss.Add_String(newSheetName)
+		return err
 	}
 }
 
@@ -56,7 +58,10 @@ func WithAddWorksheet(newSheetName string) WorkbookAction {
 //   - WorkbookAction: A function that deletes the workbook by the sheet name.
 func WithDeleteWorksheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, _ := workbook.GetWorksheets()
+		wss, err := workbook.GetWorksheets()
+		if err != nil {
+			return err
+		}
 		return wss.RemoveAt_String(sheetName)
 	}
 }
@@ -70,10 +75,15 @@ func WithDeleteWorksheet(sheetName string) WorkbookAction {
 //   - WorkbookAction: A function that deletes the workbook by the sheet index.
 func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, _ := workbook.GetWorksheets()
-		ws, _ := wss.Get_String(sheetName)
-		ws.SetName(newSheetName)
-		return nil
+		wss, err := workbook.GetWorksheets()
+		if err != nil {
+			return err
+		}
+		ws, err := wss.Get_String(sheetName)
+		if err != nil {
+			return err
+		}
+		return ws.SetName(newSheetName)
 	}
 }
 

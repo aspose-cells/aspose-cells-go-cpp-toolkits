@@ -1,5 +1,5 @@
 module github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26
 
-go 1.16
+go 1.21
 
 require github.com/aspose-cells/aspose-cells-go-cpp/v26 v26.7.0

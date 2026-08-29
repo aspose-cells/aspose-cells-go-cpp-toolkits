@@ -1,4 +1,4 @@
-package txt
+package csv
 
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
@@ -6,11 +6,6 @@ import (
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
-// Config holds the native-typed option values for Txt save options.
-//
-// Pointer fields carry presence semantics: a nil pointer means the option
-// was never set (so the native default is kept), while a non-nil pointer
-// means the caller explicitly requested the value, including zero/false.
 type Config struct {
 	separator                    *byte
 	separatorString              *string
@@ -36,18 +31,17 @@ type Config struct {
 	encryptDocumentProperties    *bool
 }
 
-// Apply processes the given source byte slice as a Txt file and returns the converted output.
-// This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Txt-specific export logic.
+// Apply processes the given source byte slice as a Csv file and returns the converted output.
+// This method satisfies the saveoptions.SaveOption interface, enabling Csv-specific export logic.
 //
 // Parameters:
-// - source: A byte slice representing the input spreadsheet or data source. The implementation may interpret
-// this as an intermediate format (e.g., XLSX or CSV bytes) and convert it into Txt format.
+// - source: A byte slice representing the input spreadsheet or data source.
 //
 // Returns:
-// - []byte: The resulting Txt file content as a byte slice.
+// - []byte: The resulting Csv file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, err := asposecells.NewTxtSaveOptions()
+	opts, err := asposecells.NewTxtSaveOptions_SaveFormat(asposecells.SaveFormat_Csv)
 	if err != nil {
 		return nil, err
 	}
@@ -166,70 +160,33 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		return nil, err
 	}
 	saveOption := opts.ToSaveOptions()
-	result, err := workbook.Save_SaveOptions(saveOption)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return workbook.Save_SaveOptions(saveOption)
 }
 func (c *Config) GetFormat() string {
-	return "txt"
+	return "csv"
 }
 
 type Option func(*Config)
 
 func init() {
-	formats.Register("txt", func() saveoptions.SaveOption {
+	formats.Register("csv", func() saveoptions.SaveOption {
 		return New()
 	})
 }
 
-// New creates a new instance of txt save options
-//
-// The New function creates an instance of txt SaveOption using the Functional Options Pattern. This function accepts a variable number of Option function parameters, and each Option function modifies the configuration of SaveOption.
+// New creates a new instance of csv save options using the Functional Options Pattern.
 //
 // Parameters:
 //
 //	opts ... Option - A variable number of option functions used to configure SaveOption
 //
 // Return value:
-// txt SaveOption - Configured instance of the saved option
-//
-// Usage example:
-//
-// create default options
-//
-//	opts := New()
-//
-// create an instance with custom options
-//
-//	opts := New(
-//	    WithExportAsString(true),
-//	    WithCachedFileFolder("D:\\cached_folder"),
-//	    WithClearData(true),
-//
-// )
-//
-// // use the option to perform the save operation
-//
-//	err := SaveFile(data, opts)
-//
-// Precautions:
-// - If no options are provided, return the default configured SaveOption
-// - Options are applied in the order provided, and the later applied options will overwrite the previous Settings All Option functions are thread-safe, but the SaveOption instance itself is not
-//
-// Related types:
-//
-//	type Option func(*Config)
-//	type Config struct { ...  }
+// csv SaveOption - Configured instance of the saved option
 func New(opts ...Option) saveoptions.SaveOption {
-
 	cfg := &Config{}
-
 	for _, o := range opts {
 		o(cfg)
 	}
-
 	return cfg
 }
 

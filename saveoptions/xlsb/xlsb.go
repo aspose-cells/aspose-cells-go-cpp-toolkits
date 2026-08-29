@@ -4,23 +4,27 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"strconv"
 )
 
+// Config holds the native-typed option values for Xlsb save options.
+//
+// Pointer fields carry presence semantics: a nil pointer means the option
+// was never set (so the native default is kept), while a non-nil pointer
+// means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	compressionType           string
-	exportAllColumnIndexes    string
-	clearData                 string
-	cachedFileFolder          string
-	validateMergedAreas       string
-	mergeAreas                string
-	createDirectory           string
-	sortNames                 string
-	sortExternalNames         string
-	refreshChartCache         string
-	checkExcelRestriction     string
-	updateSmartArt            string
-	encryptDocumentProperties string
+	compressionType           *asposecells.OoxmlCompressionType
+	exportAllColumnIndexes    *bool
+	clearData                 *bool
+	cachedFileFolder          *string
+	validateMergedAreas       *bool
+	mergeAreas                *bool
+	createDirectory           *bool
+	sortNames                 *bool
+	sortExternalNames         *bool
+	refreshChartCache         *bool
+	checkExcelRestriction     *bool
+	updateSmartArt            *bool
+	encryptDocumentProperties *bool
 }
 
 // Apply processes the given source byte slice as a Xlsb file and returns the converted output.
@@ -34,75 +38,86 @@ type Config struct {
 // - []byte: The resulting Xlsb file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, _ := asposecells.NewXlsbSaveOptions()
-
-	if v, err := strconv.ParseInt(c.compressionType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToOoxmlCompressionType(int32(v)); err2 == nil {
-			opts.SetCompressionType(vv)
-		}
+	opts, err := asposecells.NewXlsbSaveOptions()
+	if err != nil {
+		return nil, err
 	}
 
-	if len(c.exportAllColumnIndexes) > 0 {
-		if v, err := strconv.ParseBool(c.exportAllColumnIndexes); err == nil {
-			opts.SetExportAllColumnIndexes(v)
+	if c.compressionType != nil {
+		if err := opts.SetCompressionType(*c.compressionType); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.clearData) > 0 {
-		if v, err := strconv.ParseBool(c.clearData); err == nil {
-			opts.SetClearData(v)
+
+	if c.exportAllColumnIndexes != nil {
+		if err := opts.SetExportAllColumnIndexes(*c.exportAllColumnIndexes); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.cachedFileFolder) > 0 {
-		opts.SetCachedFileFolder(c.cachedFileFolder)
-	}
-	if len(c.validateMergedAreas) > 0 {
-		if v, err := strconv.ParseBool(c.validateMergedAreas); err == nil {
-			opts.SetValidateMergedAreas(v)
+	if c.clearData != nil {
+		if err := opts.SetClearData(*c.clearData); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.mergeAreas) > 0 {
-		if v, err := strconv.ParseBool(c.mergeAreas); err == nil {
-			opts.SetMergeAreas(v)
+	if c.cachedFileFolder != nil {
+		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.createDirectory) > 0 {
-		if v, err := strconv.ParseBool(c.createDirectory); err == nil {
-			opts.SetCreateDirectory(v)
+	if c.validateMergedAreas != nil {
+		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortNames); err == nil {
-			opts.SetSortNames(v)
+	if c.mergeAreas != nil {
+		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortExternalNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortExternalNames); err == nil {
-			opts.SetSortExternalNames(v)
+	if c.createDirectory != nil {
+		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.refreshChartCache) > 0 {
-		if v, err := strconv.ParseBool(c.refreshChartCache); err == nil {
-			opts.SetRefreshChartCache(v)
+	if c.sortNames != nil {
+		if err := opts.SetSortNames(*c.sortNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.checkExcelRestriction) > 0 {
-		if v, err := strconv.ParseBool(c.checkExcelRestriction); err == nil {
-			opts.SetCheckExcelRestriction(v)
+	if c.sortExternalNames != nil {
+		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.updateSmartArt) > 0 {
-		if v, err := strconv.ParseBool(c.updateSmartArt); err == nil {
-			opts.SetUpdateSmartArt(v)
+	if c.refreshChartCache != nil {
+		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.encryptDocumentProperties) > 0 {
-		if v, err := strconv.ParseBool(c.encryptDocumentProperties); err == nil {
-			opts.SetEncryptDocumentProperties(v)
+	if c.checkExcelRestriction != nil {
+		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
+			return nil, err
 		}
 	}
-	workbook, _ := asposecells.NewWorkbook_Stream(source)
+	if c.updateSmartArt != nil {
+		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
+			return nil, err
+		}
+	}
+	if c.encryptDocumentProperties != nil {
+		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
+			return nil, err
+		}
+	}
+	workbook, err := asposecells.NewWorkbook_Stream(source)
+	if err != nil {
+		return nil, err
+	}
 	saveOption := opts.ToSaveOptions()
-	result, _ := workbook.Save_SaveOptions(saveOption)
+	result, err := workbook.Save_SaveOptions(saveOption)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 func (c *Config) GetFormat() string {
@@ -168,77 +183,77 @@ func New(opts ...Option) saveoptions.SaveOption {
 
 func WithCompressionType(value asposecells.OoxmlCompressionType) Option {
 	return func(c *Config) {
-		c.compressionType = strconv.FormatInt(int64(value), 10)
+		c.compressionType = &value
 	}
 }
 func WithExportAllColumnIndexes(value bool) Option {
 	return func(c *Config) {
-		c.exportAllColumnIndexes = strconv.FormatBool(value)
+		c.exportAllColumnIndexes = &value
 	}
 }
 
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = strconv.FormatBool(value)
+		c.clearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = value
+		c.cachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = strconv.FormatBool(value)
+		c.validateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = strconv.FormatBool(value)
+		c.mergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = strconv.FormatBool(value)
+		c.createDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = strconv.FormatBool(value)
+		c.sortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = strconv.FormatBool(value)
+		c.sortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = strconv.FormatBool(value)
+		c.refreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = strconv.FormatBool(value)
+		c.checkExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = strconv.FormatBool(value)
+		c.updateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = strconv.FormatBool(value)
+		c.encryptDocumentProperties = &value
 	}
 }

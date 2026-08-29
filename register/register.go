@@ -1,6 +1,7 @@
 package register
 
 import (
+	_ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/csv"
 	_ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/dbf"
 	_ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/dif"
 	_ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/docx"

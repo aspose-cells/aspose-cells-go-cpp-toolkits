@@ -4,36 +4,40 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"strconv"
 )
 
+// Config holds the native-typed option values for Sql save options.
+//
+// Pointer fields carry presence semantics: a nil pointer means the option
+// was never set (so the native default is kept), while a non-nil pointer
+// means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	checkIfTableExists        string
+	checkIfTableExists        *bool
 	columnTypeMap             *asposecells.SqlScriptColumnTypeMap
-	checkAllDataForColumnType string
-	addBlankLineBetweenRows   string
-	separator                 string
-	operatorType              string
-	primaryKey                string
-	createTable               string
-	idName                    string
-	startId                   string
-	tableName                 string
-	exportAsString            string
+	checkAllDataForColumnType *bool
+	addBlankLineBetweenRows   *bool
+	separator                 *byte
+	operatorType              *asposecells.SqlScriptOperatorType
+	primaryKey                *int32
+	createTable               *bool
+	idName                    *string
+	startId                   *int32
+	tableName                 *string
+	exportAsString            *bool
 	sheetIndexes              []int32
 	exportArea                *asposecells.CellArea
-	hasHeaderRow              string
-	clearData                 string
-	cachedFileFolder          string
-	validateMergedAreas       string
-	mergeAreas                string
-	createDirectory           string
-	sortNames                 string
-	sortExternalNames         string
-	refreshChartCache         string
-	checkExcelRestriction     string
-	updateSmartArt            string
-	encryptDocumentProperties string
+	hasHeaderRow              *bool
+	clearData                 *bool
+	cachedFileFolder          *string
+	validateMergedAreas       *bool
+	mergeAreas                *bool
+	createDirectory           *bool
+	sortNames                 *bool
+	sortExternalNames         *bool
+	refreshChartCache         *bool
+	checkExcelRestriction     *bool
+	updateSmartArt            *bool
+	encryptDocumentProperties *bool
 }
 
 // Apply processes the given source byte slice as a sql file and returns the converted output.
@@ -47,133 +51,150 @@ type Config struct {
 // - []byte: The resulting Sql file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, _ := asposecells.NewSqlScriptSaveOptions()
+	opts, err := asposecells.NewSqlScriptSaveOptions()
+	if err != nil {
+		return nil, err
+	}
 
-	if len(c.checkIfTableExists) > 0 {
-		if v, err := strconv.ParseBool(c.checkIfTableExists); err == nil {
-			opts.SetCheckIfTableExists(v)
+	if c.checkIfTableExists != nil {
+		if err := opts.SetCheckIfTableExists(*c.checkIfTableExists); err != nil {
+			return nil, err
 		}
 	}
 	if c.columnTypeMap != nil {
-		opts.SetColumnTypeMap(c.columnTypeMap)
-	}
-
-	if len(c.checkAllDataForColumnType) > 0 {
-		if v, err := strconv.ParseBool(c.checkAllDataForColumnType); err == nil {
-			opts.SetCheckAllDataForColumnType(v)
+		if err := opts.SetColumnTypeMap(c.columnTypeMap); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.addBlankLineBetweenRows) > 0 {
-		if v, err := strconv.ParseBool(c.addBlankLineBetweenRows); err == nil {
-			opts.SetAddBlankLineBetweenRows(v)
+	if c.checkAllDataForColumnType != nil {
+		if err := opts.SetCheckAllDataForColumnType(*c.checkAllDataForColumnType); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.separator) > 0 {
-		if v, err := strconv.ParseInt(c.separator, 10, 64); err == nil {
-			opts.SetSeparator(byte(v))
+	if c.addBlankLineBetweenRows != nil {
+		if err := opts.SetAddBlankLineBetweenRows(*c.addBlankLineBetweenRows); err != nil {
+			return nil, err
 		}
 	}
-	if v, err := strconv.ParseInt(c.operatorType, 10, 32); err == nil {
-		if vv, err2 := asposecells.Int32ToSqlScriptOperatorType(int32(v)); err2 == nil {
-			opts.SetOperatorType(vv)
+	if c.separator != nil {
+		if err := opts.SetSeparator(*c.separator); err != nil {
+			return nil, err
 		}
 	}
-
-	if len(c.primaryKey) > 0 {
-		if v, err := strconv.ParseInt(c.primaryKey, 10, 32); err == nil {
-			opts.SetPrimaryKey(int32(v))
+	if c.operatorType != nil {
+		if err := opts.SetOperatorType(*c.operatorType); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.createTable) > 0 {
-		if v, err := strconv.ParseBool(c.createTable); err == nil {
-			opts.SetCreateTable(v)
+	if c.primaryKey != nil {
+		if err := opts.SetPrimaryKey(*c.primaryKey); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.idName) > 0 {
-		opts.SetIdName(c.idName)
-	}
-	if len(c.startId) > 0 {
-		if v, err := strconv.ParseInt(c.startId, 10, 32); err == nil {
-			opts.SetStartId(int32(v))
+	if c.createTable != nil {
+		if err := opts.SetCreateTable(*c.createTable); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.tableName) > 0 {
-		opts.SetTableName(c.tableName)
+	if c.idName != nil {
+		if err := opts.SetIdName(*c.idName); err != nil {
+			return nil, err
+		}
 	}
-	if len(c.exportAsString) > 0 {
-		if v, err := strconv.ParseBool(c.exportAsString); err == nil {
-			opts.SetExportAsString(v)
+	if c.startId != nil {
+		if err := opts.SetStartId(*c.startId); err != nil {
+			return nil, err
+		}
+	}
+	if c.tableName != nil {
+		if err := opts.SetTableName(*c.tableName); err != nil {
+			return nil, err
+		}
+	}
+	if c.exportAsString != nil {
+		if err := opts.SetExportAsString(*c.exportAsString); err != nil {
+			return nil, err
 		}
 	}
 	if c.sheetIndexes != nil {
-		opts.SetSheetIndexes(c.sheetIndexes)
+		if err := opts.SetSheetIndexes(c.sheetIndexes); err != nil {
+			return nil, err
+		}
 	}
-
 	if c.exportArea != nil {
-		opts.SetExportArea(c.exportArea)
-	}
-
-	if len(c.hasHeaderRow) > 0 {
-		if v, err := strconv.ParseBool(c.hasHeaderRow); err == nil {
-			opts.SetHasHeaderRow(v)
+		if err := opts.SetExportArea(c.exportArea); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.clearData) > 0 {
-		if v, err := strconv.ParseBool(c.clearData); err == nil {
-			opts.SetClearData(v)
+	if c.hasHeaderRow != nil {
+		if err := opts.SetHasHeaderRow(*c.hasHeaderRow); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.cachedFileFolder) > 0 {
-		opts.SetCachedFileFolder(c.cachedFileFolder)
-	}
-	if len(c.validateMergedAreas) > 0 {
-		if v, err := strconv.ParseBool(c.validateMergedAreas); err == nil {
-			opts.SetValidateMergedAreas(v)
+	if c.clearData != nil {
+		if err := opts.SetClearData(*c.clearData); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.mergeAreas) > 0 {
-		if v, err := strconv.ParseBool(c.mergeAreas); err == nil {
-			opts.SetMergeAreas(v)
+	if c.cachedFileFolder != nil {
+		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.createDirectory) > 0 {
-		if v, err := strconv.ParseBool(c.createDirectory); err == nil {
-			opts.SetCreateDirectory(v)
+	if c.validateMergedAreas != nil {
+		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortNames); err == nil {
-			opts.SetSortNames(v)
+	if c.mergeAreas != nil {
+		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.sortExternalNames) > 0 {
-		if v, err := strconv.ParseBool(c.sortExternalNames); err == nil {
-			opts.SetSortExternalNames(v)
+	if c.createDirectory != nil {
+		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.refreshChartCache) > 0 {
-		if v, err := strconv.ParseBool(c.refreshChartCache); err == nil {
-			opts.SetRefreshChartCache(v)
+	if c.sortNames != nil {
+		if err := opts.SetSortNames(*c.sortNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.checkExcelRestriction) > 0 {
-		if v, err := strconv.ParseBool(c.checkExcelRestriction); err == nil {
-			opts.SetCheckExcelRestriction(v)
+	if c.sortExternalNames != nil {
+		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.updateSmartArt) > 0 {
-		if v, err := strconv.ParseBool(c.updateSmartArt); err == nil {
-			opts.SetUpdateSmartArt(v)
+	if c.refreshChartCache != nil {
+		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
+			return nil, err
 		}
 	}
-	if len(c.encryptDocumentProperties) > 0 {
-		if v, err := strconv.ParseBool(c.encryptDocumentProperties); err == nil {
-			opts.SetEncryptDocumentProperties(v)
+	if c.checkExcelRestriction != nil {
+		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
+			return nil, err
 		}
 	}
-	workbook, _ := asposecells.NewWorkbook_Stream(source)
+	if c.updateSmartArt != nil {
+		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
+			return nil, err
+		}
+	}
+	if c.encryptDocumentProperties != nil {
+		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
+			return nil, err
+		}
+	}
+	workbook, err := asposecells.NewWorkbook_Stream(source)
+	if err != nil {
+		return nil, err
+	}
 	saveOption := opts.ToSaveOptions()
-	result, _ := workbook.Save_SaveOptions(saveOption)
+	result, err := workbook.Save_SaveOptions(saveOption)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 func (c *Config) GetFormat() string {
@@ -239,7 +260,7 @@ func New(opts ...Option) saveoptions.SaveOption {
 
 func WithCheckIfTableExists(value bool) Option {
 	return func(c *Config) {
-		c.checkIfTableExists = strconv.FormatBool(value)
+		c.checkIfTableExists = &value
 	}
 }
 
@@ -250,60 +271,60 @@ func WithColumnTypeMap(value *asposecells.SqlScriptColumnTypeMap) Option {
 }
 func WithCheckAllDataForColumnType(value bool) Option {
 	return func(c *Config) {
-		c.checkAllDataForColumnType = strconv.FormatBool(value)
+		c.checkAllDataForColumnType = &value
 	}
 }
 
 func WithAddBlankLineBetweenRows(value bool) Option {
 	return func(c *Config) {
-		c.addBlankLineBetweenRows = strconv.FormatBool(value)
+		c.addBlankLineBetweenRows = &value
 	}
 }
 
 func WithSeparator(value byte) Option {
 	return func(c *Config) {
-		c.separator = strconv.Itoa(int(value))
+		c.separator = &value
 	}
 }
 
 func WithOperatorType(value asposecells.SqlScriptOperatorType) Option {
 	return func(c *Config) {
-		c.operatorType = strconv.FormatInt(int64(value), 10)
+		c.operatorType = &value
 	}
 }
 func WithPrimaryKey(value int32) Option {
 	return func(c *Config) {
-		c.primaryKey = strconv.FormatInt(int64(value), 10)
+		c.primaryKey = &value
 	}
 }
 
 func WithCreateTable(value bool) Option {
 	return func(c *Config) {
-		c.createTable = strconv.FormatBool(value)
+		c.createTable = &value
 	}
 }
 
 func WithIdName(value string) Option {
 	return func(c *Config) {
-		c.idName = value
+		c.idName = &value
 	}
 }
 
 func WithStartId(value int32) Option {
 	return func(c *Config) {
-		c.startId = strconv.FormatInt(int64(value), 10)
+		c.startId = &value
 	}
 }
 
 func WithTableName(value string) Option {
 	return func(c *Config) {
-		c.tableName = value
+		c.tableName = &value
 	}
 }
 
 func WithExportAsString(value bool) Option {
 	return func(c *Config) {
-		c.exportAsString = strconv.FormatBool(value)
+		c.exportAsString = &value
 	}
 }
 
@@ -319,72 +340,72 @@ func WithExportArea(value *asposecells.CellArea) Option {
 }
 func WithHasHeaderRow(value bool) Option {
 	return func(c *Config) {
-		c.hasHeaderRow = strconv.FormatBool(value)
+		c.hasHeaderRow = &value
 	}
 }
 
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = strconv.FormatBool(value)
+		c.clearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = value
+		c.cachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = strconv.FormatBool(value)
+		c.validateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = strconv.FormatBool(value)
+		c.mergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = strconv.FormatBool(value)
+		c.createDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = strconv.FormatBool(value)
+		c.sortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = strconv.FormatBool(value)
+		c.sortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = strconv.FormatBool(value)
+		c.refreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = strconv.FormatBool(value)
+		c.checkExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = strconv.FormatBool(value)
+		c.updateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = strconv.FormatBool(value)
+		c.encryptDocumentProperties = &value
 	}
 }

@@ -32,54 +32,68 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 		}
 		switch v := value.(type) {
 		case int8:
-			obj, _ := asposecells.NewObject_Integer8(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Integer8(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case uint16:
-			obj, _ := asposecells.NewObject_UInteger16(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_UInteger16(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case uint64:
-			obj, _ := asposecells.NewObject_ULong(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_ULong(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case int16:
-			obj, _ := asposecells.NewObject_Int16(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Int16(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case int32:
-			cell.PutValue_Int(v)
-			break
+			return cell.PutValue_Int(v)
 		case int:
-			obj, _ := asposecells.NewObject_Int64(int64(v))
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Int64(int64(v))
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case int64:
-			obj, _ := asposecells.NewObject_Int64(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Int64(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case float32:
-			obj, _ := asposecells.NewObject_Float(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Float(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case float64:
-			obj, _ := asposecells.NewObject_Double(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Double(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		case string:
-			cell.PutValue_String(v)
-			break
+			return cell.PutValue_String(v)
 		case bool:
-			cell.PutValue_Bool(v)
-			break
+			return cell.PutValue_Bool(v)
 		case time.Time:
-			obj, _ := asposecells.NewObject_Date(v)
-			cell.PutValue_Object(obj)
-			break
+			obj, err := asposecells.NewObject_Date(v)
+			if err != nil {
+				return err
+			}
+			return cell.PutValue_Object(obj)
 		default:
 			return fmt.Errorf("invalid value: %v", value)
 		}
-		return nil
 	}
 }
 
@@ -108,57 +122,80 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 		}
 		switch v := value.(type) {
 		case int8:
-			obj, _ := asposecells.NewObject_Integer8(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Integer8(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case uint16:
-			obj, _ := asposecells.NewObject_UInteger16(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_UInteger16(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case uint64:
-			obj, _ := asposecells.NewObject_ULong(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_ULong(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case int16:
-			obj, _ := asposecells.NewObject_Int16(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Int16(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case int32:
-			obj, _ := asposecells.NewObject_Int(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Int(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case int:
-			obj, _ := asposecells.NewObject_Int64(int64(v))
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Int64(int64(v))
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case int64:
-			obj, _ := asposecells.NewObject_Int64(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Int64(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case float32:
-			obj, _ := asposecells.NewObject_Float(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Float(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case float64:
-			obj, _ := asposecells.NewObject_Double(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Double(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case string:
-			obj, _ := asposecells.NewObject_String(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_String(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case bool:
-			obj, _ := asposecells.NewObject_Bool(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Bool(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		case time.Time:
-			obj, _ := asposecells.NewObject_Date(v)
-			cellsRange.SetValue(obj)
-			break
+			obj, err := asposecells.NewObject_Date(v)
+			if err != nil {
+				return err
+			}
+			return cellsRange.SetValue(obj)
 		default:
 			return fmt.Errorf("invalid value: %v", value)
 		}
-		return nil
 	}
 }
 
@@ -209,9 +246,11 @@ func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) 
 //   - WorksheetAction: A function that performs the cell merge operation.
 func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.Merge_Int_Int_Int_Int_Bool(int32(beginRow), int32(beginColumn), int32(rows), int32(columns), mergeConflict)
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.Merge_Int_Int_Int_Int_Bool(int32(beginRow), int32(beginColumn), int32(rows), int32(columns), mergeConflict)
 	}
 }
 
@@ -227,9 +266,11 @@ func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) Workshe
 //   - WorksheetAction: A function that splits the merged cells back into individual cells.
 func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.UnMerge(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.UnMerge(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
 	}
 }
 
@@ -244,9 +285,11 @@ func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that adds the specified rows.
 func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.InsertRows_Int_Int_Bool(int32(beginRow), int32(rows), updateReference)
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.InsertRows_Int_Int_Bool(int32(beginRow), int32(rows), updateReference)
 	}
 }
 
@@ -261,9 +304,11 @@ func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 //   - WorksheetAction: A function that adds the specified columns.
 func InsertColumns(beginColumn int, columns int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.InsertColumns_Int_Int_Bool(int32(beginColumn), int32(columns), updateReference)
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.InsertColumns_Int_Int_Bool(int32(beginColumn), int32(columns), updateReference)
 	}
 }
 
@@ -280,10 +325,15 @@ func InsertColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that empties the contents of the target range.
 func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cellsRange, _ := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
-		cellsRange.ClearContents()
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		cellsRange, err := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
+		if err != nil {
+			return err
+		}
+		return cellsRange.ClearContents()
 	}
 }
 
@@ -300,10 +350,15 @@ func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that resets the styles of the target range.
 func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cellsRange, _ := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
-		cellsRange.ClearFormats()
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		cellsRange, err := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
+		if err != nil {
+			return err
+		}
+		return cellsRange.ClearFormats()
 	}
 }
 
@@ -318,9 +373,12 @@ func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that deletes the specified rows.
 func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.DeleteRows_Int_Int_Bool(int32(beginRow), int32(rows), updateReference)
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		_, err = cells.DeleteRows_Int_Int_Bool(int32(beginRow), int32(rows), updateReference)
+		return err
 	}
 }
 
@@ -331,9 +389,11 @@ func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty rows.
 func DeleteBlankRows() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.DeleteBlankRows()
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.DeleteBlankRows()
 	}
 }
 
@@ -353,7 +413,10 @@ func DeleteBlankRows() WorksheetAction {
 //   - WorksheetAction: A function that deletes the specified cell range and applies the shift.
 func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
 		shift := asposecells.ShiftType_None
 		shiftType = strings.ToLower(shiftType)
 		if shiftType == "up" {
@@ -368,8 +431,7 @@ func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) Wor
 		if shiftType == "right" {
 			shift = asposecells.ShiftType_Right
 		}
-		cells.DeleteRange(int32(beginRow), int32(beginColumn), int32(beginRow+rows-1), int32(beginColumn+columns-1), shift)
-		return nil
+		return cells.DeleteRange(int32(beginRow), int32(beginColumn), int32(beginRow+rows-1), int32(beginColumn+columns-1), shift)
 	}
 }
 
@@ -386,9 +448,11 @@ func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) Wor
 //   - WorksheetAction: A function that deletes the specified columns from the worksheet.
 func DeleteColumns(beginColumn int, columns int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.DeleteColumns_Int_Int_Bool(int32(beginColumn), int32(columns), updateReference)
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.DeleteColumns_Int_Int_Bool(int32(beginColumn), int32(columns), updateReference)
 	}
 }
 
@@ -399,8 +463,10 @@ func DeleteColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty columns.
 func DeleteBlankColumns() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, _ := worksheet.GetCells()
-		cells.DeleteBlankColumns()
-		return nil
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+		return cells.DeleteBlankColumns()
 	}
 }
