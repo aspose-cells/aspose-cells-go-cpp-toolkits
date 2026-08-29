@@ -1,3 +1,5 @@
+// Package pcl provides a SaveOption and configuration options for exporting
+// spreadsheets as PCL (Printer Command Language) files.
 package pcl
 
 import (

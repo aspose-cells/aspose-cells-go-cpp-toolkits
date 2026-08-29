@@ -1,3 +1,5 @@
+// Package xlsb provides a SaveOption and configuration options for exporting
+// spreadsheets as XLSB (Excel binary) workbooks.
 package xlsb
 
 import (

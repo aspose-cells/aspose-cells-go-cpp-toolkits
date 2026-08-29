@@ -1,3 +1,4 @@
+// Package io provides internal file I/O helpers shared across the toolkit.
 package io
 
 import "os"

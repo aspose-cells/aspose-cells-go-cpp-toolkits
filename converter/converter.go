@@ -1,3 +1,9 @@
+// Package converter converts spreadsheets between formats.
+//
+// It drives the Aspose.Cells engine over a datasource.DataSource input and
+// produces output as raw bytes, to an io.Writer, or to a file. Format selection
+// is delegated to a saveoptions.SaveOption, so every supported target format
+// shares the same entry points.
 package converter
 
 import (
@@ -7,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
@@ -37,7 +44,7 @@ import (
 // os.WriteFile("TestData/Output/output2.pdf", bytes_data, 0644)
 func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
 	if opt == nil {
-		return nil, fmt.Errorf("save option is nil")
+		return nil, toolkiterrors.ErrSaveOptionNil
 	}
 	data, errRead := cells.ReadSource(source)
 	if errRead != nil {
@@ -80,7 +87,7 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 // defer file.Close()
 func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
 	if opt == nil {
-		return fmt.Errorf("save option is nil")
+		return toolkiterrors.ErrSaveOptionNil
 	}
 	data, errRead := cells.ReadSource(source)
 	if errRead != nil {
@@ -121,11 +128,11 @@ func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
 	source := datasource.FilePathSource(inputPath)
 	ext := filepath.Ext(outputPath)
 	if len(ext) <= 1 {
-		return fmt.Errorf("invalid output path %q: missing file extension", outputPath)
+		return fmt.Errorf("invalid output path %q: missing file extension: %w", outputPath, toolkiterrors.ErrInvalidOutputPath)
 	}
 	save_option := formats.Get(ext[1:])
 	if save_option == nil {
-		return fmt.Errorf("unsupported output format %q", ext[1:])
+		return fmt.Errorf("unsupported output format %q: %w", ext[1:], toolkiterrors.ErrUnsupportedFormat)
 	}
 	data, err := ConvertSpreadsheet(source, save_option)
 	if err != nil {

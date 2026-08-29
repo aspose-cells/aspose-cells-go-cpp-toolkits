@@ -1,3 +1,5 @@
+// Package dif provides a SaveOption and configuration options for exporting
+// spreadsheets as DIF (Data Interchange Format) files.
 package dif
 
 import (

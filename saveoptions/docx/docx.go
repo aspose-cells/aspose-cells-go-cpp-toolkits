@@ -1,3 +1,5 @@
+// Package docx provides a SaveOption and configuration options for exporting
+// spreadsheets as DOCX (Microsoft Word) documents.
 package docx
 
 import (

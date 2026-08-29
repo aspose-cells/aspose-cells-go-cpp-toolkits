@@ -1,3 +1,9 @@
+// Package register wires every saveoptions implementation into the formats
+// registry.
+//
+// Importing this package for its side effects registers all bundled format
+// factories with formats.Register. Applications that only need a subset of
+// formats can import the corresponding saveoptions subpackage directly instead.
 package register
 
 import (

@@ -59,6 +59,33 @@ func TestFilePathSource(t *testing.T) {
 	}
 }
 
+func TestReaderSource(t *testing.T) {
+	payload := []byte("streamed bytes")
+	src := datasource.NewReaderSource(io.NopCloser(bytes.NewReader(payload)))
+
+	// First access drains the wrapped stream.
+	if !bytes.Equal(src.ByteData(), payload) {
+		t.Errorf("ByteData() = %q, want %q", src.ByteData(), payload)
+	}
+	// Second access must serve the buffered bytes instead of nil.
+	if !bytes.Equal(src.ByteData(), payload) {
+		t.Errorf("ByteData() (2nd) = %q, want %q", src.ByteData(), payload)
+	}
+	// Open after buffering still works and is repeatable.
+	reader, err := src.Open()
+	if err != nil {
+		t.Fatalf("Open() error: %v", err)
+	}
+	data, err := io.ReadAll(reader)
+	reader.Close()
+	if err != nil {
+		t.Fatalf("read error: %v", err)
+	}
+	if !bytes.Equal(data, payload) {
+		t.Errorf("Open() data = %q, want %q", data, payload)
+	}
+}
+
 func TestFilePathSourceMissingFile(t *testing.T) {
 	src := datasource.FilePathSource(filepath.Join(t.TempDir(), "missing.bin"))
 	if _, err := src.Open(); err == nil {

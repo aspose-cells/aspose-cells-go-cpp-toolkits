@@ -1,3 +1,10 @@
+// Package saveoptions defines the SaveOption contract and hosts the
+// per-format option packages.
+//
+// A SaveOption turns raw spreadsheet bytes into a specific output format via
+// Apply, and reports the target format through GetFormat. Each subpackage under
+// saveoptions implements SaveOption for one family of formats and exposes
+// functional options (With*) to configure the export.
 package saveoptions
 
 // SaveOption defines the behavior for transforming spreadsheet data into a specific output format.

@@ -1,3 +1,5 @@
+// Package xps provides a SaveOption and configuration options for exporting
+// spreadsheets as XPS documents.
 package xps
 
 import (

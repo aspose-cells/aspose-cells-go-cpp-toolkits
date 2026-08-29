@@ -1,3 +1,8 @@
+// Package manipulator merges and splits spreadsheets.
+//
+// MergeSpreadsheets combines multiple input sources into one workbook; the
+// Split* functions export every worksheet of a workbook as a standalone file.
+// Output is returned as bytes, streamed to a zip writer, or written to a folder.
 package manipulator
 
 import (
@@ -7,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
@@ -38,7 +44,7 @@ import (
 //	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
 	if outSaveOption == nil {
-		return nil, fmt.Errorf("save option is nil")
+		return nil, toolkiterrors.ErrSaveOptionNil
 	}
 	newWorkbook, err := asposecells.NewWorkbook()
 	if err != nil {
@@ -101,7 +107,7 @@ func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions
 //	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outSaveOption saveoptions.SaveOption) error {
 	if outSaveOption == nil {
-		return fmt.Errorf("save option is nil")
+		return toolkiterrors.ErrSaveOptionNil
 	}
 	newWorkbook, err := asposecells.NewWorkbook()
 	if err != nil {
@@ -155,11 +161,11 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 func MergeSpreadsheetsToFile(inputPaths []string, outputPath string) error {
 	ext := filepath.Ext(outputPath)
 	if len(ext) <= 1 {
-		return fmt.Errorf("invalid output path %q: missing file extension", outputPath)
+		return fmt.Errorf("invalid output path %q: missing file extension: %w", outputPath, toolkiterrors.ErrInvalidOutputPath)
 	}
 	outSaveOption := formats.Get(ext[1:])
 	if outSaveOption == nil {
-		return fmt.Errorf("unsupported output format %q", ext[1:])
+		return fmt.Errorf("unsupported output format %q: %w", ext[1:], toolkiterrors.ErrUnsupportedFormat)
 	}
 
 	newWorkbook, err := asposecells.NewWorkbook()

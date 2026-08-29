@@ -1,3 +1,5 @@
+// Package pdf provides a SaveOption and configuration options for exporting
+// spreadsheets as PDF documents.
 package pdf
 
 import (

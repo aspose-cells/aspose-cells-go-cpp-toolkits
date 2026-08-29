@@ -1,3 +1,5 @@
+// Package html provides a SaveOption and configuration options for exporting
+// spreadsheets as HTML documents.
 package html
 
 import (

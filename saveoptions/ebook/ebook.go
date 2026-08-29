@@ -1,3 +1,5 @@
+// Package ebook provides a SaveOption and configuration options for exporting
+// spreadsheets as EPUB e-book files.
 package ebook
 
 import (

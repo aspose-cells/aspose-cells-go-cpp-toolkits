@@ -1,3 +1,5 @@
+// Package sqlScript provides a SaveOption and configuration options for
+// exporting spreadsheets as SQL scripts.
 package sqlscript
 
 import (

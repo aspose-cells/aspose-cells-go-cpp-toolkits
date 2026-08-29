@@ -1,3 +1,5 @@
+// Package pptx provides a SaveOption and configuration options for exporting
+// spreadsheets as PPTX (Microsoft PowerPoint) presentations.
 package pptx
 
 import (

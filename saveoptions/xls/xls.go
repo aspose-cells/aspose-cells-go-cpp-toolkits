@@ -1,3 +1,5 @@
+// Package xls provides a SaveOption and configuration options for exporting
+// spreadsheets as XLS (Excel 97-2003) workbooks.
 package xls
 
 import (

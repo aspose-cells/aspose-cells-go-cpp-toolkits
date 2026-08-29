@@ -1,3 +1,9 @@
+// Package transfer exports spreadsheet data to structured formats and imports
+// structured data back into spreadsheets.
+//
+// Exports cover XML, JSON, and per-worksheet JSON output; imports cover CSV,
+// XML, and JSON data into a worksheet. Results are returned as bytes or written
+// to a file.
 package transfer
 
 import (
@@ -5,6 +11,7 @@ import (
 	"os"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	jsonsaveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/json"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
@@ -76,7 +83,7 @@ func ExportWorksheetToJsonFile(spreadsheet string, worksheet string, outputPath 
 		return err
 	}
 	if fileInfo.IsDir() {
-		return fmt.Errorf("The %s is folder.", spreadsheet)
+		return fmt.Errorf("%q is a folder, expected a file: %w", spreadsheet, toolkiterrors.ErrInputIsFolder)
 	}
 	data, err := ExportWorksheetToJson(datasource.FilePathSource(spreadsheet), worksheet)
 	if err != nil {
@@ -90,7 +97,7 @@ func ExportSpreadsheetToXmlFile(spreadsheet string, mapName string, outputPath s
 		return err
 	}
 	if fileInfo.IsDir() {
-		return fmt.Errorf("The %s is folder.", spreadsheet)
+		return fmt.Errorf("%q is a folder, expected a file: %w", spreadsheet, toolkiterrors.ErrInputIsFolder)
 	}
 	data, err := ExportSpreadsheetToXml(datasource.FilePathSource(spreadsheet), mapName)
 	if err != nil {
@@ -104,7 +111,7 @@ func ExportRangeToJsonFile(spreadsheet string, worksheet string, startCellName s
 		return err
 	}
 	if fileInfo.IsDir() {
-		return fmt.Errorf("The %s is folder.", spreadsheet)
+		return fmt.Errorf("%q is a folder, expected a file: %w", spreadsheet, toolkiterrors.ErrInputIsFolder)
 	}
 	data, err := ExportRangeToJson(datasource.FilePathSource(spreadsheet), worksheet, startCellName, endCellName)
 	if err != nil {

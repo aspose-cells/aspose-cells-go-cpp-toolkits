@@ -1,3 +1,5 @@
+// Package image provides a SaveOption and configuration options for rendering
+// spreadsheets as images (PNG, JPG, SVG, BMP, TIF/TIFF).
 package image
 
 import (

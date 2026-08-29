@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
@@ -117,7 +118,7 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 // os.WriteFile("TestData/Output/output5.zip", bytes_data, 0644)
 func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
 	if outSaveOption == nil {
-		return nil, fmt.Errorf("save option is nil")
+		return nil, toolkiterrors.ErrSaveOptionNil
 	}
 	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {
@@ -167,7 +168,7 @@ func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.Sa
 // zipFile.Close()
 func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Writer, outSaveOption saveoptions.SaveOption) error {
 	if outSaveOption == nil {
-		return fmt.Errorf("save option is nil")
+		return toolkiterrors.ErrSaveOptionNil
 	}
 	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {

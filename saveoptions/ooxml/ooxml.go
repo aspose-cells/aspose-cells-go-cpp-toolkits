@@ -1,3 +1,5 @@
+// Package ooxml provides a SaveOption and configuration options for exporting
+// spreadsheets as Office Open XML workbooks (XLSX, XLSM, XLTX, XLTM).
 package ooxml
 
 import (

@@ -1,9 +1,17 @@
+// Package datasource abstracts spreadsheet input and output.
+//
+// DataSource implementations provide bytes for processing, and DataSink
+// implementations accept bytes written by the toolkit. Sources and sinks can
+// back onto files, in-memory buffers, or already-open streams, letting the
+// converter, editor, manipulator, and transfer packages stay agnostic about
+// where data comes from or goes to.
 package datasource
 
 import (
 	"bytes"
 	"io"
 	"os"
+	"sync"
 )
 
 // The DataSource defines the general interface for data sources.
@@ -52,24 +60,64 @@ func (b BytesSource) ByteData() []byte {
 	return b
 }
 
-// ReaderSource is an adapter for the existing io.ReadCloser.
-// When you already have an open stream (such as an HTTP response body), but the function signature requires a DataSource, use this.
+// ReaderSource is an adapter for an already-open io.ReadCloser, such as an
+// HTTP response body. It lets an open stream be used wherever a DataSource is
+// expected.
+//
+// The wrapped stream is consumed lazily on the first access and buffered, so
+// Open and ByteData may be called repeatedly; subsequent calls serve the same
+// buffered bytes.
 type ReaderSource struct {
+	mu     sync.Mutex
 	reader io.ReadCloser
+	buf    []byte
 }
 
-// Open directly returns the reader held internally.
-// Note: ReaderSource is usually used to wrap already opened streams, so the Open method itself does not return an error.
-func (r ReaderSource) Open() (io.ReadCloser, error) {
-	return r.reader, nil
+// NewReaderSource wraps an already-open stream as a DataSource. The returned
+// source buffers the stream on first use; the wrapped stream is closed once
+// its contents have been read.
+func NewReaderSource(r io.ReadCloser) *ReaderSource {
+	return &ReaderSource{reader: r}
 }
-func (r ReaderSource) ByteData() []byte {
-	data, errRead := io.ReadAll(r.reader)
-	if errRead != nil {
-		return nil
+
+// Open returns an io.ReadCloser over the source contents. Because the source
+// is buffered on first access, every call returns a fresh reader over the
+// same bytes.
+func (r *ReaderSource) Open() (io.ReadCloser, error) {
+	data, err := r.readAll()
+	if err != nil {
+		return nil, err
 	}
-	r.reader.Close()
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
+// ByteData returns the source contents. It is safe to call repeatedly; the
+// wrapped stream is drained and closed exactly once, after which the bytes are
+// served from an internal buffer.
+func (r *ReaderSource) ByteData() []byte {
+	data, _ := r.readAll()
 	return data
+}
+
+func (r *ReaderSource) readAll() ([]byte, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.buf != nil {
+		return r.buf, nil
+	}
+	if r.reader == nil {
+		return nil, nil
+	}
+	data, err := io.ReadAll(r.reader)
+	if closeErr := r.reader.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
+	r.reader = nil
+	if err != nil {
+		return nil, err
+	}
+	r.buf = data
+	return data, nil
 }
 
 // DataSink defines the general interface for data destinations.

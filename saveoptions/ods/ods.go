@@ -1,3 +1,5 @@
+// Package ods provides a SaveOption and configuration options for exporting
+// spreadsheets as ODS (OpenDocument Spreadsheet) files.
 package ods
 
 import (

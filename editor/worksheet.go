@@ -2,9 +2,11 @@ package editor
 
 import (
 	"fmt"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"strings"
 	"time"
+
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // SetCellValue creates a WorksheetAction that sets the value of a specific cell.
@@ -30,70 +32,11 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 		if err != nil {
 			return err
 		}
-		switch v := value.(type) {
-		case int8:
-			obj, err := asposecells.NewObject_Integer8(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case uint16:
-			obj, err := asposecells.NewObject_UInteger16(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case uint64:
-			obj, err := asposecells.NewObject_ULong(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case int16:
-			obj, err := asposecells.NewObject_Int16(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case int32:
-			return cell.PutValue_Int(v)
-		case int:
-			obj, err := asposecells.NewObject_Int64(int64(v))
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case int64:
-			obj, err := asposecells.NewObject_Int64(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case float32:
-			obj, err := asposecells.NewObject_Float(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case float64:
-			obj, err := asposecells.NewObject_Double(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		case string:
-			return cell.PutValue_String(v)
-		case bool:
-			return cell.PutValue_Bool(v)
-		case time.Time:
-			obj, err := asposecells.NewObject_Date(v)
-			if err != nil {
-				return err
-			}
-			return cell.PutValue_Object(obj)
-		default:
-			return fmt.Errorf("invalid value: %v", value)
+		obj, err := toObject(value)
+		if err != nil {
+			return err
 		}
+		return cell.PutValue_Object(obj)
 	}
 }
 
@@ -120,82 +63,45 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 		if err != nil {
 			return err
 		}
-		switch v := value.(type) {
-		case int8:
-			obj, err := asposecells.NewObject_Integer8(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case uint16:
-			obj, err := asposecells.NewObject_UInteger16(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case uint64:
-			obj, err := asposecells.NewObject_ULong(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case int16:
-			obj, err := asposecells.NewObject_Int16(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case int32:
-			obj, err := asposecells.NewObject_Int(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case int:
-			obj, err := asposecells.NewObject_Int64(int64(v))
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case int64:
-			obj, err := asposecells.NewObject_Int64(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case float32:
-			obj, err := asposecells.NewObject_Float(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case float64:
-			obj, err := asposecells.NewObject_Double(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case string:
-			obj, err := asposecells.NewObject_String(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case bool:
-			obj, err := asposecells.NewObject_Bool(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		case time.Time:
-			obj, err := asposecells.NewObject_Date(v)
-			if err != nil {
-				return err
-			}
-			return cellsRange.SetValue(obj)
-		default:
-			return fmt.Errorf("invalid value: %v", value)
+		obj, err := toObject(value)
+		if err != nil {
+			return err
 		}
+		return cellsRange.SetValue(obj)
+	}
+}
+
+// toObject converts a supported Go value into the engine's Object type so it
+// can be written to a cell or range. Supported types are the integer and
+// floating-point sizes, string, bool, and time.Time.
+func toObject(value interface{}) (*asposecells.Object, error) {
+	switch v := value.(type) {
+	case int8:
+		return asposecells.NewObject_Integer8(v)
+	case uint16:
+		return asposecells.NewObject_UInteger16(v)
+	case uint64:
+		return asposecells.NewObject_ULong(v)
+	case int16:
+		return asposecells.NewObject_Int16(v)
+	case int32:
+		return asposecells.NewObject_Int(v)
+	case int:
+		return asposecells.NewObject_Int64(int64(v))
+	case int64:
+		return asposecells.NewObject_Int64(v)
+	case float32:
+		return asposecells.NewObject_Float(v)
+	case float64:
+		return asposecells.NewObject_Double(v)
+	case string:
+		return asposecells.NewObject_String(v)
+	case bool:
+		return asposecells.NewObject_Bool(v)
+	case time.Time:
+		return asposecells.NewObject_Date(v)
+	default:
+		return nil, fmt.Errorf("invalid value %v: %w", value, toolkiterrors.ErrInvalidValue)
 	}
 }
 

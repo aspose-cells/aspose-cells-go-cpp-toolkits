@@ -3,8 +3,10 @@ package editor
 import (
 	"encoding/hex"
 	"fmt"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"strings"
+
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Worksheet, error) {
@@ -22,7 +24,7 @@ func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Wo
 	case string:
 		return wss.Get_String(v)
 	default:
-		return nil, fmt.Errorf("invalid sheet identifier: %v", id)
+		return nil, fmt.Errorf("invalid sheet identifier %v: %w", id, toolkiterrors.ErrInvalidSheetID)
 	}
 }
 func resolveColor(value interface{}) (*asposecells.Color, error) {
@@ -41,7 +43,7 @@ func resolveColor(value interface{}) (*asposecells.Color, error) {
 	} else if colorVal, ok := value.(*asposecells.Color); ok {
 		return colorVal, nil
 	} else {
-		return nil, fmt.Errorf("invalid color value: %v", value)
+		return nil, fmt.Errorf("invalid color value %v: %w", value, toolkiterrors.ErrInvalidColor)
 	}
 }
 

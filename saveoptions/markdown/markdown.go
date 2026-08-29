@@ -1,3 +1,5 @@
+// Package markdown provides a SaveOption and configuration options for
+// exporting spreadsheets as Markdown tables.
 package markdown
 
 import (

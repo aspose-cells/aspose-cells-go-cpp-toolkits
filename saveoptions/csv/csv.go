@@ -1,3 +1,5 @@
+// Package csv provides a SaveOption and configuration options for exporting
+// spreadsheets as CSV files.
 package csv
 
 import (

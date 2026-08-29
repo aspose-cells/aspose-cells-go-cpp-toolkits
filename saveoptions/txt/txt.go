@@ -1,3 +1,5 @@
+// Package txt provides a SaveOption and configuration options for exporting
+// spreadsheets as delimited text files.
 package txt
 
 import (

@@ -1,3 +1,5 @@
+// Package xml provides a SaveOption and configuration options for exporting
+// spreadsheets as XML data.
 package xml
 
 import (

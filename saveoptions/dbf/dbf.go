@@ -1,3 +1,5 @@
+// Package dbf provides a SaveOption and configuration options for exporting
+// spreadsheets as DBF (dBASE) files.
 package dbf
 
 import (

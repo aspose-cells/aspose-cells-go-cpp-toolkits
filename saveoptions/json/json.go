@@ -1,3 +1,5 @@
+// Package json provides a SaveOption and configuration options for exporting
+// spreadsheets as JSON data.
 package json
 
 import (

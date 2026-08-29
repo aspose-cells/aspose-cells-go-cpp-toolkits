@@ -1,3 +1,10 @@
+// Package cells provides shared helpers over the Aspose.Cells engine used by
+// the toolkit's public packages.
+//
+// It centralizes reading a datasource.DataSource into bytes, building a
+// Workbook from it, serializing a Workbook back to bytes, and resolving cells
+// and cell areas, so the converter, editor, manipulator, and transfer packages
+// do not each re-implement the same engine plumbing.
 package cells
 
 import (
