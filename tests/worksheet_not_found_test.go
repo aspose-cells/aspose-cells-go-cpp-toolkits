@@ -43,7 +43,8 @@ func TestMissingWorksheetReturnsErrorNotCrash(t *testing.T) {
 	})
 
 	t.Run("transfer json", func(t *testing.T) {
-		_, err := transfer.ExportWorksheetToJson(source, "NoSuchSheet")
+		var out datasource.BytesSink
+		err := transfer.ExportWorksheetToJson(source, &out, transfer.WithSheet("NoSuchSheet"))
 		if err == nil {
 			t.Fatal("ExportWorksheetToJson with a missing sheet: want error, got nil")
 		}
@@ -53,7 +54,10 @@ func TestMissingWorksheetReturnsErrorNotCrash(t *testing.T) {
 	})
 
 	t.Run("transfer range json", func(t *testing.T) {
-		_, err := transfer.ExportRangeToJson(source, "NoSuchSheet", "A1", "B2")
+		var out datasource.BytesSink
+		err := transfer.ExportRangeToJson(source, &out,
+			transfer.WithSheet("NoSuchSheet"), transfer.WithStartCell("A1"), transfer.WithEndCell("B2"),
+		)
 		if err == nil {
 			t.Fatal("ExportRangeToJson with a missing sheet: want error, got nil")
 		}

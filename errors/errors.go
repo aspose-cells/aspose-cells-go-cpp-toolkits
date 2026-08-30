@@ -48,4 +48,12 @@ var (
 	// ErrWorksheetNotFound is returned when a worksheet is referenced by name
 	// but no worksheet with that name exists in the workbook.
 	ErrWorksheetNotFound = errors.New("worksheet not found")
+
+	// ErrDataSourceNil is returned when a nil datasource.DataSource is passed
+	// to a toolkit entry point.
+	ErrDataSourceNil = errors.New("data source is nil")
+
+	// ErrDataSinkNil is returned when a nil datasource.DataSink is passed to a
+	// toolkit entry point.
+	ErrDataSinkNil = errors.New("data sink is nil")
 )

@@ -43,13 +43,22 @@ package main
 import (
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
+  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/markdown"
+  "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/pdf"
   "os"
 )
 
 func main() {
   core.SetLicense(os.Getenv("LicensePath"))
-  converter.ConvertSpreadsheetToFile("examples/data/BookText.xlsx", "out/output1.pdf")
-  converter.ConvertSpreadsheetToFile("examples/data/BookText.xlsx", "out/output1.md")
+  converter.Convert(
+    datasource.FilePathSource("examples/data/BookText.xlsx"),
+    pdf.New(pdf.WithOnePagePerSheet(true)),
+    datasource.FilePathSink("out/output1.pdf"))
+  converter.Convert(
+    datasource.FilePathSource("examples/data/BookText.xlsx"),
+    markdown.New(markdown.WithClearData(true)),
+    datasource.FilePathSink("out/output1.md"))
 }
 
 ```

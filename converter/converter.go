@@ -1,15 +1,16 @@
 // Package converter converts spreadsheets between formats.
 //
 // It drives the Aspose.Cells engine over a datasource.DataSource input and
-// produces output as raw bytes, to an io.Writer, or to a file. Format selection
-// is delegated to a saveoptions.SaveOption, so every supported target format
-// shares the same entry points.
+// writes the result to a datasource.DataSink, so the caller chooses the output
+// shape (file, writer, or in-memory bytes) by picking the sink rather than a
+// separate entry point. Format selection is delegated to a
+// saveoptions.SaveOption, so every supported target format shares the same
+// entry point.
 package converter
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -19,124 +20,94 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 )
 
-// ConvertSpreadsheet converts a spreadsheet from the given data source into the specified output format
-// and returns the resulting binary data.
+// Convert converts a spreadsheet from the given data source into the format
+// described by opt and writes the result to sink.
 //
 // Parameters:
-//   - source: A data source implementing the datasource.DataSource interface, which provides the input
-//     spreadsheet content (e.g., from a file, in-memory buffer, HTTP URL, etc.).
-//   - opt: Conversion options that define the output format and behavior, implementing the
-//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption, etc.).
-//
-// Returns:
-//   - []byte: The converted file content as a byte slice in the target format.
-//   - error: An error if the conversion fails due to reasons such as unreadable source,
-//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+//   - source: A data source implementing the datasource.DataSource interface,
+//     which provides the input spreadsheet content (e.g., from a file,
+//     in-memory buffer, HTTP URL, etc.).
+//   - opt: Conversion options that define the output format and behavior,
+//     implementing the saveoptions.SaveOption interface (e.g., PDFSaveOption,
+//     XLSXSaveOption, CSVSaveOption, etc.).
+//   - sink: The output destination implementing datasource.DataSink. Use
+//     datasource.FilePathSink for a file, datasource.WriterSink for an
+//     io.Writer, or datasource.BytesSink to capture the result as bytes.
 //
 // Example:
 //
-// save_option := pdf.New(pdf.WithOnePagePerSheet(true))
-// bytes_data, err := converter.ConvertSpreadsheet(datasource.FilePathSource("examples/data/BookText.xlsx"), save_option)
-// if err != nil {
-// println(err)
-// return
-// }
-// os.WriteFile("out/output2.pdf", bytes_data, 0644)
-func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
-	if opt == nil {
-		return nil, toolkiterrors.ErrSaveOptionNil
-	}
-	data, errRead := cells.ReadSource(source)
-	if errRead != nil {
-		return nil, errRead
-	}
-	result, errApply := opt.Apply(data)
-
-	if errApply != nil {
-		return nil, errApply
-	}
-	return result, nil
-}
-
-// ConvertToWriter converts a spreadsheet from the given data source into the specified output format
-// and writes the result directly to the provided io.Writer.
-//
-// Parameters:
-//   - source: A data source implementing the datasource.DataSource interface, which supplies the input
-//     spreadsheet content (e.g., from a file, bytes buffer, or network stream).
-//   - w: An io.Writer (such as a file, bytes.Buffer, or HTTP response writer) where the converted
-//     output will be written.
-//   - opt: Conversion settings that determine the output format and behavior, implementing the
-//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption).
-//
-// Returns:
-//   - error: An error if conversion or writing fails. Possible causes include invalid input data,
-//     unsupported output format, missing native dependencies, license restrictions in the underlying
-//     Aspose.Cells engine, or write failures on the io.Writer.
-//
-// Example:
-//
-// file, err := os.Create("out/output2.md")
-// if err != nil {
-// panic(err)
-// }
-// err = converter.ConvertToWriter(datasource.FilePathSource("examples/data/BookText.xlsx"), markdown.New(markdown.WithClearData(true)), file)
-// if err != nil {
-// return
-// }
-// defer file.Close()
-func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
+//	save_option := pdf.New(pdf.WithOnePagePerSheet(true))
+//	err := converter.Convert(datasource.FilePathSource("examples/data/BookText.xlsx"),
+//		save_option, datasource.FilePathSink("out/output2.pdf"))
+func Convert(source datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
 	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
+	}
+	if source == nil {
+		return toolkiterrors.ErrDataSourceNil
+	}
+	if sink == nil {
+		return toolkiterrors.ErrDataSinkNil
 	}
 	data, errRead := cells.ReadSource(source)
 	if errRead != nil {
 		return errRead
 	}
-
 	result, errApply := opt.Apply(data)
 	if errApply != nil {
 		return errApply
 	}
-	_, errWrite := w.Write(result)
-	return errWrite
+	return sink.Write("", result)
 }
 
-// ConvertFile converts a spreadsheet file from the input path to an output file at the specified output path.
-// The output format is inferred automatically from the file extension of outputPath (e.g., ".pdf", ".xlsx", ".csv").
+// ConvertSpreadsheet converts a spreadsheet from the given data source into the
+// specified output format and returns the resulting binary data.
 //
-// Parameters:
-//   - inputPath: Path to the source spreadsheet file (e.g., "input.xlsx"). Must be readable and in a supported format.
-//   - outputPath: Path where the converted file will be written (e.g., "output.pdf"). Parent directories must exist.
+// Deprecated: use Convert with a datasource.BytesSink instead:
 //
-// Returns:
-//   - error: An error if the conversion fails. Possible causes include:
-//   - Input file not found or unreadable,
-//   - Unsupported input or output format,
-//   - Invalid file content,
-//   - Failure to write the output file,
-//   - Underlying issues in the Aspose.Cells engine (e.g., missing native libraries or license restrictions).
-//
-// Example:
-//
-//	err := ConvertFile("data/report.xlsx", "data/report.pdf")
-//	if err != nil {
-//	    log.Fatalf("Conversion failed: %v", err)
+//	var out datasource.BytesSink
+//	if err := Convert(source, opt, &out); err != nil {
+//		return nil, err
 //	}
-func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
+//	bytes_data := out.Bytes()
+func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
+	var out datasource.BytesSink
+	if err := Convert(source, opt, &out); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
 
+// ConvertToWriter converts a spreadsheet from the given data source into the
+// specified output format and writes the result directly to the provided
+// io.Writer.
+//
+// Deprecated: use Convert with a datasource.WriterSink instead:
+//
+//	err := Convert(source, opt, datasource.NewWriterSink(w))
+func ConvertToWriter(source datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
+	return Convert(source, opt, datasource.NewWriterSink(w))
+}
+
+// ConvertSpreadsheetToFile converts a spreadsheet file from the input path to
+// an output file at the specified output path. The output format is inferred
+// automatically from the file extension of outputPath.
+//
+// Deprecated: use Convert with a datasource.FilePathSource and
+// datasource.FilePathSink instead:
+//
+//	opt := formats.Get(filepath.Ext(outputPath)[1:])
+//	err := Convert(datasource.FilePathSource(inputPath), opt,
+//		datasource.FilePathSink(outputPath))
+func ConvertSpreadsheetToFile(inputPath string, outputPath string) error {
 	source := datasource.FilePathSource(inputPath)
 	ext := filepath.Ext(outputPath)
 	if len(ext) <= 1 {
 		return fmt.Errorf("invalid output path %q: missing file extension: %w", outputPath, toolkiterrors.ErrInvalidOutputPath)
 	}
-	save_option := formats.Get(ext[1:])
-	if save_option == nil {
+	opt := formats.Get(ext[1:])
+	if opt == nil {
 		return fmt.Errorf("unsupported output format %q: %w", ext[1:], toolkiterrors.ErrUnsupportedFormat)
 	}
-	data, err := ConvertSpreadsheet(source, save_option)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(outputPath, data, 0644)
+	return Convert(source, opt, datasource.FilePathSink(outputPath))
 }

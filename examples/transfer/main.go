@@ -1,14 +1,14 @@
 // Command transfer demonstrates exporting spreadsheet data to structured
-// formats (XML, JSON) and importing CSV data back into a spreadsheet, using
-// every transfer entry point:
+// formats (XML, JSON) and importing CSV, JSON, and XML data back into a
+// spreadsheet. Every transfer entry point writes its result to a
+// datasource.DataSink, so the output shape (file or in-memory bytes) is chosen
+// by picking the sink, and the target sheet / cell area / format specifics are
+// configured with transfer Options:
 //
-//   - ExportWorksheetToJsonFile:   sheet -> JSON file
-//   - ExportRangeToJsonFile:       cell range -> JSON file
-//   - ExportSpreadsheetToXml:      workbook -> XML []byte
-//   - ExportSpreadsheetToXmlFile:  workbook -> XML file
-//   - ImportCSVFile:               CSV -> worksheet
-//   - ImportJsonFile:              JSON -> worksheet
-//   - ImportXMLFile:               XML -> worksheet
+//   - ExportWorksheetToJson:  sheet -> JSON (WithSheet)
+//   - ExportRangeToJson:      cell range -> JSON (WithSheet/WithStartCell/WithEndCell)
+//   - ExportSpreadsheetToXml: workbook -> XML (WithXMLMap)
+//   - ImportCSV / ImportJsonData / ImportXMLData: data -> worksheet (WithSheet)
 //
 // It seeds an in-memory workbook; the import samples come from examples/data
 // and all outputs go to examples/transfer/out.
@@ -62,45 +62,74 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	source := datasource.BytesSource(seeded)
 
-	// Persist the seed so the file-based entry points have a real input.
+	// Persist the seed so the file-backed entry points have a real input.
 	seedPath := examples.OutPath("transfer", "seed.xlsx")
 	if err := os.WriteFile(seedPath, seeded, 0o644); err != nil {
 		log.Fatal(err)
 	}
 
 	// Export the "Data" sheet as JSON straight from file to file.
-	if err := transfer.ExportWorksheetToJsonFile(seedPath, "Data", examples.OutPath("transfer", "sheet.json")); err != nil {
+	if err := transfer.ExportWorksheetToJson(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSink(examples.OutPath("transfer", "sheet.json")),
+		transfer.WithSheet("Data"),
+	); err != nil {
 		log.Fatalf("export worksheet json: %v", err)
 	}
 
 	// Export a cell range as JSON.
-	if err := transfer.ExportRangeToJsonFile(seedPath, "Data", "A1", "B3", examples.OutPath("transfer", "range.json")); err != nil {
+	if err := transfer.ExportRangeToJson(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSink(examples.OutPath("transfer", "range.json")),
+		transfer.WithSheet("Data"), transfer.WithStartCell("A1"), transfer.WithEndCell("B3"),
+	); err != nil {
 		log.Fatalf("export range json: %v", err)
 	}
 
 	// Export the whole workbook as XML, both to bytes and to a file.
-	xmlData, err := transfer.ExportSpreadsheetToXml(source, "InventoryMap")
-	if err != nil {
+	var xmlSink datasource.BytesSink
+	if err := transfer.ExportSpreadsheetToXml(
+		datasource.BytesSource(seeded), &xmlSink, transfer.WithXMLMap("InventoryMap"),
+	); err != nil {
 		log.Fatalf("export xml: %v", err)
 	}
-	if err := os.WriteFile(examples.OutPath("transfer", "inventory.xml"), xmlData, 0o644); err != nil {
+	if err := os.WriteFile(examples.OutPath("transfer", "inventory.xml"), xmlSink.Bytes(), 0o644); err != nil {
 		log.Fatal(err)
 	}
-	if err := transfer.ExportSpreadsheetToXmlFile(seedPath, "InventoryMap", examples.OutPath("transfer", "inventory-file.xml")); err != nil {
+	if err := transfer.ExportSpreadsheetToXml(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSink(examples.OutPath("transfer", "inventory-file.xml")),
+		transfer.WithXMLMap("InventoryMap"),
+	); err != nil {
 		log.Fatalf("export xml file: %v", err)
 	}
 
 	// Import CSV, JSON, and XML data into fresh copies of the workbook. The
 	// sample data files live in examples/data.
-	if err := transfer.ImportCSVFile(seedPath, examples.DataPath("BookCsvDuplicateData.csv"), "Imported", 0, 0, true, ",", examples.OutPath("transfer", "imported-csv.xlsx")); err != nil {
+	if err := transfer.ImportCSV(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSource(examples.DataPath("BookCsvDuplicateData.csv")),
+		datasource.FilePathSink(examples.OutPath("transfer", "imported-csv.xlsx")),
+		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
+		transfer.WithConvertNumeric(true), transfer.WithSeparator(","),
+	); err != nil {
 		log.Fatalf("import csv: %v", err)
 	}
-	if err := transfer.ImportJsonFile(seedPath, examples.DataPath("importdata.json"), "Imported", 0, 0, examples.OutPath("transfer", "imported-json.xlsx")); err != nil {
+	if err := transfer.ImportJsonData(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSource(examples.DataPath("importdata.json")),
+		datasource.FilePathSink(examples.OutPath("transfer", "imported-json.xlsx")),
+		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
+	); err != nil {
 		log.Fatalf("import json: %v", err)
 	}
-	if err := transfer.ImportXMLFile(seedPath, examples.DataPath("data.xml"), "Imported", 0, 0, examples.OutPath("transfer", "imported-xml.xlsx")); err != nil {
+	if err := transfer.ImportXMLData(
+		datasource.FilePathSource(seedPath),
+		datasource.FilePathSource(examples.DataPath("data.xml")),
+		datasource.FilePathSink(examples.OutPath("transfer", "imported-xml.xlsx")),
+		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
+	); err != nil {
 		log.Fatalf("import xml: %v", err)
 	}
 

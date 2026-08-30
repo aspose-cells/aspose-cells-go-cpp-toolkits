@@ -23,5 +23,5 @@ Example implementations might include:
   - CSVSaveOption: exports to CSV
   - XLSXSaveOption: re-saves as XLSX with specific settings
 
-This interface enables a flexible, decoupled design where conversion logic can be extended without modifying core conversion functions like ConvertSpreadsheet or ConvertToWriter.
+This interface enables a flexible, decoupled design where conversion logic can be extended without modifying core conversion functions like converter.Convert, manipulator.Merge, or manipulator.Split.
 

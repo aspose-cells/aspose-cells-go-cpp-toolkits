@@ -1,24 +1,8 @@
 # datasource
 
-## Types
+The `datasource` package abstracts spreadsheet input and output so toolkit entry points take `DataSource` / `DataSink` instead of concrete file, bytes, or stream types. One signature therefore covers every input and output shape, keeping the public API surface small.
 
-### BytesSource
-
-```go
-type BytesSource []byte
-```
-
-BytesSource is an implementation of a data source based on in-memory byte slices. This is very useful in unit tests or when processing data that has been loaded into memory.
-
-#### Methods
-
-##### Open
-
-```go
-func (b BytesSource) Open 
-```
-
-Open wraps the byte slice into an io.ReadCloser. Since the data is in memory, this operation usually does not fail (returns nil error). io.NopCloser is used to wrap an io.Reader into an io.ReadCloser, and its Close method is an empty operation.
+## Input
 
 ### DataSource
 
@@ -28,7 +12,15 @@ type DataSource interface {
 }
 ```
 
-The DataSource defines the general interface for data sources. Any type that implements this interface can serve as a data provider. The Open method is responsible for returning an io.ReadCloser, and the caller must close it after
+The `DataSource` interface defines a readable input. Any type that implements `Open` can serve as a data provider. `Open` returns an `io.ReadCloser` that the toolkit (via `internal/aspose/cells.ReadSource`) drains and closes.
+
+### BytesSource
+
+```go
+type BytesSource []byte
+```
+
+`BytesSource` is a `DataSource` backed by an in-memory byte slice. Useful in unit tests or when processing data already loaded into memory. `Open` wraps the slice in an `io.ReadCloser` and never fails.
 
 ### FilePathSource
 
@@ -36,35 +28,69 @@ The DataSource defines the general interface for data sources. Any type that imp
 type FilePathSource string
 ```
 
-FilePathSource is an implementation of a data source based on local file system paths. It implements the DataSource interface and is used to read files from the specified path.
-
-#### Methods
-
-##### Open
-
-```go
-func (p FilePathSource) Open 
-```
-
-Open Opens the file at the specified path. It directly calls os.Open, so if the file does not exist or does not have the required permissions, it will return the corresponding system error.
+`FilePathSource` is a `DataSource` backed by a local file path. `Open` calls `os.Open`, so a missing file or a permissions problem surfaces the corresponding system error.
 
 ### ReaderSource
 
 ```go
-type ReaderSource struct {
-	// contains filtered or unexported fields
+func NewReaderSource(r io.Reader) *ReaderSource
+```
+
+`NewReaderSource` adapts an already-open stream (an HTTP response body, an open file, etc.) into a `DataSource`. The stream is consumed lazily on first use and buffered, so `Open` may be called repeatedly; every call returns a fresh reader over the same bytes. The caller remains responsible for closing the underlying stream.
+
+## Output
+
+### DataSink
+
+```go
+type DataSink interface {
+	Write(name string, data []byte) error
 }
 ```
 
-ReaderSource is an adapter for the existing io.ReadCloser. When you already have an open stream (such as an HTTP response body), but the function signature requires a DataSource, use this.
+The `DataSink` interface defines a writable output. The `name` parameter is used by multi-output operations (for example `manipulator.Split` writing one file or archive entry per worksheet); single-output sinks ignore it.
 
-#### Methods
-
-##### Open
+### FilePathSink
 
 ```go
-func (r ReaderSource) Open 
+type FilePathSink string
 ```
 
-Open directly returns the reader held internally. Note: ReaderSource is usually used to wrap already opened streams, so the Open method itself does not return an error.
+`FilePathSink` writes each `Write` call to the file at the given path, truncating any existing file. `name` is ignored.
 
+### WriterSink
+
+```go
+func NewWriterSink(w io.Writer) *WriterSink
+```
+
+`NewWriterSink` wraps an `io.Writer` (a file, `bytes.Buffer`, HTTP response writer, …) as a `DataSink`. `name` is ignored.
+
+### BytesSink
+
+```go
+type BytesSink struct {
+	// contains unexported fields
+}
+
+func (b *BytesSink) Write(name string, data []byte) error
+func (b *BytesSink) Bytes() []byte
+```
+
+`BytesSink` accumulates every `Write` call into an in-memory buffer. Hand a `*BytesSink` to any toolkit entry point when you want the result as bytes, then read it back with `Bytes()`.
+
+### FolderSink
+
+```go
+type FolderSink string
+```
+
+`FolderSink` writes each `Write` call to a file named `name` inside the given folder, creating the folder if needed. It backs `manipulator.Split`'s per-worksheet file output.
+
+### ZipSink
+
+```go
+func NewZipSink(zw *zip.Writer) *ZipSink
+```
+
+`NewZipSink` wraps a `zip.Writer` as a `DataSink`. Each `Write` call creates an entry named `name` in the archive. The caller closes the `zip.Writer` after the operation to finalize the archive. It backs `manipulator.Split`'s per-worksheet archive output.
