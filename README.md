@@ -48,8 +48,8 @@ import (
 
 func main() {
   core.SetLicense(os.Getenv("LicensePath"))
-  converter.ConvertSpreadsheetToFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.pdf")
-  converter.ConvertSpreadsheetToFile("TestData/Source/BookText.xlsx", "TestData/Output/output1.md")
+  converter.ConvertSpreadsheetToFile("examples/data/BookText.xlsx", "out/output1.pdf")
+  converter.ConvertSpreadsheetToFile("examples/data/BookText.xlsx", "out/output1.md")
 }
 
 ```

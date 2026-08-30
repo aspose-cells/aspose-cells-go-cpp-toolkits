@@ -2,7 +2,10 @@
 // using a fluent, action-based Domain Specific Language (DSL).
 package editor
 
-import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+import (
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+)
 
 //func WithDefaultStyle(styleAction StyleAction) WorkbookAction {
 //	return func(workbook *asposecells.Workbook) error {
@@ -80,7 +83,7 @@ func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_String(sheetName)
+		ws, err := cells.WorksheetByName(wss, sheetName)
 		if err != nil {
 			return err
 		}

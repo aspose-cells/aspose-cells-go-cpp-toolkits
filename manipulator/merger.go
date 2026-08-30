@@ -35,13 +35,13 @@ import (
 // Example:
 //
 //	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
+//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("examples/data/BookText.xlsx"), datasource.FilePathSource("examples/data/EmployeeSalesSummary.xlsx")}
 //	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
 //	if err != nil {
 //		println(err)
 //		return
 //	}
-//	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
+//	os.WriteFile("out/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
 	if outSaveOption == nil {
 		return nil, toolkiterrors.ErrSaveOptionNil
@@ -98,13 +98,13 @@ func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions
 // Example:
 //
 //	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
+//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("examples/data/BookText.xlsx"), datasource.FilePathSource("examples/data/EmployeeSalesSummary.xlsx")}
 //	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
 //	if err != nil {
 //		println(err)
 //		return
 //	}
-//	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
+//	os.WriteFile("out/mergedOutput2.html", bytes_data, 0644)
 func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outSaveOption saveoptions.SaveOption) error {
 	if outSaveOption == nil {
 		return toolkiterrors.ErrSaveOptionNil
@@ -157,7 +157,7 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 //
 // Example:
 //
-// manipulator.MergeSpreadsheetsToFile([]string{"TestData/Source/CompanySales.xlsx", "TestData/Source/BookText.xlsx", "TestData/Source/EmployeeSalesSummary.xlsx"}, "TestData/Output/MergeBook.xlsx")
+// manipulator.MergeSpreadsheetsToFile([]string{"examples/data/CompanySales.xlsx", "examples/data/BookText.xlsx", "examples/data/EmployeeSalesSummary.xlsx"}, "out/MergeBook.xlsx")
 func MergeSpreadsheetsToFile(inputPaths []string, outputPath string) error {
 	ext := filepath.Ext(outputPath)
 	if len(ext) <= 1 {

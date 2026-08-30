@@ -44,4 +44,8 @@ var (
 	// ErrInputIsFolder is returned when a file operation receives a directory
 	// path where a file is required.
 	ErrInputIsFolder = errors.New("input path is a folder, expected a file")
+
+	// ErrWorksheetNotFound is returned when a worksheet is referenced by name
+	// but no worksheet with that name exists in the workbook.
+	ErrWorksheetNotFound = errors.New("worksheet not found")
 )

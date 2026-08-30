@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -22,7 +23,7 @@ func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Wo
 	case int64:
 		return wss.Get_Int(int32(v))
 	case string:
-		return wss.Get_String(v)
+		return cells.WorksheetByName(wss, v)
 	default:
 		return nil, fmt.Errorf("invalid sheet identifier %v: %w", id, toolkiterrors.ErrInvalidSheetID)
 	}

@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **ISSUE-CELLSGO-279**: Referencing a worksheet by a name that does not exist now returns `ErrWorksheetNotFound` instead of crashing the process. The binding's `Get_String(name)` returns `err=nil` with a dangling native handle for missing names; every by-name lookup (`editor.WithRenameWorksheet`, `editor.InWorksheet`, `transfer.ExportRangeToJson`, `transfer.ExportWorksheetToJson`) now iterates the collection via the new `internal/aspose/cells.WorksheetByName` helper.
+- **ISSUE-CELLSGO-279**: Committed the `examples/` and GitHub Actions CI that v26.8.0 documented but never shipped (both were hidden by `.gitignore`). The examples were rewritten against the released API, and `.gitattributes` (`* text eol=lf`) was added so `gofmt` and tests behave identically on Linux and Windows.
+
+### Added
+- `errors.ErrWorksheetNotFound` sentinel for classifying missing-worksheet failures with `errors.Is`.
+
+### Changed
+- **ISSUE-CELLSGO-279**: Replaced the root `main.go` smoke test with `examples/` commands decomposed by功能: `convert` shows all three conversion entry points on a sample workbook, `edit` demonstrates the full worksheet operation chain, `merge-split` covers every merge/split variant, and `transfer` covers JSON/XML export and CSV/JSON/XML import. Each example is self-contained so it runs headlessly.
+- **ISSUE-CELLSGO-279**: Moved the sample data from `TestData/Source/` into `examples/data/` and deleted `TestData/` (its `Output/` subdirectory held only generated artifacts). Doc comments and `docs/` now reference `examples/data/` paths.
+- **ISSUE-CELLSGO-279**: Added `examples/run.sh` to execute every example in one go or a single example individually (`./examples/run.sh` or `./examples/run.sh convert`); CI drives the examples through it on Linux and Windows after the test suite, with retries for the native engine's intermittent splitter failure.
+- **ISSUE-CELLSGO-279**: Moved the shared example helper out of `internal/` into `examples/common` so example-only code stays out of the library packages; example outputs now use cwd-independent absolute paths under `examples/<name>/out`, so `go run ./examples/...` from the module root never pollutes it.
+- **ISSUE-CELLSGO-279**: The `transfer` example avoids relying on the default first sheet's name, which evaluation mode can corrupt; it puts its table on an explicitly named sheet.
+
+---
+
 ## [v26.8.0] - 2026-08-30
 
 ### Added

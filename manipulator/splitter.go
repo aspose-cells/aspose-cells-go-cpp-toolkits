@@ -110,12 +110,12 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 // Example:
 //
 // save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-// bytes_data, err = manipulator.SplitSpreadsheet(datasource.FilePathSource("TestData/Source/BookText.xlsx"), save_option)
+// bytes_data, err = manipulator.SplitSpreadsheet(datasource.FilePathSource("examples/data/BookText.xlsx"), save_option)
 // if err != nil {
 // println(err)
 // return
 // }
-// os.WriteFile("TestData/Output/output5.zip", bytes_data, 0644)
+// os.WriteFile("out/output5.zip", bytes_data, 0644)
 func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
 	if outSaveOption == nil {
 		return nil, toolkiterrors.ErrSaveOptionNil
@@ -158,7 +158,7 @@ func SplitSpreadsheet(source datasource.DataSource, outSaveOption saveoptions.Sa
 //
 // zipWriter := zip.NewWriter(zipFile)
 // save_option = image.New(image.WithImageType("png"))
-// err = manipulator.SplitSpreadsheetToZipWriter(datasource.FilePathSource("TestData/Source/BookText.xlsx"), zipWriter, save_option)
+// err = manipulator.SplitSpreadsheetToZipWriter(datasource.FilePathSource("examples/data/BookText.xlsx"), zipWriter, save_option)
 // if err != nil {
 // println(err)
 // return
@@ -197,7 +197,7 @@ func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Wr
 //
 // Example:
 //
-// manipulator.SplitSpreadsheetToFolder("TestData/Source/BookText.xlsx", "TestData/Output")
+// manipulator.SplitSpreadsheetToFolder("examples/data/BookText.xlsx", "out")
 func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
 	workbook, err := asposecells.NewWorkbook_String(inputPath)
 	if err != nil {

@@ -23,13 +23,13 @@ Returns:
 Example:
 
 	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
+	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("examples/data/BookText.xlsx"), datasource.FilePathSource("examples/data/EmployeeSalesSummary.xlsx")}
 	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
 	if err != nil {
 		println(err)
 		return
 	}
-	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
+	os.WriteFile("out/mergedOutput2.html", bytes_data, 0644)
 
 ### MergeSpreadsheetsToFile
 
@@ -50,7 +50,7 @@ Returns:
 
 Example:
 
-manipulator.MergeSpreadsheetsToFile(\[]string{"TestData/Source/CompanySales.xlsx", "TestData/Source/BookText.xlsx", "TestData/Source/EmployeeSalesSummary.xlsx"}, "TestData/Output/MergeBook.xlsx")
+manipulator.MergeSpreadsheetsToFile(\[]string{"examples/data/CompanySales.xlsx", "examples/data/BookText.xlsx", "examples/data/EmployeeSalesSummary.xlsx"}, "out/MergeBook.xlsx")
 
 ### MergeSpreadsheetsToWriter
 
@@ -73,13 +73,13 @@ Returns:
 Example:
 
 	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
+	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("examples/data/BookText.xlsx"), datasource.FilePathSource("examples/data/EmployeeSalesSummary.xlsx")}
 	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
 	if err != nil {
 		println(err)
 		return
 	}
-	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
+	os.WriteFile("out/mergedOutput2.html", bytes_data, 0644)
 
 ### SplitSpreadsheet
 
@@ -106,7 +106,7 @@ Returns:
 
 Example:
 
-manipulator.SplitSpreadsheetToFolder("TestData/Source/BookText.xlsx", "TestData/Output")
+manipulator.SplitSpreadsheetToFolder("examples/data/BookText.xlsx", "out")
 
 ### SplitSpreadsheetToZipWriter
 
@@ -127,5 +127,5 @@ Returns:
 
 Example:
 
-zipWriter := zip.NewWriter(zipFile) save\_option = image.New(image.WithImageType("png")) err = manipulator.SplitSpreadsheetToZipWriter(datasource.FilePathSource("TestData/Source/BookText.xlsx"), zipWriter, save\_option) if err != nil { println(err) return } zipWriter.Flush() zipWriter.Close() zipFile.Close()
+zipWriter := zip.NewWriter(zipFile) save\_option = image.New(image.WithImageType("png")) err = manipulator.SplitSpreadsheetToZipWriter(datasource.FilePathSource("examples/data/BookText.xlsx"), zipWriter, save\_option) if err != nil { println(err) return } zipWriter.Flush() zipWriter.Close() zipFile.Close()
 

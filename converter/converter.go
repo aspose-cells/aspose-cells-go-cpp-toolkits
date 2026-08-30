@@ -36,12 +36,12 @@ import (
 // Example:
 //
 // save_option := pdf.New(pdf.WithOnePagePerSheet(true))
-// bytes_data, err := converter.ConvertSpreadsheet(datasource.FilePathSource("TestData/Source/BookText.xlsx"), save_option)
+// bytes_data, err := converter.ConvertSpreadsheet(datasource.FilePathSource("examples/data/BookText.xlsx"), save_option)
 // if err != nil {
 // println(err)
 // return
 // }
-// os.WriteFile("TestData/Output/output2.pdf", bytes_data, 0644)
+// os.WriteFile("out/output2.pdf", bytes_data, 0644)
 func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
 	if opt == nil {
 		return nil, toolkiterrors.ErrSaveOptionNil
@@ -76,11 +76,11 @@ func ConvertSpreadsheet(source datasource.DataSource, opt saveoptions.SaveOption
 //
 // Example:
 //
-// file, err := os.Create("TestData/Output/output2.md")
+// file, err := os.Create("out/output2.md")
 // if err != nil {
 // panic(err)
 // }
-// err = converter.ConvertToWriter(datasource.FilePathSource("TestData/Source/BookText.xlsx"), markdown.New(markdown.WithClearData(true)), file)
+// err = converter.ConvertToWriter(datasource.FilePathSource("examples/data/BookText.xlsx"), markdown.New(markdown.WithClearData(true)), file)
 // if err != nil {
 // return
 // }

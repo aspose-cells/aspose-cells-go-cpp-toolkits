@@ -22,7 +22,7 @@ Returns:
 
 Example:
 
-save\_option := pdf.New(pdf.WithOnePagePerSheet(true)) bytes\_data, err := converter.ConvertSpreadsheet(datasource.FilePathSource("TestData/Source/BookText.xlsx"), save\_option) if err != nil { println(err) return } os.WriteFile("TestData/Output/output2.pdf", bytes\_data, 0644)
+save\_option := pdf.New(pdf.WithOnePagePerSheet(true)) bytes\_data, err := converter.ConvertSpreadsheet(datasource.FilePathSource("examples/data/BookText.xlsx"), save\_option) if err != nil { println(err) return } os.WriteFile("out/output2.pdf", bytes\_data, 0644)
 
 ### ConvertSpreadsheetToFile
 
@@ -73,5 +73,5 @@ Returns:
 
 Example:
 
-file, err := os.Create("TestData/Output/output2.md") if err != nil { panic(err) } err = converter.ConvertToWriter(datasource.FilePathSource("TestData/Source/BookText.xlsx"), markdown.New(markdown.WithClearData(true)), file) if err != nil { return } defer file.Close()
+file, err := os.Create("out/output2.md") if err != nil { panic(err) } err = converter.ConvertToWriter(datasource.FilePathSource("examples/data/BookText.xlsx"), markdown.New(markdown.WithClearData(true)), file) if err != nil { return } defer file.Close()
 

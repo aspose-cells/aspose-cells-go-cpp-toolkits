@@ -37,7 +37,7 @@ func ExportRangeToJson(source datasource.DataSource, worksheet string, startCell
 	if err != nil {
 		return nil, err
 	}
-	ws, err := worksheets.Get_String(worksheet)
+	ws, err := cells.WorksheetByName(worksheets, worksheet)
 	if err != nil {
 		return nil, err
 	}
