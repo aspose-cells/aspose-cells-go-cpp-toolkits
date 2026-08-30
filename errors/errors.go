@@ -56,4 +56,8 @@ var (
 	// ErrDataSinkNil is returned when a nil datasource.DataSink is passed to a
 	// toolkit entry point.
 	ErrDataSinkNil = errors.New("data sink is nil")
+
+	// ErrNoSources is returned when a merge entry point receives no input
+	// sources, which would otherwise silently produce an empty workbook.
+	ErrNoSources = errors.New("no data sources to merge")
 )

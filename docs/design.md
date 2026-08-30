@@ -147,8 +147,8 @@ func WithSeparator(s string) Option       // ImportCSV
 
 ## 6. 测试策略
 
-- `datasource_test`:新接口单元测试——各 Sink 的 Write 语义、`ReaderSource`(io.Reader)缓冲、`ReadSource` 错误传播。
-- `converter/manipulator/transfer` 行为测试(新增):哨兵错误(`ErrSaveOptionNil`/`ErrUnsupportedFormat`/`ErrInvalidOutputPath`/`ErrWorksheetNotFound`)、Sink 路由(同一能力写文件/写流/取字节结果一致)。
+- `datasource_test`:新接口单元测试——各 Sink 的 Write 语义、`ReaderSource`(io.Reader)缓冲、`ReadSource` 错误传播、`FilePathSink` 自动建父目录。
+- `converter/manipulator/transfer` 行为测试(新增):哨兵错误(`ErrSaveOptionNil`/`ErrUnsupportedFormat`/`ErrInvalidOutputPath`/`ErrWorksheetNotFound`/`ErrNoSources`/`ErrDataSourceNil`/`ErrDataSinkNil`)、Sink 路由(同一能力写文件/写流/取字节结果一致)、`Merge` 空源报错且合并结果含双源、`Split` 每个命名 sheet 产出独立文件/zip 条目、空 sheet 导出合法 `[]`、CSV 导入落格(导出 JSON 回读)。
 - `examples/`:全部改用新签名,仍支持一次性(`./examples/run.sh`)与单个执行。
 - CI 不变。
 
@@ -169,3 +169,5 @@ func WithSeparator(s string) Option       // ImportCSV
 2. **Split → `BytesSink` 无意义**:多次 `Write` 只是拼接,不构成 zip;文档明确该组合用 `ZipSink`。
 3. **单输出 Sink 的 `name` 约定**:统一传 `""`,由 Sink 忽略;避免调用方误传。
 4. **保持字节式处理**:引擎 `Apply`/`SaveToStream` 输出整块 `[]byte`,本次不改内存模型。
+5. **eval 模式还会追加 "Evaluation Warning" sheet**:评估版保存的工作簿可能额外多出一个名为 "Evaluation Warning" 的 sheet,导致"输出文件数 == sheet 数"类断言不稳定。行为测试改为主张「每个显式命名 sheet 产出独立输出」,不依赖精确总数;正式授权版无此噪声。
+6. **加载期工作表名不可靠(eval 模式)**:引擎在 `NewWorkbook_Stream` 加载时以约 2%/次 的概率把**任意**工作表的名称改写成垃圾字节——不限于默认首表,也不存在于字节流中(探针证实:同一份字节第一次加载名称正常,第二次加载首表名可变成 `"\x00@\x12\x00"`)。后果:按名查找(`WithSheet` 默认 `"Sheet1"`)可能返回 `ErrWorksheetNotFound`;`Split` 可能以坏名产出输出文件,或对含空字节等非法文件名的坏名直接报错。对策:`WithSheet` 文档与 README 注明"请用显式命名 sheet";凡依赖名称存活的断言(行为测试)基于显式命名 sheet 构造,并用 `retryStable` 重试——每次重试重新生成输入并重新加载,直至引擎给出干净名称;真实缺陷每次重试都失败,不会被掩盖。

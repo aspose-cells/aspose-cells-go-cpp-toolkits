@@ -88,6 +88,24 @@ go mod tidy
 $env:Path = $env:Path+ ";${env:GOPATH}\github.com\aspose-cells\aspose-cells-go-cpp\v26@v26.7.0\lib\win_x86_64\"
 ```
 
+## Migrating from v26.8.0
+
+The conversion, merge/split, and transfer entry points were consolidated onto sink-based composites. The older entry points are kept as deprecated thin wrappers, so existing code still compiles; new code should prefer the composites.
+
+| Old entry point | New entry point |
+| --- | --- |
+| `converter.ConvertSpreadsheet(source, opt) ([]byte, error)` | `converter.Convert(source, opt, &datasource.BytesSink{})` |
+| `converter.ConvertToWriter(source, w, opt)` | `converter.Convert(source, opt, datasource.NewWriterSink(w))` |
+| `converter.ConvertSpreadsheetToFile(in, out)` | `converter.Convert(datasource.FilePathSource(in), formats.Get(ext), datasource.FilePathSink(out))` |
+| `manipulator.MergeSpreadsheets(sources, opt)` | `manipulator.Merge(sources, opt, &datasource.BytesSink{})` |
+| `manipulator.SplitSpreadsheetToFolder(dir)` | `manipulator.Split(src, opt, datasource.FolderSink(dir))` |
+| `manipulator.SplitSpreadsheetToZipWriter(zw)` | `manipulator.Split(src, opt, datasource.NewZipSink(zw))` |
+| `transfer.ImportCSVFile(...)` | `transfer.ImportCSV(src, csv, datasource.FilePathSink(out), opts...)` |
+
+The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`) were replaced by sink-based versions; use `&datasource.BytesSink{}` for bytes.
+
+> **Note on evaluation mode**: when a workbook is loaded the engine occasionally corrupts a worksheet's name (observed ~2% of loads; any sheet, not just the default first sheet — and it is not present in the saved bytes, so the same file can load clean once and corrupt later). By-name lookups (`WithSheet` defaulting to `"Sheet1"`) may therefore fail with `ErrWorksheetNotFound`, and per-sheet operations such as `manipulator.Split` can emit a garbage-named output. Use explicitly named sheets and target them via `WithSheet`; code that cannot tolerate the occasional spurious miss should retry on freshly loaded input.
+
 ## Supported Formats
 
 ### Support file format

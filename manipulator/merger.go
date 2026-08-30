@@ -46,6 +46,9 @@ func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink dat
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
+	if len(sources) == 0 {
+		return toolkiterrors.ErrNoSources
+	}
 	newWorkbook, err := asposecells.NewWorkbook()
 	if err != nil {
 		return err
@@ -60,15 +63,15 @@ func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink dat
 	}
 	for i := 0; i < len(sources); i++ {
 		if sources[i] == nil {
-			return toolkiterrors.ErrDataSourceNil
+			return fmt.Errorf("source %d is nil: %w", i, toolkiterrors.ErrDataSourceNil)
 		}
 		workbook, err := cells.GetWorkbookWithDataSource(sources[i])
 		if err != nil {
-			return err
+			return fmt.Errorf("source %d: %w", i, err)
 		}
 		err = newWorkbook.Combine(workbook)
 		if err != nil {
-			return err
+			return fmt.Errorf("combine source %d: %w", i, err)
 		}
 	}
 

@@ -42,51 +42,51 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 		}
 		newWorkbook, err := asposecells.NewWorkbook()
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q: %w", sheetname, err)
 		}
 		err = newWorkbook.CopyTheme(workbook)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q copy theme: %w", sheetname, err)
 		}
 		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q: %w", sheetname, err)
 		}
 		err = newDefaultStyle.Copy(defaultStyle)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q copy style: %w", sheetname, err)
 		}
 		newWorksheets, err := newWorkbook.GetWorksheets()
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q: %w", sheetname, err)
 		}
 		newWorksheet, err := newWorksheets.Get_Int(int32(0))
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q: %w", sheetname, err)
 		}
 		err = newWorksheet.SetName(sheetname)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q set name: %w", sheetname, err)
 		}
 		err = newWorksheet.Copy_Worksheet(worksheet)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q copy: %w", sheetname, err)
 		}
 		newFilename := sheetname + "." + outSaveOption.GetFormat()
 		err = newWorkbook.SetFileName(newFilename)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q set file name: %w", sheetname, err)
 		}
 		newData, err := newWorkbook.SaveToStream()
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q save: %w", sheetname, err)
 		}
 		outData, err := outSaveOption.Apply(newData)
 		if err != nil {
-			return err
+			return fmt.Errorf("sheet %q apply format: %w", sheetname, err)
 		}
 		if err := emit(newFilename, outData); err != nil {
-			return err
+			return fmt.Errorf("sheet %q emit: %w", sheetname, err)
 		}
 	}
 	return nil

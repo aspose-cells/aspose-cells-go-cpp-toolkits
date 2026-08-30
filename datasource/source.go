@@ -102,8 +102,15 @@ type DataSink interface {
 type FilePathSink string
 
 // Write writes data to the file at the sink's path, truncating any existing
-// file.
+// file. Missing parent directories are created first, matching FolderSink, so
+// writing to a not-yet-existing output folder does not fail.
 func (p FilePathSink) Write(_ string, data []byte) error {
+	dir := filepath.Dir(string(p))
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
 	return os.WriteFile(string(p), data, 0o644)
 }
 

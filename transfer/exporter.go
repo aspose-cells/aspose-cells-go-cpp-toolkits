@@ -45,6 +45,14 @@ func defaultOptions() *options {
 }
 
 // WithSheet sets the worksheet to export from or import into, by name.
+//
+// Note: in evaluation mode the engine occasionally corrupts a worksheet's name
+// when the workbook is loaded (observed ~2% of loads, any sheet, not just the
+// default first sheet), so a name-based lookup may fail with
+// ErrWorksheetNotFound even for a sheet that exists. Prefer explicitly named
+// sheets — create them via editor.WithAddWorksheet or rename the source
+// sheet — and target them here; callers that cannot tolerate the occasional
+// spurious miss should retry on fresh input.
 func WithSheet(name string) Option {
 	return func(o *options) { o.sheetName = name }
 }
@@ -175,6 +183,12 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	out, err := opt.Apply(data)
 	if err != nil {
 		return err
+	}
+	// An empty range (e.g. a worksheet with no data) would otherwise produce a
+	// successful 0-byte result, which callers can't distinguish from a missing
+	// file. Write a valid empty JSON array instead.
+	if len(out) == 0 {
+		out = []byte("[]")
 	}
 	return sink.Write("", out)
 }
