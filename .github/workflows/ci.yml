@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Format check
+        run: |
+          unformatted=$(gofmt -l .)
+          if [[ -n "$unformatted" ]]; then
+            echo "The following files are not gofmt formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Resolve native library directory
+        run: |
+          MOD_DIR=$(go list -m -f '{{.Dir}}' github.com/aspose-cells/aspose-cells-go-cpp/v26)
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            LIB_DIR="$MOD_DIR/lib/win_x86_64"
+          else
+            LIB_DIR="$MOD_DIR/lib/linux_x86_64"
+          fi
+          echo "LIB_DIR=$LIB_DIR" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: |
+          export PATH="$PATH:$LIB_DIR"
+          export LD_LIBRARY_PATH="$LIB_DIR:$LD_LIBRARY_PATH"
+          go test ./...
+
+      - name: Run examples
+        run: |
+          export PATH="$PATH:$LIB_DIR"
+          export LD_LIBRARY_PATH="$LIB_DIR:$LD_LIBRARY_PATH"
+          # Each example is a self-contained command. The native engine
+          # occasionally fails a single op (the splitter intermittently reports
+          # Argument_InvalidPathChars), so retry each example a few times before
+          # giving up.
+          run_example() {
+            for attempt in 1 2 3; do
+              if ./examples/run.sh "$1"; then
+                return 0
+              fi
+              echo "example '$1' failed (attempt $attempt); retrying"
+              sleep 2
+            done
+            return 1
+          }
+          run_example convert
+          run_example edit
+          run_example merge-split
+          run_example transfer
