@@ -60,4 +60,13 @@ var (
 	// ErrNoSources is returned when a merge entry point receives no input
 	// sources, which would otherwise silently produce an empty workbook.
 	ErrNoSources = errors.New("no data sources to merge")
+
+	// ErrInvalidCellRef is returned when a cell reference string (e.g. "B3")
+	// cannot be parsed into a cell coordinate.
+	ErrInvalidCellRef = errors.New("invalid cell reference")
+
+	// ErrInvalidRange is returned when a cell range has an invalid shape, e.g. a
+	// range whose start cell lies below or to the right of its end cell, or an
+	// area string with more than one ":" separator.
+	ErrInvalidRange = errors.New("invalid cell range")
 )

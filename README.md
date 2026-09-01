@@ -7,8 +7,9 @@
 
 - **Convert Excel to PDF, images & more** — 28+ output formats: XLS, XLSX, XLSB, XLSM, XLTX, XLTM, CSV, TXT, ODS, DIF, DBF, SQL, XML, PDF, DOCX, PPTX, XPS, PCL, EPUB, HTML, JSON, Markdown, PNG, JPG, SVG, BMP, TIF/TIFF.
 - **Import & export data** — Export worksheets or cell ranges to JSON / XML; import CSV / XML / JSON data into a worksheet.
+- **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, and dimensions.
 - **Merge & split workbooks** — Merge multiple spreadsheets into one; split a workbook into per-sheet files, a ZIP archive, or in-memory bytes.
-- **Fluent spreadsheet editing** — Set cell values, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, and add / delete / rename worksheets.
+- **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, and add / delete / rename worksheets.
 - **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction for files, bytes, and streams.
 
 ## Overview
@@ -44,6 +45,7 @@ import (
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+  _ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/register" // register every output format for extension-based dispatch
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/markdown"
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/pdf"
   "os"
@@ -62,6 +64,8 @@ func main() {
 }
 
 ```
+
+> **About the `_ "…/register"` blank import**: it registers every supported output format with the `formats` registry. It is only strictly required when an entry point resolves the format from a file extension or `formats.Get` (for example `converter.ConvertSpreadsheetToFile`, or `manipulator.Merge` with a `formats.Get("xlsx")` option). Passing an option constructor directly — `pdf.New(...)`, `markdown.New(...)` — works without it. Including the blank import is harmless and recommended.
 
 ### Initialize project go.mod
 
@@ -105,6 +109,18 @@ The conversion, merge/split, and transfer entry points were consolidated onto si
 The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`) were replaced by sink-based versions; use `&datasource.BytesSink{}` for bytes.
 
 > **Note on evaluation mode**: when a workbook is loaded the engine occasionally corrupts a worksheet's name (observed ~2% of loads; any sheet, not just the default first sheet — and it is not present in the saved bytes, so the same file can load clean once and corrupt later). By-name lookups (`WithSheet` defaulting to `"Sheet1"`) may therefore fail with `ErrWorksheetNotFound`, and per-sheet operations such as `manipulator.Split` can emit a garbage-named output. Use explicitly named sheets and target them via `WithSheet`; code that cannot tolerate the occasional spurious miss should retry on freshly loaded input.
+
+## Deprecation schedule
+
+The entry points below are legacy thin wrappers kept so existing code keeps compiling through the v26 line. They are scheduled for **removal in v27.0.0**, the next major version. New code must use the sink-based composites listed in [Migrating from v26.8.0](#migrating-from-v2680).
+
+| Package | Deprecated entry points (removed in v27.0.0) |
+| --- | --- |
+| `converter` | `ConvertSpreadsheet`, `ConvertToWriter`, `ConvertSpreadsheetToFile` |
+| `manipulator` | `MergeSpreadsheets`, `MergeSpreadsheetsToWriter`, `MergeSpreadsheetsToFile`, `SplitSpreadsheet`, `SplitSpreadsheetToZipWriter`, `SplitSpreadsheetToFolder` |
+| `transfer` | `ExportWorksheetToJsonFile`, `ExportRangeToJsonFile`, `ExportSpreadsheetToXmlFile`, `ImportCSVDataIntoSpreadsheet`, `ImportCSVFile`, `ImportJsonDataIntoSpreadsheet`, `ImportJsonFile`, `ImportXMLDataIntoSpreadsheet`, `ImportXMLFile` |
+
+Every deprecated function carries a `// Deprecated:` doc comment pointing to its replacement. If you still call any of these, migrate before upgrading to v27.
 
 ## Supported Formats
 

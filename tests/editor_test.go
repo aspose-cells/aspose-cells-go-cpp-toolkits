@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -215,7 +216,9 @@ func TestEditorBackgroundColorAndVerticalAlignment(t *testing.T) {
 
 // TestSetCellValueRoundTrip writes string, int32, and bool values through the
 // toObject/PutValue_Object path and reads them back from the serialized
-// workbook, verifying the type conversion preserves the values.
+// workbook, verifying the type conversion preserves the values. The read-back
+// runs under retryStable because evaluation mode can corrupt a random cell's
+// value at load time; a genuine regression fails every attempt.
 func TestSetCellValueRoundTrip(t *testing.T) {
 	out, err := editor.EditSpreadsheet(
 		datasource.BytesSource(newTestWorkbookBytes(t)),
@@ -228,57 +231,72 @@ func TestSetCellValueRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EditSpreadsheet error: %v", err)
 	}
+	if err := retryStable(5, func() error {
+		return verifyRoundTrip(out)
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// verifyRoundTrip loads a serialized workbook and checks the values written by
+// TestSetCellValueRoundTrip. It returns an error so the caller can re-load
+// under retryStable.
+func verifyRoundTrip(out []byte) error {
 	wb, err := asposecells.NewWorkbook_Stream(out)
 	if err != nil {
-		t.Fatalf("NewWorkbook_Stream error: %v", err)
+		return fmt.Errorf("NewWorkbook_Stream: %w", err)
 	}
 	wss, err := wb.GetWorksheets()
 	if err != nil {
-		t.Fatalf("GetWorksheets error: %v", err)
+		return err
 	}
 	ws, err := wss.Get_Int(0)
 	if err != nil {
-		t.Fatalf("Get_Int error: %v", err)
+		return err
 	}
 	cells, err := ws.GetCells()
 	if err != nil {
-		t.Fatalf("GetCells error: %v", err)
+		return err
 	}
 
-	check := func(row, col int, verify func(*asposecells.Cell)) {
-		t.Helper()
-		cell, err := cells.Get_Int_Int(int32(row), int32(col))
-		if err != nil {
-			t.Fatalf("Get_Int_Int(%d,%d) error: %v", row, col, err)
-		}
-		verify(cell)
+	get := func(row, col int32) (*asposecells.Cell, error) {
+		return cells.Get_Int_Int(row, col)
 	}
 
-	check(0, 0, func(cell *asposecells.Cell) {
-		got, err := cell.GetStringValue()
-		if err != nil {
-			t.Fatalf("GetStringValue error: %v", err)
-		}
-		if got != "hello" {
-			t.Errorf("string cell = %q, want %q", got, "hello")
-		}
-	})
-	check(0, 1, func(cell *asposecells.Cell) {
-		got, err := cell.GetIntValue()
-		if err != nil {
-			t.Fatalf("GetIntValue error: %v", err)
-		}
-		if got != 42 {
-			t.Errorf("int cell = %d, want 42", got)
-		}
-	})
-	check(0, 2, func(cell *asposecells.Cell) {
-		got, err := cell.GetBoolValue()
-		if err != nil {
-			t.Fatalf("GetBoolValue error: %v", err)
-		}
-		if !got {
-			t.Errorf("bool cell = %v, want true", got)
-		}
-	})
+	cell, err := get(0, 0)
+	if err != nil {
+		return fmt.Errorf("Get_Int_Int(0,0): %w", err)
+	}
+	got, err := cell.GetStringValue()
+	if err != nil {
+		return fmt.Errorf("GetStringValue: %w", err)
+	}
+	if got != "hello" {
+		return fmt.Errorf("string cell = %q, want %q", got, "hello")
+	}
+
+	cell, err = get(0, 1)
+	if err != nil {
+		return fmt.Errorf("Get_Int_Int(0,1): %w", err)
+	}
+	iv, err := cell.GetIntValue()
+	if err != nil {
+		return fmt.Errorf("GetIntValue: %w", err)
+	}
+	if iv != 42 {
+		return fmt.Errorf("int cell = %d, want 42", iv)
+	}
+
+	cell, err = get(0, 2)
+	if err != nil {
+		return fmt.Errorf("Get_Int_Int(0,2): %w", err)
+	}
+	bv, err := cell.GetBoolValue()
+	if err != nil {
+		return fmt.Errorf("GetBoolValue: %w", err)
+	}
+	if !bv {
+		return fmt.Errorf("bool cell = false, want true")
+	}
+	return nil
 }

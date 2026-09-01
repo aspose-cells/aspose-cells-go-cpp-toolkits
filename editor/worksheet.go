@@ -32,11 +32,73 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 		if err != nil {
 			return err
 		}
-		obj, err := toObject(value)
+		if err := putValue(cell, value); err != nil {
+			return err
+		}
+		if t, ok := value.(time.Time); ok {
+			return applyDateValueFormat(cell, t)
+		}
+		return nil
+	}
+}
+
+// putValue converts value into an engine object and writes it to the cell.
+func putValue(cell *asposecells.Cell, value interface{}) error {
+	obj, err := toObject(value)
+	if err != nil {
+		return err
+	}
+	return cell.PutValue_Object(obj)
+}
+
+// applyDateValueFormat sets a date number format on a cell that just received a
+// time.Time value. The engine's NewObject_Date writes a plain numeric serial
+// without a date format, so without this the cell would be displayed and read
+// back as a bare number. Applying a date format makes Excel render it as a date
+// and the query package's type detection recognize it as KindDateTime.
+func applyDateValueFormat(cell *asposecells.Cell, t time.Time) error {
+	style, err := cell.GetStyle()
+	if err != nil {
+		return err
+	}
+	if err := style.SetCustom_String(dateNumberFormat(t)); err != nil {
+		return err
+	}
+	return cell.SetStyle_Style(style)
+}
+
+// dateNumberFormat returns a date custom number format for t: a date-only
+// format when t has no time-of-day component, otherwise a date-time format.
+func dateNumberFormat(t time.Time) string {
+	if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 && t.Nanosecond() == 0 {
+		return "yyyy-mm-dd"
+	}
+	return "yyyy-mm-dd hh:mm:ss"
+}
+
+// SetFormula creates a WorksheetAction that assigns a formula to a specific
+// cell. The formula is evaluated when the workbook is calculated; pair it with
+// CalculateAll when the result needs to be current before the workbook is
+// saved or read back.
+//
+// Parameters:
+//   - row: The zero-based row index of the target cell.
+//   - column: The zero-based column index of the target cell.
+//   - formula: The formula text, e.g. "=SUM(A1:B1)".
+//
+// Returns:
+//   - WorksheetAction: A function that sets the cell's formula.
+func SetFormula(row, column int, formula string) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		cells, err := worksheet.GetCells()
 		if err != nil {
 			return err
 		}
-		return cell.PutValue_Object(obj)
+		cell, err := cells.Get_Int_Int(int32(row), int32(column))
+		if err != nil {
+			return err
+		}
+		return cell.SetFormula_String(formula)
 	}
 }
 
@@ -67,7 +129,20 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 		if err != nil {
 			return err
 		}
-		return cellsRange.SetValue(obj)
+		if err := cellsRange.SetValue(obj); err != nil {
+			return err
+		}
+		if t, ok := value.(time.Time); ok {
+			style, err := cells.GetStyle()
+			if err != nil {
+				return err
+			}
+			if err := style.SetCustom_String(dateNumberFormat(t)); err != nil {
+				return err
+			}
+			return cellsRange.SetStyle_Style(style)
+		}
+		return nil
 	}
 }
 

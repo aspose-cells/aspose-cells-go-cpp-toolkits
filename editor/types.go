@@ -11,12 +11,12 @@ type WorkbookAction func(workbook *asposecells.Workbook) error
 
 // WorksheetAction represents an operation scoped to a specific worksheet.
 // These actions are typically passed as nested arguments to container functions
-// such as InWorksheet or InSheet. They allow developers to perform targeted
+// such as InWorksheet. They allow developers to perform targeted
 // manipulations (e.g., modifying cells, setting print areas) within a single sheet.
 type WorksheetAction func(worksheet *asposecells.Worksheet) error
 
 // StyleAction represents an operation that modifies a style object.
 // These actions are used in conjunction with style-targeting containers
-// like InDefaultStyle or SetCellStyle. They encapsulate formatting changes
+// like InDefaultStyle or SetStyle. They encapsulate formatting changes
 // such as font adjustments, color modifications, and alignment settings.
 type StyleAction func(style *asposecells.Style) error

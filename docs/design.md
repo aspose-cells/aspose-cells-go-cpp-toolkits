@@ -140,6 +140,8 @@ func WithSeparator(s string) Option       // ImportCSV
 - `manipulator.MergeSpreadsheets*` / `SplitSpreadsheet*` → 各自薄包装调用 `manipulator.Merge` / `manipulator.Split`,标记 `Deprecated`。
 - `transfer.ImportCSVDataIntoSpreadsheet` / `ImportCSVFile` / `ImportJsonDataIntoSpreadsheet` / `ImportJsonFile` / `ImportXMLDataIntoSpreadsheet` / `ImportXMLFile` 及三个 `*ToFile` 导出 → 薄包装调用 sink 化函数,标记 `Deprecated`。
 
+> **退出计划**:18 个 Deprecated 薄包装在 README「Deprecation schedule」明确将于 **v27.0.0 移除**;每个函数带 `// Deprecated:` 迁移指引。v26 系列内保持源码兼容,不再新增同形态变体。
+
 **不变**:
 - `editor.EditSpreadsheet(source DataSource, actions ...WorkbookAction) ([]byte, error)` 签名不变(补充层,输出仍为字节;其 DataSource 用法只依赖 `Open`)。
 - `saveoptions` 19 子包、`formats` 注册表、`errors` 哨兵、`internal/aspose/cells` 全部不变。
@@ -170,4 +172,25 @@ func WithSeparator(s string) Option       // ImportCSV
 3. **单输出 Sink 的 `name` 约定**:统一传 `""`,由 Sink 忽略;避免调用方误传。
 4. **保持字节式处理**:引擎 `Apply`/`SaveToStream` 输出整块 `[]byte`,本次不改内存模型。
 5. **eval 模式还会追加 "Evaluation Warning" sheet**:评估版保存的工作簿可能额外多出一个名为 "Evaluation Warning" 的 sheet,导致"输出文件数 == sheet 数"类断言不稳定。行为测试改为主张「每个显式命名 sheet 产出独立输出」,不依赖精确总数;正式授权版无此噪声。
-6. **加载期工作表名不可靠(eval 模式)**:引擎在 `NewWorkbook_Stream` 加载时以约 2%/次 的概率把**任意**工作表的名称改写成垃圾字节——不限于默认首表,也不存在于字节流中(探针证实:同一份字节第一次加载名称正常,第二次加载首表名可变成 `"\x00@\x12\x00"`)。后果:按名查找(`WithSheet` 默认 `"Sheet1"`)可能返回 `ErrWorksheetNotFound`;`Split` 可能以坏名产出输出文件,或对含空字节等非法文件名的坏名直接报错。对策:`WithSheet` 文档与 README 注明"请用显式命名 sheet";凡依赖名称存活的断言(行为测试)基于显式命名 sheet 构造,并用 `retryStable` 重试——每次重试重新生成输入并重新加载,直至引擎给出干净名称;真实缺陷每次重试都失败,不会被掩盖。
+6. **加载期工作表名不可靠(eval 模式)**:引擎在 `NewWorkbook_Stream` 加载时以约 2%/次 的概率把**任意**工作表的名称改写成垃圾字节——不限于默认首表,也不存在于字节流中(探针证实:同一份字节第一次加载名称正常,第二次加载首表名可变成 `"\x00@\x12\x00"`)。后果:按名查找(`WithSheet` 默认 `"Sheet1"`)可能返回 `ErrWorksheetNotFound`;`Split` 可能以坏名产出输出文件,或对含空字节等非法文件名的坏名直接报错。对策:`WithSheet` 文档与 README 注明"请用显式命名 sheet";凡依赖名称存活的断言(行为测试)基于显式命名 sheet 构造,并用 `retryStable` 重试——每次重试重新生成输入并重新加载,直至引擎给出干净名称;真实缺陷每次重试都失败,不会被掩盖。**同一机制也可能把随机单元格的值读成垃圾字节**(同一份字节可干净加载、也可返回指针垃圾),因此"加载后读值"的测试同样套 `retryStable`,`query.WithSheetIndex` 对自动化免疫。
+
+## 9. 读取层(query)与 editor 增强(ISSUE-CELLSGO-294)
+
+### 9.1 定位
+
+`query` 包是 `transfer` 的读侧补充:`transfer` 把 sheet/range 序列化成格式字节(JSON/XML),`query` 把单元格读成 Go 原生类型供程序判断。二者并存——导出走 sink,读取返回 `[][]CellValue`(结构化数据无法进 sink)。不镜像底层对象模型,输出即数据。
+
+### 9.2 query 设计
+
+- 数据模型:`CellValue` + `CellKind`(`KindEmpty`/`KindText`/`KindInt`/`KindFloat`/`KindBool`/`KindDateTime`/`KindError`);访问器返回 `(value, ok)`,类型不匹配时 ok=false。
+- 类型判别:`Cell.GetType()` 走 `CellValueType` 位枚举;数值格经 `Style.IsDateTime()` 识别日期格式(日期以序列号存储);公式格返回**计算后**值。
+- 地址类型:`CellRef`(0-based)/`Area`,纯 Go 解析(`ParseCellRef`/`ParseArea`),定义在 `internal/aspose/cells`,query 以类型别名复用,供 `ReadMergedCells` 与内部助手共用。
+- Option:`WithSheet`(按名)/`WithSheetIndex`(按索引,对 eval 名损坏免疫)/`WithTrimSpace`。**默认索引 0**(默认首表名恰是 eval 损坏最常命中的对象)。
+- 内部收敛:`internal/aspose/cells` 新增 `GetCell`/`UsedRange`/`MergedAreas`(`Cells.GetMergedAreas` → `Area`)/`SheetNames`/`SheetByIndex`。
+- 错误:新增 `ErrInvalidCellRef`/`ErrInvalidRange`;复用 `ErrDataSourceNil`/`ErrWorksheetNotFound`/`ErrInvalidSheetID`;统一 `%w` + `errors.Is`。
+
+### 9.3 editor 增强
+
+- `EditSpreadsheetToSink(source, sink, actions...)`:内部 `GetWorkbookWithDataSource → actions → WorkbookToByteData → sink.Write`,顺带去重 engine.go 原内联的 `GetFileFormat → FileFormatToSaveFormat → Save_SaveFormat` 段;`EditSpreadsheet` 降为薄包装(`*BytesSink`),返回字节语义零变化。
+- `SetFormula(row, col, formula)`(WorksheetAction)+ `CalculateAll()`(WorkbookAction):绑定 `Cell.SetFormula_String` / `Workbook.CalculateFormula`。
+- **日期写入修复**:`SetCellValue`/`SetValue` 写 `time.Time` 后补设日期数字格式(`yyyy-mm-dd` 或 `yyyy-mm-dd hh:mm:ss`)。根因:绑定的 `PutValue_Object(NewObject_Date)` 只写数值序列号、不设日期格式(探针:`string="45293"`、`type=2/IsNumeric`、`ObjectType_Number`),导致该格被 Excel 与 query 当作普通数字。补设格式后保存再加载返回 `type=4/IsDateTime`、`ObjectType_Date`、`GetStringValue="2024-01-02"`。

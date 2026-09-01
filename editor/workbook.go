@@ -109,6 +109,18 @@ func InDefaultStyle(actions ...StyleAction) WorkbookAction {
 	}
 }
 
+// CalculateAll creates a WorkbookAction that recalculates every formula in the
+// workbook. Place it after the actions that set or depend on formula values so
+// the saved workbook holds current results.
+//
+// Returns:
+//   - WorkbookAction: A function that recalculates the workbook.
+func CalculateAll() WorkbookAction {
+	return func(workbook *asposecells.Workbook) error {
+		return workbook.CalculateFormula()
+	}
+}
+
 // InWorksheet creates a WorkbookAction that scopes subsequent operations to a specific worksheet.
 // It resolves the target worksheet using a flexible identifier (e.g., sheet name or index),
 // and then executes a series of WorksheetActions within that context.
