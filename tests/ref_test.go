@@ -1,27 +1,28 @@
-package query
+package tests
 
 import (
 	"errors"
 	"testing"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/query"
 )
 
 func TestParseCellRef(t *testing.T) {
 	cases := []struct {
 		in   string
-		want CellRef
+		want query.CellRef
 	}{
-		{"A1", CellRef{Row: 0, Col: 0}},
-		{"B3", CellRef{Row: 2, Col: 1}},
-		{"C3", CellRef{Row: 2, Col: 2}},
-		{"Z26", CellRef{Row: 25, Col: 25}},
-		{"AA1", CellRef{Row: 0, Col: 26}},
-		{"AZ1", CellRef{Row: 0, Col: 51}},
-		{"a1", CellRef{Row: 0, Col: 0}}, // case-insensitive
+		{"A1", query.CellRef{Row: 0, Col: 0}},
+		{"B3", query.CellRef{Row: 2, Col: 1}},
+		{"C3", query.CellRef{Row: 2, Col: 2}},
+		{"Z26", query.CellRef{Row: 25, Col: 25}},
+		{"AA1", query.CellRef{Row: 0, Col: 26}},
+		{"AZ1", query.CellRef{Row: 0, Col: 51}},
+		{"a1", query.CellRef{Row: 0, Col: 0}}, // case-insensitive
 	}
 	for _, tc := range cases {
-		got, err := ParseCellRef(tc.in)
+		got, err := query.ParseCellRef(tc.in)
 		if err != nil {
 			t.Errorf("ParseCellRef(%q) error: %v", tc.in, err)
 			continue
@@ -34,7 +35,7 @@ func TestParseCellRef(t *testing.T) {
 
 func TestParseCellRefInvalid(t *testing.T) {
 	for _, in := range []string{"", "1", "B", "A0", "B3x", "1A", "A-1", "AA"} {
-		if _, err := ParseCellRef(in); !errors.Is(err, toolkiterrors.ErrInvalidCellRef) {
+		if _, err := query.ParseCellRef(in); !errors.Is(err, toolkiterrors.ErrInvalidCellRef) {
 			t.Errorf("ParseCellRef(%q) error = %v, want ErrInvalidCellRef", in, err)
 		}
 	}
@@ -42,21 +43,21 @@ func TestParseCellRefInvalid(t *testing.T) {
 
 func TestCellRefStringRoundTrip(t *testing.T) {
 	cases := []struct {
-		in   CellRef
+		in   query.CellRef
 		want string
 	}{
-		{CellRef{Row: 0, Col: 0}, "A1"},
-		{CellRef{Row: 2, Col: 1}, "B3"},
-		{CellRef{Row: 25, Col: 25}, "Z26"},
-		{CellRef{Row: 0, Col: 26}, "AA1"},
-		{CellRef{Row: 9, Col: 51}, "AZ10"},
+		{query.CellRef{Row: 0, Col: 0}, "A1"},
+		{query.CellRef{Row: 2, Col: 1}, "B3"},
+		{query.CellRef{Row: 25, Col: 25}, "Z26"},
+		{query.CellRef{Row: 0, Col: 26}, "AA1"},
+		{query.CellRef{Row: 9, Col: 51}, "AZ10"},
 	}
 	for _, tc := range cases {
 		if got := tc.in.String(); got != tc.want {
 			t.Errorf("%+v.String() = %q, want %q", tc.in, got, tc.want)
 		}
 		// Every rendered reference must parse back to the same coordinate.
-		back, err := ParseCellRef(tc.in.String())
+		back, err := query.ParseCellRef(tc.in.String())
 		if err != nil {
 			t.Errorf("ParseCellRef(%q) error: %v", tc.in.String(), err)
 			continue
@@ -68,39 +69,39 @@ func TestCellRefStringRoundTrip(t *testing.T) {
 }
 
 func TestParseArea(t *testing.T) {
-	got, err := ParseArea("A1:C3")
+	got, err := query.ParseArea("A1:C3")
 	if err != nil {
 		t.Fatalf("ParseArea(A1:C3) error: %v", err)
 	}
-	want := Area{Start: CellRef{Row: 0, Col: 0}, End: CellRef{Row: 2, Col: 2}}
+	want := query.Area{Start: query.CellRef{Row: 0, Col: 0}, End: query.CellRef{Row: 2, Col: 2}}
 	if got != want {
 		t.Errorf("ParseArea(A1:C3) = %+v, want %+v", got, want)
 	}
 
 	// A single cell is accepted as a one-cell area.
-	single, err := ParseArea("B2")
+	single, err := query.ParseArea("B2")
 	if err != nil {
 		t.Fatalf("ParseArea(B2) error: %v", err)
 	}
-	if single != (Area{Start: CellRef{Row: 1, Col: 1}, End: CellRef{Row: 1, Col: 1}}) {
+	if single != (query.Area{Start: query.CellRef{Row: 1, Col: 1}, End: query.CellRef{Row: 1, Col: 1}}) {
 		t.Errorf("ParseArea(B2) = %+v, want one-cell area", single)
 	}
 
-	if got := (Area{Start: CellRef{Row: 2, Col: 1}, End: CellRef{Row: 4, Col: 2}}).String(); got != "B3:C5" {
+	if got := (query.Area{Start: query.CellRef{Row: 2, Col: 1}, End: query.CellRef{Row: 4, Col: 2}}).String(); got != "B3:C5" {
 		t.Errorf("Area.String() = %q, want %q", got, "B3:C5")
 	}
 }
 
 func TestParseAreaInvalid(t *testing.T) {
 	for _, in := range []string{"C3:A1", "A1:B2:C3", "A1:Z"} {
-		if _, err := ParseArea(in); err == nil {
+		if _, err := query.ParseArea(in); err == nil {
 			t.Errorf("ParseArea(%q) succeeded, want error", in)
 		}
 	}
-	if _, err := ParseArea("C3:A1"); !errors.Is(err, toolkiterrors.ErrInvalidRange) {
+	if _, err := query.ParseArea("C3:A1"); !errors.Is(err, toolkiterrors.ErrInvalidRange) {
 		t.Errorf("ParseArea(C3:A1) error = %v, want ErrInvalidRange", err)
 	}
-	if _, err := ParseArea("A1:Z"); !errors.Is(err, toolkiterrors.ErrInvalidCellRef) {
+	if _, err := query.ParseArea("A1:Z"); !errors.Is(err, toolkiterrors.ErrInvalidCellRef) {
 		t.Errorf("ParseArea(A1:Z) error = %v, want ErrInvalidCellRef", err)
 	}
 }
