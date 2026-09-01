@@ -24,9 +24,10 @@ func TestCSVRegistered(t *testing.T) {
 // by the register package is actually registered.
 func TestAllRegisteredExtensions(t *testing.T) {
 	want := []string{
-		"bmp", "csv", "dbf", "dif", "docx", "epub", "html", "jpg", "json",
-		"md", "ods", "pcl", "pdf", "png", "pptx", "sql", "svg", "tif", "tiff",
-		"txt", "xls", "xlsb", "xlsm", "xlsx", "xltm", "xltx", "xml", "xps",
+		"bmp", "csv", "dbf", "dif", "docx", "emf", "epub", "gif", "html",
+		"jpeg", "jpg", "json", "md", "ods", "pcl", "pdf", "png", "pptx",
+		"sql", "svg", "tif", "tiff", "tsv", "txt", "xls", "xlsb", "xlsm",
+		"xlsx", "xltm", "xltx", "xml", "xps",
 	}
 	for _, ext := range want {
 		if opt := formats.Get(ext); opt == nil {

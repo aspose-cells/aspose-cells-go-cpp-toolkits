@@ -20,5 +20,3 @@ type WorksheetAction func(worksheet *asposecells.Worksheet) error
 // like InDefaultStyle or SetCellStyle. They encapsulate formatting changes
 // such as font adjustments, color modifications, and alignment settings.
 type StyleAction func(style *asposecells.Style) error
-
-//type ChartAction func(chart *asposecells.Chart) error

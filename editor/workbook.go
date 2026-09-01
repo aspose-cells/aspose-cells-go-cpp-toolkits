@@ -7,13 +7,6 @@ import (
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
-//func WithDefaultStyle(styleAction StyleAction) WorkbookAction {
-//	return func(workbook *asposecells.Workbook) error {
-//		workbook.SetDefaultStyle(defaultStyle)
-//		return nil
-//	}
-//}
-
 // WithActiveSheet creates a WorkbookAction that activates the worksheet
 // with the given name.
 //
@@ -146,17 +139,3 @@ func InWorksheet(identifier interface{}, actions ...WorksheetAction) WorkbookAct
 		return nil
 	}
 }
-
-//func InChart(sheetID interface{}, chartIndex int, actions ...ChartAction) WorkbookAction {
-//	return func(wb *asposecells.Workbook) error {
-//		sheet, _ := resolveSheet(wb, sheetID)
-//		charts, _ := sheet.GetCharts()
-//		chart, _ := charts.Get_Int(int32(chartIndex))
-//		for _, action := range actions {
-//			if err := action(chart); err != nil {
-//				return err
-//			}
-//		}
-//		return nil
-//	}
-//}

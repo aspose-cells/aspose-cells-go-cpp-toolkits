@@ -121,6 +121,9 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
 		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
 		cellsStyle, err := cells.GetStyle()
 		if err != nil {
 			return err
@@ -131,11 +134,10 @@ func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) 
 			}
 		}
 		_range, err := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
-		err = _range.SetStyle_Style(cellsStyle)
 		if err != nil {
 			return err
 		}
-		return nil
+		return _range.SetStyle_Style(cellsStyle)
 	}
 }
 

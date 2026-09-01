@@ -143,6 +143,8 @@ The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRan
 | [DOCX](https://docs.fileformat.com/word-processing/docx/)         | A well-known format for Microsoft Word documents that is a combination of XML and binary files. |          | &radic;  |
 | [PPTX](https://docs.fileformat.com/presentation/pptx/)            | The PPTX format is based on the Microsoft PowerPoint open XML presentation file format.         |          | &radic;  |
 
+> **Format registry:** the table above lists what the engine can *save*. The [formats registry](#) exposes a subset of those formats as extension strings that `formats.Get` accepts: `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`, `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`, `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`, `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`. Formats the engine can save but the registry does not expose (`xlt`, `xlam`, `mhtml`, `sxc`, `fods`) are reachable only through a custom `saveoptions.SaveOption`.
+
 ## Evaluate Aspose.Cells for Go via C++ Toolkits
 
 You can use Aspose.Cells for Go via C++ Toolkits free of cost for evaluation.The evaluation version provides almost all functionality of the product with certain limitations. The same evaluation version becomes licensed when you purchase a license and add a couple of lines of code to apply the license.

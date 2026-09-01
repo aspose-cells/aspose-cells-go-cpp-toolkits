@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Rows>
+  <Row>
+    <ID>1</ID>
+    <Name>Alpha</Name>
+  </Row>
+  <Row>
+    <ID>2</ID>
+    <Name>Beta</Name>
+  </Row>
+  <Row>
+    <ID>3</ID>
+    <Name>Gamma</Name>
+  </Row>
+</Rows>

@@ -13,24 +13,31 @@ import (
 // Pointer fields carry presence semantics: a nil pointer means the option
 // was never set (so the native default is kept), while a non-nil pointer
 // means the caller explicitly requested the value, including zero/false.
+// format discriminates the OOXML sub-format: "", "xlsx", "xlsm", "xltx", or
+// "xltm". Empty means the default (XLSX).
 type Config struct {
-	asFlatOpc                 *bool
-	exportCellName            *bool
-	updateZoom                *bool
-	enableZip64               *bool
-	embedOoxmlAsOleObject     *bool
-	compressionType           *asposecells.OoxmlCompressionType
-	clearData                 *bool
-	cachedFileFolder          *string
-	validateMergedAreas       *bool
-	mergeAreas                *bool
-	createDirectory           *bool
-	sortNames                 *bool
-	sortExternalNames         *bool
-	refreshChartCache         *bool
-	checkExcelRestriction     *bool
-	updateSmartArt            *bool
-	encryptDocumentProperties *bool
+	format                string
+	asFlatOpc             *bool
+	exportCellName        *bool
+	updateZoom            *bool
+	enableZip64           *bool
+	embedOoxmlAsOleObject *bool
+	compressionType       *asposecells.OoxmlCompressionType
+	saveoptions.CommonConfig
+}
+
+// saveFormat maps the configured sub-format to the engine's SaveFormat.
+func (c *Config) saveFormat() asposecells.SaveFormat {
+	switch c.format {
+	case "xlsm":
+		return asposecells.SaveFormat_Xlsm
+	case "xltx":
+		return asposecells.SaveFormat_Xltx
+	case "xltm":
+		return asposecells.SaveFormat_Xltm
+	default:
+		return asposecells.SaveFormat_Xlsx
+	}
 }
 
 // Apply processes the given source byte slice as an Ooxml file and returns the converted output.
@@ -44,7 +51,13 @@ type Config struct {
 // - []byte: The resulting Ooxml file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, err := asposecells.NewOoxmlSaveOptions()
+	var opts *asposecells.OoxmlSaveOptions
+	var err error
+	if c.format != "" {
+		opts, err = asposecells.NewOoxmlSaveOptions_SaveFormat(c.saveFormat())
+	} else {
+		opts, err = asposecells.NewOoxmlSaveOptions()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -79,60 +92,8 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	if c.clearData != nil {
-		if err := opts.SetClearData(*c.clearData); err != nil {
-			return nil, err
-		}
-	}
-	if c.cachedFileFolder != nil {
-		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
-			return nil, err
-		}
-	}
-	if c.validateMergedAreas != nil {
-		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.mergeAreas != nil {
-		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.createDirectory != nil {
-		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortNames != nil {
-		if err := opts.SetSortNames(*c.sortNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortExternalNames != nil {
-		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.refreshChartCache != nil {
-		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
-			return nil, err
-		}
-	}
-	if c.checkExcelRestriction != nil {
-		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
-			return nil, err
-		}
-	}
-	if c.updateSmartArt != nil {
-		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
-			return nil, err
-		}
-	}
-	if c.encryptDocumentProperties != nil {
-		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
-			return nil, err
-		}
+	if err := c.ApplyCommon(opts); err != nil {
+		return nil, err
 	}
 	workbook, err := asposecells.NewWorkbook_Stream(source)
 	if err != nil {
@@ -146,24 +107,36 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	return result, nil
 }
 func (c *Config) GetFormat() string {
-	return "xlsx"
+	if c.format == "" {
+		return "xlsx"
+	}
+	return c.format
 }
 
 type Option func(*Config)
 
 func init() {
 	formats.Register("xlsx", func() saveoptions.SaveOption {
-		return New()
+		return New(WithFormat("xlsx"))
 	})
 	formats.Register("xlsm", func() saveoptions.SaveOption {
-		return New()
+		return New(WithFormat("xlsm"))
 	})
 	formats.Register("xltx", func() saveoptions.SaveOption {
-		return New()
+		return New(WithFormat("xltx"))
 	})
 	formats.Register("xltm", func() saveoptions.SaveOption {
-		return New()
+		return New(WithFormat("xltm"))
 	})
+}
+
+// WithFormat selects the OOXML sub-format to emit: "xlsx" (default), "xlsm",
+// "xltx", or "xltm". The formats registry uses it, so converter.Convert with
+// formats.Get("xlsm") actually produces an XLSM file.
+func WithFormat(value string) Option {
+	return func(c *Config) {
+		c.format = value
+	}
 }
 
 // New creates a new instance of xlsx save options
@@ -186,7 +159,6 @@ func init() {
 // create an instance with custom options
 //
 //	opts := New(
-//	    WithExportAsString(true),
 //	    WithCachedFileFolder("D:\\cached_folder"),
 //	    WithClearData(true),
 //
@@ -252,66 +224,66 @@ func WithCompressionType(value asposecells.OoxmlCompressionType) Option {
 }
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = &value
+		c.ClearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = &value
+		c.CachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = &value
+		c.ValidateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = &value
+		c.MergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = &value
+		c.CreateDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = &value
+		c.SortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = &value
+		c.SortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = &value
+		c.RefreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = &value
+		c.CheckExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = &value
+		c.UpdateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = &value
+		c.EncryptDocumentProperties = &value
 	}
 }
