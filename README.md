@@ -7,9 +7,9 @@
 
 - **Convert Excel to PDF, images & more** — 28+ output formats: XLS, XLSX, XLSB, XLSM, XLTX, XLTM, CSV, TXT, ODS, DIF, DBF, SQL, XML, PDF, DOCX, PPTX, XPS, PCL, EPUB, HTML, JSON, Markdown, PNG, JPG, SVG, BMP, TIF/TIFF.
 - **Import & export data** — Export worksheets or cell ranges to JSON / XML; import CSV / XML / JSON data into a worksheet.
-- **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, and dimensions.
+- **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, and dimensions — plus `query.ReadRows[T]` to map a whole table into `[]struct` via `excel` tags.
 - **Merge & split workbooks** — Merge multiple spreadsheets into one; split a workbook into per-sheet files, a ZIP archive, or in-memory bytes.
-- **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, and add / delete / rename worksheets.
+- **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, add / delete / rename worksheets, and write `[]struct` tables with `editor.WriteRows`.
 - **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction for files, bytes, and streams.
 
 ## Overview
@@ -48,11 +48,14 @@ import (
   _ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/register" // register every output format for extension-based dispatch
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/markdown"
   "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/pdf"
+  "log"
   "os"
 )
 
 func main() {
-  core.SetLicense(os.Getenv("LicensePath"))
+  if err := core.SetLicense(os.Getenv("LicensePath")); err != nil {
+    log.Fatal(err)
+  }
   converter.Convert(
     datasource.FilePathSource("examples/data/BookText.xlsx"),
     pdf.New(pdf.WithOnePagePerSheet(true)),
@@ -108,7 +111,7 @@ The conversion, merge/split, and transfer entry points were consolidated onto si
 
 The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`) were replaced by sink-based versions; use `&datasource.BytesSink{}` for bytes.
 
-> **Note on evaluation mode**: when a workbook is loaded the engine occasionally corrupts a worksheet's name (observed ~2% of loads; any sheet, not just the default first sheet — and it is not present in the saved bytes, so the same file can load clean once and corrupt later). By-name lookups (`WithSheet` defaulting to `"Sheet1"`) may therefore fail with `ErrWorksheetNotFound`, and per-sheet operations such as `manipulator.Split` can emit a garbage-named output. Use explicitly named sheets and target them via `WithSheet`; code that cannot tolerate the occasional spurious miss should retry on freshly loaded input.
+> **Note on evaluation mode**: when a workbook is loaded the engine occasionally corrupts a worksheet's name (observed ~2% of loads; any sheet, not just the default first sheet — and it is not present in the saved bytes, so the same file can load clean once and corrupt later). `query` and `transfer` therefore target the first worksheet **by index** by default, and `WithSheetIndex` is the recommended way to pick a sheet — index-based lookups never read a name, so they are immune to the corruption. By-name lookups (`WithSheet`) may fail with `ErrWorksheetNotFound`, and per-sheet operations such as `manipulator.Split` can emit a garbage-named output. For name-based code that cannot tolerate the occasional spurious miss, retry the whole operation on freshly loaded input (each retry re-reads the source and reloads the workbook) or wrap the load in `cells.LoadStable` to verify and re-load.
 
 ## Deprecation schedule
 

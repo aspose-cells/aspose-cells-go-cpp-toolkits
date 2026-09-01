@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,8 +14,17 @@ import (
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
-// queryTestWorkbook builds a small workbook with known typed content on sheet 0
-// ("Base", renamed at build time):
+// queryTestWorkbookBytes caches the built workbook because every call to build
+// it costs one engine load, and the evaluation copy caps the total number of
+// loads per process (100); rebuilding it per test would exhaust that budget.
+var (
+	queryTestWorkbookOnce  sync.Once
+	queryTestWorkbookBytes []byte
+	queryTestWorkbookErr   error
+)
+
+// queryTestWorkbook returns a small workbook with known typed content on sheet
+// 0 ("Base", renamed at build time), cached so the build happens once:
 //
 //	       A         B        C         D      E
 //	row0   "hello"   42       3.14      true   2024-01-02
@@ -27,24 +37,34 @@ import (
 // name at load time.
 func queryTestWorkbook(t *testing.T) []byte {
 	t.Helper()
+	queryTestWorkbookOnce.Do(func() {
+		queryTestWorkbookBytes, queryTestWorkbookErr = buildQueryTestWorkbook()
+	})
+	if queryTestWorkbookErr != nil {
+		t.Fatalf("queryTestWorkbook: %v", queryTestWorkbookErr)
+	}
+	return queryTestWorkbookBytes
+}
+
+func buildQueryTestWorkbook() ([]byte, error) {
 	wb, err := asposecells.NewWorkbook()
 	if err != nil {
-		t.Fatalf("NewWorkbook: %v", err)
+		return nil, err
 	}
 	wss, err := wb.GetWorksheets()
 	if err != nil {
-		t.Fatalf("GetWorksheets: %v", err)
+		return nil, err
 	}
 	first, err := wss.Get_Int(0)
 	if err != nil {
-		t.Fatalf("Get_Int(0): %v", err)
+		return nil, err
 	}
 	if err := first.SetName("Base"); err != nil {
-		t.Fatalf("SetName: %v", err)
+		return nil, err
 	}
 	seed, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 	if err != nil {
-		t.Fatalf("Save_SaveFormat: %v", err)
+		return nil, err
 	}
 	out, err := editor.EditSpreadsheet(
 		datasource.BytesSource(seed),
@@ -63,9 +83,9 @@ func queryTestWorkbook(t *testing.T) []byte {
 		editor.CalculateAll(),
 	)
 	if err != nil {
-		t.Fatalf("EditSpreadsheet: %v", err)
+		return nil, err
 	}
-	return out
+	return out, nil
 }
 
 func TestQueryReadCellTypes(t *testing.T) {

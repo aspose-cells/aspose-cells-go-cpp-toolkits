@@ -3,8 +3,10 @@ package tests
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
@@ -12,6 +14,7 @@ import (
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	_ "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/register"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/transfer"
 )
 
 // TestConvertNilSentinels verifies the composite entry points classify nil
@@ -109,4 +112,30 @@ func TestConvertDeprecatedWrappers(t *testing.T) {
 		}
 	}
 	_ = path
+}
+
+// TestTransferSheetSelection verifies index-based sheet targeting on the
+// transfer exports. WithSheetIndex(0) selects the first worksheet — immune to
+// the evaluation-mode load-time name corruption — and an out-of-range index
+// classifies as ErrInvalidSheetID instead of reaching the engine.
+func TestTransferSheetSelection(t *testing.T) {
+	src := datasource.BytesSource(queryTestWorkbook(t))
+
+	if err := retryStable(5, func() error {
+		var out datasource.BytesSink
+		if err := transfer.ExportWorksheetToJson(src, &out, transfer.WithSheetIndex(0)); err != nil {
+			return fmt.Errorf("WithSheetIndex(0): %w", err)
+		}
+		if !strings.Contains(string(out.Bytes()), "hello") {
+			return fmt.Errorf("export via index 0 = %q, want it to contain %q", out.Bytes(), "hello")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var out datasource.BytesSink
+	if err := transfer.ExportWorksheetToJson(src, &out, transfer.WithSheetIndex(99)); !errors.Is(err, toolkiterrors.ErrInvalidSheetID) {
+		t.Errorf("WithSheetIndex(99) error = %v, want ErrInvalidSheetID", err)
+	}
 }

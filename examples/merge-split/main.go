@@ -28,7 +28,9 @@ import (
 
 func main() {
 	if p := os.Getenv("LicensePath"); p != "" {
-		core.SetLicense(p)
+		if err := core.SetLicense(p); err != nil {
+			log.Printf("license: %v", err)
+		}
 	}
 	out := examples.OutDir("merge-split")
 	if err := os.MkdirAll(out, 0o755); err != nil {

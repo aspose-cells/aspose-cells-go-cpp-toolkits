@@ -47,6 +47,26 @@ type CellValue struct {
 // Kind returns the semantic type of the value.
 func (v CellValue) Kind() CellKind { return v.kind }
 
+// String returns the kind's name, e.g. "KindText", for error messages.
+func (k CellKind) String() string {
+	switch k {
+	case KindText:
+		return "KindText"
+	case KindInt:
+		return "KindInt"
+	case KindFloat:
+		return "KindFloat"
+	case KindBool:
+		return "KindBool"
+	case KindDateTime:
+		return "KindDateTime"
+	case KindError:
+		return "KindError"
+	default:
+		return "KindEmpty"
+	}
+}
+
 // IsEmpty reports whether the cell holds no value.
 func (v CellValue) IsEmpty() bool { return v.kind == KindEmpty }
 

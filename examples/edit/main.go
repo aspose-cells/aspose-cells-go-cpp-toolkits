@@ -19,7 +19,9 @@ import (
 
 func main() {
 	if p := os.Getenv("LicensePath"); p != "" {
-		core.SetLicense(p)
+		if err := core.SetLicense(p); err != nil {
+			log.Printf("license: %v", err)
+		}
 	}
 
 	// Seed an empty workbook so the example runs without a data file.

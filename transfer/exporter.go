@@ -23,7 +23,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	sheetName      string
+	sheet          cells.Sheet
 	startCell      string
 	endCell        string
 	xmlMap         string
@@ -34,8 +34,10 @@ type options struct {
 }
 
 func defaultOptions() *options {
+	// Default to the first worksheet by index (matching query), so transfer
+	// shares query's immunity to evaluation-mode name corruption.
 	return &options{
-		sheetName:      "Sheet1",
+		sheet:          cells.FirstSheet,
 		startCell:      "A1",
 		endCell:        "",
 		xmlMap:         "Sheet1",
@@ -49,12 +51,21 @@ func defaultOptions() *options {
 // Note: in evaluation mode the engine occasionally corrupts a worksheet's name
 // when the workbook is loaded (observed ~2% of loads, any sheet, not just the
 // default first sheet), so a name-based lookup may fail with
-// ErrWorksheetNotFound even for a sheet that exists. Prefer explicitly named
-// sheets — create them via editor.WithAddWorksheet or rename the source
-// sheet — and target them here; callers that cannot tolerate the occasional
-// spurious miss should retry on fresh input.
+// ErrWorksheetNotFound even for a sheet that exists. Prefer WithSheetIndex,
+// which is immune to name corruption. When targeting by name, use an
+// explicitly named sheet — create it via editor.WithAddWorksheet or rename the
+// source sheet — and callers that cannot tolerate the occasional spurious miss
+// should retry the whole operation on fresh input.
 func WithSheet(name string) Option {
-	return func(o *options) { o.sheetName = name }
+	return func(o *options) { o.sheet = cells.Sheet{Name: name} }
+}
+
+// WithSheetIndex sets the worksheet to export from or import into by its
+// zero-based index. Index-based lookup is immune to the evaluation-mode
+// load-time name corruption, so it is the recommended way to target a sheet.
+// The default targets the first worksheet by index.
+func WithSheetIndex(i int) Option {
+	return func(o *options) { o.sheet = cells.Sheet{UseIndex: true, Index: i} }
 }
 
 // WithStartCell sets the top-left cell of an export range, e.g. "A1".
@@ -141,11 +152,7 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	if err != nil {
 		return err
 	}
-	worksheets, err := workbook.GetWorksheets()
-	if err != nil {
-		return err
-	}
-	ws, err := cells.WorksheetByName(worksheets, cfg.sheetName)
+	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err
 	}

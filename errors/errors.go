@@ -69,4 +69,13 @@ var (
 	// range whose start cell lies below or to the right of its end cell, or an
 	// area string with more than one ":" separator.
 	ErrInvalidRange = errors.New("invalid cell range")
+
+	// ErrLicenseInvalid is returned when the Aspose.Cells license cannot be
+	// created or applied (e.g. the file is missing, unreadable, or invalid).
+	ErrLicenseInvalid = errors.New("invalid license")
+
+	// ErrColumnNotFound is returned when a struct field mapped by a row reader
+	// (query.ReadRows) has no matching column in the worksheet's header row, or
+	// when the header row is empty so no column mapping can be established.
+	ErrColumnNotFound = errors.New("column not found in header row")
 )

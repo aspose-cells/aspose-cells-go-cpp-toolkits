@@ -36,7 +36,9 @@ import (
 
 func main() {
 	if p := os.Getenv("LicensePath"); p != "" {
-		core.SetLicense(p)
+		if err := core.SetLicense(p); err != nil {
+			log.Printf("license: %v", err)
+		}
 	}
 	if err := os.MkdirAll(examples.OutDir("convert"), 0o755); err != nil {
 		log.Fatal(err)

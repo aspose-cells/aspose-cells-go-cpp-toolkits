@@ -33,7 +33,11 @@ func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink
 	if err != nil {
 		return err
 	}
-	worksheetCells, err := cells.GetCellsWithWorksheet(workbook, cfg.sheetName)
+	ws, err := cfg.sheet.Resolve(workbook)
+	if err != nil {
+		return err
+	}
+	worksheetCells, err := ws.GetCells()
 	if err != nil {
 		return err
 	}
@@ -68,7 +72,11 @@ func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource
 	if err != nil {
 		return err
 	}
-	worksheetCells, err := cells.GetCellsWithWorksheet(workbook, cfg.sheetName)
+	ws, err := cfg.sheet.Resolve(workbook)
+	if err != nil {
+		return err
+	}
+	worksheetCells, err := ws.GetCells()
 	if err != nil {
 		return err
 	}
@@ -107,11 +115,19 @@ func ImportXMLData(source datasource.DataSource, xmlData datasource.DataSource, 
 	if err != nil {
 		return err
 	}
+	ws, err := cfg.sheet.Resolve(workbook)
+	if err != nil {
+		return err
+	}
+	targetName, err := ws.GetName()
+	if err != nil {
+		return err
+	}
 	data, err := cells.ReadSource(xmlData)
 	if err != nil {
 		return err
 	}
-	err = workbook.ImportXml_Stream_String_Int_Int(data, cfg.sheetName, int32(cfg.beginRow), int32(cfg.beginColumn))
+	err = workbook.ImportXml_Stream_String_Int_Int(data, targetName, int32(cfg.beginRow), int32(cfg.beginColumn))
 	if err != nil {
 		return err
 	}

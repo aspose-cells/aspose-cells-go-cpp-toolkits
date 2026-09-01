@@ -91,6 +91,54 @@ func Dimensions(source datasource.DataSource, opts ...Option) (rows, cols int, e
 
 Returns the used range's dimensions. An empty worksheet yields `(0, 0)`.
 
+### ReadRows
+
+```go
+func ReadRows[T any](source datasource.DataSource, opts ...Option) ([]T, error)
+```
+
+Reads a worksheet's used range into a slice of `T`, mapping each struct field to
+a column via the header row — the structured, Go-idiomatic way to turn a table
+into typed values. `T` must be a struct; the write counterpart is
+[`editor.WriteRows`](editor.md#writerows).
+
+The first (header) row names the columns. Each struct field is matched against a
+header cell — **case-insensitively, after trimming whitespace** — by its
+`excel:"name"` tag, or by its own name when no tag is present. Columns in the
+header that are not in the struct are ignored; an empty cell leaves the field at
+its zero value.
+
+```go
+type Employee struct {
+    ID   int       `excel:"id"`
+    Name string    `excel:"name"`
+    Hire time.Time `excel:"hired_on"`
+}
+
+rows, err := query.ReadRows[Employee](
+    datasource.FilePathSource("employees.xlsx"),
+    query.WithSheetIndex(0),
+)
+```
+
+**Column mapping rules** (shared with `editor.WriteRows`):
+
+| Tag                | Effect                                        |
+|--------------------|-----------------------------------------------|
+| `excel:"name"`     | Column header is `name` (match is case-insensitive) |
+| `excel:"-"`        | Field is skipped entirely                     |
+| *(no tag)*         | Column header is the field's own name         |
+
+A mapped field with no matching header column returns `ErrColumnNotFound`; add a
+tag to rename it or `excel:"-"` to ignore it.
+
+**Supported field types**: `string`, all integer and unsigned sizes, `float32` /
+`float64`, `bool`, and `time.Time`. A cell whose kind does not fit the field
+type (e.g. text into an `int`), or a number that overflows it, returns an error
+wrapped in `ErrInvalidValue`. A whole-number cell (`KindInt`) is accepted into a
+`float` field, and any non-empty scalar cell is accepted into a `string` field
+as its canonical text. An empty worksheet yields an empty (non-nil) slice.
+
 ## Options
 
 ```go

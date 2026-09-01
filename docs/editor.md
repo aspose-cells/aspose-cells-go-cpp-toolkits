@@ -86,6 +86,48 @@ CalculateAll recalculates every formula in the workbook. Place it after the
 actions that set or depend on formula values so the saved workbook holds
 current results.
 
+### WriteRows
+
+```go
+func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, rows []T, opts ...WriteRowsOption) error
+```
+
+Writes a slice of `T` into a worksheet and saves the result to a sink — the
+write counterpart of [`query.ReadRows`](query.md#readrows), using the same
+column mapping. `T` must be a struct; each field becomes a column named by its
+`excel:"name"` tag, or by its own field name when no tag is present; `excel:"-"`
+skips a field. With `WithWriteHeader(true)` the column names are written as a
+header row (row 0) before the data rows; otherwise data starts at row 0. Cells
+outside the written block are left untouched. The workbook is saved in its
+original format.
+
+```go
+type Employee struct {
+    ID   int    `excel:"id"`
+    Name string `excel:"name"`
+}
+
+err := editor.WriteRows(
+    datasource.FilePathSource("template.xlsx"),
+    datasource.FilePathSink("employees.xlsx"),
+    []Employee{{ID: 1, Name: "Ada"}},
+    editor.WithSheetIndex(0),
+    editor.WithWriteHeader(true),
+)
+```
+
+Supported field values are the types `SetCellValue` accepts: integers, unsigned
+integers, floats, `string`, `bool`, and `time.Time` (written as a date).
+
+**WriteRowsOption** (default sheet: first worksheet by index, aligned with
+`query` and `transfer`):
+
+```go
+func WithWriteHeader(b bool) WriteRowsOption   // write column names as row 0
+func WithSheetIndex(i int) WriteRowsOption     // target sheet by index (recommended)
+func WithSheet(name string) WriteRowsOption    // target sheet by name
+```
+
 ## Types
 
 ### StyleAction

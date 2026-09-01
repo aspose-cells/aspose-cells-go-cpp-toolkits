@@ -33,19 +33,3 @@ func WorksheetByName(worksheets *asposecells.WorksheetCollection, name string) (
 	}
 	return nil, fmt.Errorf("worksheet %q not found: %w", name, toolkiterrors.ErrWorksheetNotFound)
 }
-
-func GetCellsWithWorksheet(workbook *asposecells.Workbook, worksheet string) (*asposecells.Cells, error) {
-	worksheets, err := workbook.GetWorksheets()
-	if err != nil {
-		return nil, err
-	}
-	ws, err := WorksheetByName(worksheets, worksheet)
-	if err != nil {
-		return nil, err
-	}
-	cells, err := ws.GetCells()
-	if err != nil {
-		return nil, err
-	}
-	return cells, err
-}

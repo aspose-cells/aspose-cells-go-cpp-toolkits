@@ -42,6 +42,18 @@ func TestMissingWorksheetReturnsErrorNotCrash(t *testing.T) {
 		}
 	})
 
+	t.Run("editor in-worksheet index out of range", func(t *testing.T) {
+		_, err := editor.EditSpreadsheet(source,
+			editor.InWorksheet(99, editor.SetCellValue(0, 0, "x")),
+		)
+		if err == nil {
+			t.Fatal("InWorksheet(99) with an out-of-range index: want error, got nil")
+		}
+		if !errors.Is(err, toolkiterrors.ErrInvalidSheetID) {
+			t.Errorf("error = %v, want wrapping of ErrInvalidSheetID", err)
+		}
+	})
+
 	t.Run("transfer json", func(t *testing.T) {
 		var out datasource.BytesSink
 		err := transfer.ExportWorksheetToJson(source, &out, transfer.WithSheet("NoSuchSheet"))

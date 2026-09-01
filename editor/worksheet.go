@@ -153,8 +153,12 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 	switch v := value.(type) {
 	case int8:
 		return asposecells.NewObject_Integer8(v)
+	case uint8:
+		return asposecells.NewObject_UInteger16(uint16(v))
 	case uint16:
 		return asposecells.NewObject_UInteger16(v)
+	case uint32:
+		return asposecells.NewObject_ULong(uint64(v))
 	case uint64:
 		return asposecells.NewObject_ULong(v)
 	case int16:
@@ -165,6 +169,8 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 		return asposecells.NewObject_Int64(int64(v))
 	case int64:
 		return asposecells.NewObject_Int64(v)
+	case uint:
+		return asposecells.NewObject_ULong(uint64(v))
 	case float32:
 		return asposecells.NewObject_Float(v)
 	case float64:

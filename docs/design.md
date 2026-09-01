@@ -100,6 +100,7 @@ func ImportXMLData(source datasource.DataSource, data datasource.DataSource, sin
 ```go
 // 导出
 func WithSheet(name string) Option        // ExportWorksheetToJson / ExportRangeToJson
+func WithSheetIndex(i int) Option         // 按索引选表,对 eval 名损坏免疫,推荐
 func WithStartCell(ref string) Option     // 如 "A1",ExportRangeToJson
 func WithEndCell(ref string) Option       // 如 "B3",ExportRangeToJson
 func WithXMLMap(name string) Option       // ExportSpreadsheetToXml,如 "InventoryMap"
@@ -109,7 +110,7 @@ func WithConvertNumeric(b bool) Option    // ImportCSV
 func WithSeparator(s string) Option       // ImportCSV
 ```
 
-可选参数缺失时的默认值沿用现状(如 sheet 默认 "Sheet1"、分隔符默认 ",")。
+可选参数缺失时的默认值:sheet 默认**第一张表(索引 0)**、分隔符默认 ","。sheet 选择(按名/按索引)与 query 共用同一 `cells.Sheet` 类型;默认索引 0 与 query 对齐,避免命名查找在 eval 模式偶尔失败。
 
 ## 4. 组合函数内部组合的底层操作
 
@@ -118,10 +119,10 @@ func WithSeparator(s string) Option       // ImportCSV
 | `Convert` | ReadSource → `NewWorkbook_Stream` → `opt.Apply` → `sink.Write` |
 | `Merge` | `NewWorkbook` → `Worksheets.RemoveAt(0)` → 对每个 source:`NewWorkbook_Stream` + `Combine` → `SaveToStream` → `opt.Apply` → `sink.Write` |
 | `Split` | 对每个 sheet:`NewWorkbook` + `CopyTheme` + defaultStyle `Copy` + `SetName` + `Copy_Worksheet` → `SaveToStream` → `opt.Apply` → `sink.Write(sheetname+"."+format, out)` |
-| `ExportWorksheetToJson` | ReadSource → `NewWorkbook_Stream` → `WorksheetByName` → `GetCellAreaWithWorksheet` → json `Apply` → `sink.Write` |
-| `ExportRangeToJson` | ReadSource → `NewWorkbook_Stream` → `WorksheetByName` → 由 `WithStartCell`/`WithEndCell` 建 `CellArea` → json `Apply` → `sink.Write` |
-| `ExportSpreadsheetToXml` | ReadSource → `NewWorkbook_Stream` → `ExportXml(mapName)` → `sink.Write` |
-| `ImportCSV` | `GetWorkbookWithDataSource` → `GetCellsWithWorksheet` → `ImportCSV_Stream` → `WorkbookToByteData` → `sink.Write` |
+| `ExportWorksheetToJson` | ReadSource → `NewWorkbook_Stream` → `Sheet.Resolve`(索引默认 0/按名) → json `Apply` → `sink.Write` |
+| `ExportRangeToJson` | ReadSource → `NewWorkbook_Stream` → `Sheet.Resolve` → 由 `WithStartCell`/`WithEndCell` 建 `CellArea` → json `Apply` → `sink.Write` |
+| `ExportSpreadsheetToXml` | ReadSource → `NewWorkbook_Stream` → `Sheet.Resolve` → `ExportXml(mapName)` → `sink.Write` |
+| `ImportCSV` | `GetWorkbookWithDataSource` → `Sheet.Resolve` → `GetCells` → `ImportCSV_Stream` → `WorkbookToByteData` → `sink.Write` |
 | `ImportJsonData` / `ImportXMLData` | 同 ImportCSV,换 `JsonUtility_ImportData` / `ImportXml_Stream` |
 
 ## 5. 兼容与迁移
@@ -194,3 +195,12 @@ func WithSeparator(s string) Option       // ImportCSV
 - `EditSpreadsheetToSink(source, sink, actions...)`:内部 `GetWorkbookWithDataSource → actions → WorkbookToByteData → sink.Write`,顺带去重 engine.go 原内联的 `GetFileFormat → FileFormatToSaveFormat → Save_SaveFormat` 段;`EditSpreadsheet` 降为薄包装(`*BytesSink`),返回字节语义零变化。
 - `SetFormula(row, col, formula)`(WorksheetAction)+ `CalculateAll()`(WorkbookAction):绑定 `Cell.SetFormula_String` / `Workbook.CalculateFormula`。
 - **日期写入修复**:`SetCellValue`/`SetValue` 写 `time.Time` 后补设日期数字格式(`yyyy-mm-dd` 或 `yyyy-mm-dd hh:mm:ss`)。根因:绑定的 `PutValue_Object(NewObject_Date)` 只写数值序列号、不设日期格式(探针:`string="45293"`、`type=2/IsNumeric`、`ObjectType_Number`),导致该格被 Excel 与 query 当作普通数字。补设格式后保存再加载返回 `type=4/IsDateTime`、`ObjectType_Date`、`GetStringValue="2024-01-02"`。
+
+### 9.4 结构化表格读写(query.ReadRows / editor.WriteRows)
+
+- **定位**:一张表 ↔ `[]struct` 的反射映射读写,是「组合封装、收敛 API」的最高价值一跳——一个函数顶掉上百个单元格级调用,且与 aspose 对象模型彻底解耦。
+- **契约**(先定后实现):
+  - `query.ReadRows[T](source, opts...) ([]T, error)`:首行作表头,`excel:"name"` tag(缺省用字段名)映射列;**大小写不敏感 + 去空白**匹配表头;`excel:"-"` 跳过字段;字段在表头缺失 → `ErrColumnNotFound`;表头多余的列忽略;空单元格留零值。支持 string/整型/无符号/float/bool/time.Time;类型不匹配或溢出 → `ErrInvalidValue`(KindInt 可入 float 字段,任意非空标量可入 string 字段取规范文本)。T 须为 struct,空表返回空非 nil 切片。
+  - `editor.WriteRows[T](source, sink, rows, opts...) error`:写入 counterpart,Option 为 `WithWriteHeader(bool)`/`WithSheetIndex(i)`/`WithSheet(name)`,默认首表(索引 0)与 query/transfer 对齐;写路径复用 `SetCellValue`(含 time.Time 日期格式);写在块外单元格不动。
+- **共享收敛**:反射列映射抽到新包 `internal/rows`(`Columns(reflect.Type) ([]Column, error)`),query 与 editor 两侧共用同一 tag 规则,杜绝漂移。
+- **补齐**:`toObject` 补 `uint`/`uint8`/`uint32`;`CellKind` 加 `String()` 供错误消息;新增哨兵 `ErrColumnNotFound`。

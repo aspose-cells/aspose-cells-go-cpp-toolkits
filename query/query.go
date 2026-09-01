@@ -209,17 +209,10 @@ func Dimensions(source datasource.DataSource, opts ...Option) (rows, cols int, e
 	return int(r), int(c), nil
 }
 
-// sheetFor resolves the options' sheet selection: by index when WithSheetIndex
-// was used (or the default first-sheet selection), otherwise by name.
+// sheetFor resolves the options' sheet selection (index by default, name when
+// WithSheet was used).
 func sheetFor(cfg *options, wb *asposecells.Workbook) (*asposecells.Worksheet, error) {
-	if cfg.useIndex {
-		return cells.SheetByIndex(wb, cfg.sheetIndex)
-	}
-	wss, err := wb.GetWorksheets()
-	if err != nil {
-		return nil, err
-	}
-	return cells.WorksheetByName(wss, cfg.sheetName)
+	return cfg.sheet.Resolve(wb)
 }
 
 // applyTrim trims a text value when the WithTrimSpace option requests it.

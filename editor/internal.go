@@ -17,11 +17,11 @@ func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Wo
 	}
 	switch v := id.(type) {
 	case int:
-		return wss.Get_Int(int32(v))
+		return cells.SheetByIndex(wb, v)
 	case int32:
-		return wss.Get_Int(int32(v))
+		return cells.SheetByIndex(wb, int(v))
 	case int64:
-		return wss.Get_Int(int32(v))
+		return cells.SheetByIndex(wb, int(v))
 	case string:
 		return cells.WorksheetByName(wss, v)
 	default:
