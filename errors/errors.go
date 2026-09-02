@@ -78,4 +78,8 @@ var (
 	// (query.ReadRows) has no matching column in the worksheet's header row, or
 	// when the header row is empty so no column mapping can be established.
 	ErrColumnNotFound = errors.New("column not found in header row")
+
+	// ErrNameNotFound is returned when a named range is referenced by name but
+	// no such name exists in the workbook.
+	ErrNameNotFound = errors.New("named range not found")
 )

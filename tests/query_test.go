@@ -90,63 +90,92 @@ func buildQueryTestWorkbook() ([]byte, error) {
 
 func TestQueryReadCellTypes(t *testing.T) {
 	src := datasource.BytesSource(queryTestWorkbook(t))
-	if err := retryStable(5, func() error {
-		if v, err := query.ReadCell(src, "A1"); err != nil {
-			return fmt.Errorf("ReadCell A1: %w", err)
-		} else if v.Kind() != query.KindText {
+	// Read the whole sheet once per attempt instead of issuing one load per
+	// cell: every query call re-loads the workbook, and the evaluation copy
+	// caps total loads per process.
+	if err := retryStable(2, func() error {
+		grid, err := query.ReadWorksheet(src)
+		if err != nil {
+			return fmt.Errorf("ReadWorksheet: %w", err)
+		}
+		at := func(r, c int) (query.CellValue, error) {
+			if r >= len(grid) || c >= len(grid[r]) {
+				return query.CellValue{}, fmt.Errorf("grid has no cell (%d, %d)", r, c)
+			}
+			return grid[r][c], nil
+		}
+
+		v, err := at(0, 0)
+		if err != nil {
+			return err
+		}
+		if v.Kind() != query.KindText {
 			return fmt.Errorf("A1 kind = %v, want KindText", v.Kind())
-		} else if s, _ := v.String(); s != "hello" {
+		}
+		if s, _ := v.String(); s != "hello" {
 			return fmt.Errorf("A1 = %q, want %q", s, "hello")
 		}
 
-		if v, err := query.ReadCell(src, "B1"); err != nil {
-			return fmt.Errorf("ReadCell B1: %w", err)
-		} else if v.Kind() != query.KindInt {
+		v, err = at(0, 1)
+		if err != nil {
+			return err
+		}
+		if v.Kind() != query.KindInt {
 			return fmt.Errorf("B1 kind = %v, want KindInt", v.Kind())
-		} else if i, ok := v.Int(); !ok || i != 42 {
+		}
+		if i, ok := v.Int(); !ok || i != 42 {
 			return fmt.Errorf("B1 Int = %d, %v; want 42, true", i, ok)
 		}
 
-		if v, err := query.ReadCell(src, "C1"); err != nil {
-			return fmt.Errorf("ReadCell C1: %w", err)
-		} else if v.Kind() != query.KindFloat {
+		v, err = at(0, 2)
+		if err != nil {
+			return err
+		}
+		if v.Kind() != query.KindFloat {
 			return fmt.Errorf("C1 kind = %v, want KindFloat", v.Kind())
-		} else if f, ok := v.Float(); !ok || f != 3.14 {
+		}
+		if f, ok := v.Float(); !ok || f != 3.14 {
 			return fmt.Errorf("C1 Float = %f, %v; want 3.14, true", f, ok)
 		}
 
-		if v, err := query.ReadCell(src, "D1"); err != nil {
-			return fmt.Errorf("ReadCell D1: %w", err)
-		} else if v.Kind() != query.KindBool {
+		v, err = at(0, 3)
+		if err != nil {
+			return err
+		}
+		if v.Kind() != query.KindBool {
 			return fmt.Errorf("D1 kind = %v, want KindBool", v.Kind())
-		} else if b, ok := v.Bool(); !ok || !b {
+		}
+		if b, ok := v.Bool(); !ok || !b {
 			return fmt.Errorf("D1 Bool = %v, %v; want true, true", b, ok)
 		}
 
-		if v, err := query.ReadCell(src, "E1"); err != nil {
-			return fmt.Errorf("ReadCell E1: %w", err)
-		} else if v.Kind() != query.KindDateTime {
+		v, err = at(0, 4)
+		if err != nil {
+			return err
+		}
+		if v.Kind() != query.KindDateTime {
 			return fmt.Errorf("E1 kind = %v, want KindDateTime", v.Kind())
-		} else if ts, ok := v.Time(); !ok || ts.Year() != 2024 || ts.Month() != time.January || ts.Day() != 2 {
+		}
+		if ts, ok := v.Time(); !ok || ts.Year() != 2024 || ts.Month() != time.January || ts.Day() != 2 {
 			return fmt.Errorf("E1 Time = %v, %v; want 2024-01-02, true", ts, ok)
 		}
 
 		// A formula cell's computed value must be read back after CalculateAll.
-		if v, err := query.ReadCell(src, "C2"); err != nil {
-			return fmt.Errorf("ReadCell C2: %w", err)
-		} else {
-			switch v.Kind() {
-			case query.KindInt:
-				if i, _ := v.Int(); i != 30 {
-					return fmt.Errorf("C2 = %d, want 30", i)
-				}
-			case query.KindFloat:
-				if f, _ := v.Float(); f != 30 {
-					return fmt.Errorf("C2 = %f, want 30", f)
-				}
-			default:
-				return fmt.Errorf("C2 kind = %v, want numeric 30", v.Kind())
+		v, err = at(1, 2)
+		if err != nil {
+			return err
+		}
+		switch v.Kind() {
+		case query.KindInt:
+			if i, _ := v.Int(); i != 30 {
+				return fmt.Errorf("C2 = %d, want 30", i)
 			}
+		case query.KindFloat:
+			if f, _ := v.Float(); f != 30 {
+				return fmt.Errorf("C2 = %f, want 30", f)
+			}
+		default:
+			return fmt.Errorf("C2 kind = %v, want numeric 30", v.Kind())
 		}
 		return nil
 	}); err != nil {

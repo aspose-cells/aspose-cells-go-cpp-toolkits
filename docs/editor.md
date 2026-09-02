@@ -128,6 +128,77 @@ func WithSheetIndex(i int) WriteRowsOption     // target sheet by index (recomme
 func WithSheet(name string) WriteRowsOption    // target sheet by name
 ```
 
+### SetCellComment
+
+```go
+func SetCellComment(row, column int, text string) WorksheetAction
+```
+
+Adds or replaces the comment note on a specific cell. An existing comment on the
+cell is overwritten. Read it back with
+[`query.ReadCellComment`](query.md#readcellcomment).
+
+```go
+EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1",
+        SetCellValue(0, 0, "total"),
+        SetCellComment(0, 0, "computed in step 2"),
+    ),
+)
+```
+
+### ClearComments
+
+```go
+func ClearComments() WorksheetAction
+```
+
+Removes every comment on the worksheet.
+
+### DefineNamedRange
+
+```go
+func DefineNamedRange(name string, startRow, startColumn, endRow, endColumn int) WorksheetAction
+```
+
+Defines a workbook-level **named range** referring to a block of cells on the
+applied worksheet. If a name with the same text already exists, its reference is
+updated instead, so the action is idempotent. The stored reference is written as
+`='SheetName'!$A$1:$B$2` (absolute cell refs, quoted sheet name). A start cell
+below or to the right of the end cell returns `ErrInvalidRange`.
+
+```go
+EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1",
+        SetCellValue(0, 0, 10),
+        SetCellValue(1, 1, 20),
+        DefineNamedRange("Scores", 0, 0, 1, 1),
+    ),
+)
+```
+
+Read the names back with [`query.NamedRanges`](query.md#namedranges) and the
+cells with [`query.ReadNamedRange`](query.md#readnamedrange).
+
+### Encrypt
+
+```go
+func Encrypt(password string) WorkbookAction
+```
+
+Encrypts the workbook so the **saved file requires the password to open**. It
+sets the workbook's encryption password and selects strong (AES) encryption.
+Loading an encrypted file back requires supplying the password at load time,
+which the toolkit's loader does not yet expose — read encrypted files with a
+password through the underlying engine (`LoadOptions` + `NewWorkbook_Stream`).
+
+```go
+data, err := EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1", SetCellValue(0, 0, "confidential")),
+    Encrypt("hunter2"),
+)
+```
+
 ## Types
 
 ### StyleAction

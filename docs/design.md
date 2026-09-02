@@ -204,3 +204,12 @@ func WithSeparator(s string) Option       // ImportCSV
   - `editor.WriteRows[T](source, sink, rows, opts...) error`:写入 counterpart,Option 为 `WithWriteHeader(bool)`/`WithSheetIndex(i)`/`WithSheet(name)`,默认首表(索引 0)与 query/transfer 对齐;写路径复用 `SetCellValue`(含 time.Time 日期格式);写在块外单元格不动。
 - **共享收敛**:反射列映射抽到新包 `internal/rows`(`Columns(reflect.Type) ([]Column, error)`),query 与 editor 两侧共用同一 tag 规则,杜绝漂移。
 - **补齐**:`toObject` 补 `uint`/`uint8`/`uint32`;`CellKind` 加 `String()` 供错误消息;新增哨兵 `ErrColumnNotFound`。
+
+### 9.5 命名区域 / 单元格批注 / 工作簿加密(P2-7)
+
+延续「契约先行 → 实现 → 行为测试 → docs」的流程,三个能力都只暴露 Go 原生数据、不镜像 aspose 对象模型:
+
+- **命名区域(workbook 级)**:`query.NamedRanges(source, opts...) ([]NamedRange, error)`,其中 `NamedRange{Name, RefersTo, Area}`——`Area` 由 `Name.GetRange()` 尽力解析(公式名无连续区域时置零);`query.ReadNamedRange(source, name, opts...) ([][]CellValue, error)` 经 `Range.GetWorksheet()` 解析到目标表与区域读网格,与当前 sheet 选择无关;名字缺失 → 新哨兵 `ErrNameNotFound`。写侧 `editor.DefineNamedRange(name, startRow, startCol, endRow, endCol)`(WorksheetAction,作用于被应用的表),refersTo 文本用 `CellRef.AbsoluteString()`(`$A$1`)拼出,查重更新保证幂等,反序坐标 → `ErrInvalidRange`。内部收敛到 `internal/aspose/cells`:`FindName`(**迭代** NameCollection 而非 `Get_String`——缺名返回悬垂句柄)、`SetOrAddNamedRange`。
+- **单元格批注**:`editor.SetCellComment(row, col, text)` / `editor.ClearComments()`(WorksheetAction),读侧 `query.ReadCellComment(source, ref, opts...) (string, error)`(无批注 → 空串)。**关键坑**:绑定的 `Cell.GetComment()` 对无批注格返回非 nil 悬垂句柄,调用 `GetNote()` 直接崩溃(探针验证);因此读侧**绝不**用 `Cell.GetComment()`,而是迭代 `CommentCollection`(`Get_Int(i)` + `GetRow()/GetColumn()` 匹配),`CommentCollection.Get_Int_Int` 对缺批注格返回 `IsNull()==true` 可安全判别。
+- **工作簿加密**:`editor.Encrypt(password)`(WorkbookAction)设置 `Settings.SetPassword` + `Workbook.SetEncryptionOptions(StrongCryptographicProvider, 128)`,保存后文件需密码才能打开。读回需加载期密码,工具包共享加载器目前未暴露(文档注明以底层 `LoadOptions` 读取)。测试在绑定层以 `LoadOptions.SetPassword` 验证:无密码加载失败、有密码加载后 `IsEncrypted()==true` 且值存活。
+- **测试预算**:沿用 eval 100 次加载上限纪律——新增测试共用一次缓存的 build(`sync.Once`),并把 `TestQueryReadCellTypes` 从逐格 6 次 `ReadCell` 改为单次 `ReadWorksheet` 取网格(典型加载 6→1),为新测试腾出预算。

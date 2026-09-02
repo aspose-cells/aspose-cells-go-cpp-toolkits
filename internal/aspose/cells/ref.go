@@ -22,6 +22,13 @@ func (r CellRef) String() string {
 	return columnName(r.Col+1) + strconv.Itoa(r.Row+1)
 }
 
+// AbsoluteString renders the reference with absolute row and column markers,
+// e.g. (Row: 2, Col: 1) -> "$B$3". This is the form named-range references
+// use in the refersTo text the engine writes.
+func (r CellRef) AbsoluteString() string {
+	return "$" + columnName(r.Col+1) + "$" + strconv.Itoa(r.Row+1)
+}
+
 // Area is a rectangular cell region with inclusive start and end cells.
 type Area struct {
 	Start CellRef

@@ -7,9 +7,9 @@
 
 - **Convert Excel to PDF, images & more** — 28+ output formats: XLS, XLSX, XLSB, XLSM, XLTX, XLTM, CSV, TXT, ODS, DIF, DBF, SQL, XML, PDF, DOCX, PPTX, XPS, PCL, EPUB, HTML, JSON, Markdown, PNG, JPG, SVG, BMP, TIF/TIFF.
 - **Import & export data** — Export worksheets or cell ranges to JSON / XML; import CSV / XML / JSON data into a worksheet.
-- **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, and dimensions — plus `query.ReadRows[T]` to map a whole table into `[]struct` via `excel` tags.
+- **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, dimensions, named ranges, and cell comments — plus `query.ReadRows[T]` to map a whole table into `[]struct` via `excel` tags.
 - **Merge & split workbooks** — Merge multiple spreadsheets into one; split a workbook into per-sheet files, a ZIP archive, or in-memory bytes.
-- **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, add / delete / rename worksheets, and write `[]struct` tables with `editor.WriteRows`.
+- **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, add / delete / rename worksheets, write `[]struct` tables with `editor.WriteRows`, attach cell comments, define named ranges, and encrypt the saved workbook with `editor.Encrypt`.
 - **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction for files, bytes, and streams.
 
 ## Overview

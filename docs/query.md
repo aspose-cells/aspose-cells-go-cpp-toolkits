@@ -139,6 +139,55 @@ wrapped in `ErrInvalidValue`. A whole-number cell (`KindInt`) is accepted into a
 `float` field, and any non-empty scalar cell is accepted into a `string` field
 as its canonical text. An empty worksheet yields an empty (non-nil) slice.
 
+### NamedRanges
+
+```go
+func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, error)
+```
+
+Lists the workbook's **defined names** — named ranges and formula names — as
+Go-native values:
+
+```go
+type NamedRange struct {
+    Name     string // e.g. "MyRange"
+    RefersTo string // raw reference text, e.g. "=Data!$A$1:$B$2"
+    Area     Area   // referred cell area; zero for formula names
+}
+```
+
+`Area` is resolved from the name's primary contiguous range; a formula name (one
+referring to a computed value rather than a cell block) reports the zero area.
+Options are accepted for API uniformity but none currently affect this
+workbook-level listing.
+
+### ReadNamedRange
+
+```go
+func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) ([][]CellValue, error)
+```
+
+Reads the cells of a named range as a row-major grid, the same shape as
+`ReadRange`. The name is resolved through the engine's range object, so the
+range is read regardless of the current sheet selection — a named range may live
+on any worksheet. A name that does not exist returns `ErrNameNotFound`.
+
+```go
+grid, err := query.ReadNamedRange(datasource.FilePathSource("data.xlsx"), "MyRange")
+```
+
+Write counterpart: [`editor.DefineNamedRange`](editor.md#definenamedrange).
+
+### ReadCellComment
+
+```go
+func ReadCellComment(source datasource.DataSource, ref string, opts ...Option) (string, error)
+```
+
+Returns the comment note on a single cell identified by its Excel reference,
+e.g. `"B3"`. A cell without a comment returns an empty string. Write counterpart:
+[`editor.SetCellComment`](editor.md#setcellcomment).
+
 ## Options
 
 ```go
@@ -181,6 +230,7 @@ Invalid references return `ErrInvalidCellRef`; malformed areas return
 | Reversed / malformed range         | `ErrInvalidRange`                 |
 | `WithSheet` name not found         | `ErrWorksheetNotFound`            |
 | `WithSheetIndex` out of range      | `ErrInvalidSheetID`               |
+| Named range not found              | `ErrNameNotFound`                 |
 
 All errors are wrapped with `%w` so they can be classified with `errors.Is`.
 
