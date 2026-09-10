@@ -351,6 +351,80 @@ func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	}
 }
 
+// SetCellValues creates a WorksheetAction that sets values for a range of cells
+// starting from the specified row and column. The values are provided as a
+// two-dimensional slice, where each inner slice represents a row of values.
+//
+// Parameters:
+//   - beginRow: The zero-based starting row index.
+//   - beginColumn: The zero-based starting column index.
+//   - values: A 2D slice of values to set. Each inner slice represents a row.
+//     Supported value types are the same as SetCellValue: int, int64, float64,
+//     string, bool, time.Time, and their unsigned variants.
+//
+// Returns:
+//   - WorksheetAction: A function that populates the specified range with values.
+//
+// Example:
+//
+//	err := editor.EditSpreadsheet(source,
+//		editor.InWorksheet(0,
+//			editor.SetCellValues(0, 0, [][]interface{}{
+//				{"Name", "Age", "City"},
+//				{"Alice", 30, "New York"},
+//				{"Bob", 25, "Los Angeles"},
+//			}),
+//		))
+func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+
+		rowCount := len(values)
+		if rowCount == 0 {
+			return nil
+		}
+
+		colCount := 0
+		for _, row := range values {
+			if len(row) > colCount {
+				colCount = len(row)
+			}
+		}
+
+		if colCount == 0 {
+			return nil
+		}
+
+		for r := 0; r < rowCount; r++ {
+			for c := 0; c < colCount; c++ {
+				var cell *asposecells.Cell
+				if r < len(values) && c < len(values[r]) {
+					val := values[r][c]
+					if val == nil {
+						continue
+					}
+					cell, err = cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c))
+					if err != nil {
+						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+					}
+					if err := putValue(cell, val); err != nil {
+						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+					}
+					if t, ok := val.(time.Time); ok {
+						if err := applyDateValueFormat(cell, t); err != nil {
+							return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+						}
+					}
+				}
+			}
+		}
+		return nil
+	}
+}
+
 // DeleteRows creates a WorksheetAction that removes rows from the worksheet.
 //
 // Parameters:

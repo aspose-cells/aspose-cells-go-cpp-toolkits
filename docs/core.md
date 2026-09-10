@@ -16,7 +16,7 @@ Loads and applies a license for the Aspose.Cells engine from the specified file 
 
 #### Parameters
 
-- **licensePath**: The absolute or relative path to a valid Aspose.Cells license file (typically with a `.lic` extension). If empty, the `LicensePath` environment variable is used. If the file is not found, unreadable, or contains an invalid license, subsequent operations may run in evaluation mode (e.g., with watermarks or feature limitations).
+- **licensePath**: The absolute or relative path to a valid Aspose.Cells license file (typically with a `.lic` extension). If empty, the `LicenseFilePath` environment variable is used (falling back to the legacy `LicensePath`). A missing or unreadable file is reported immediately as an error wrapping `ErrLicenseInvalid`; a readable file that contains an invalid license leaves subsequent operations in evaluation mode (e.g., with watermarks or feature limitations).
 
 #### Returns
 
@@ -31,7 +31,7 @@ Loads and applies a license for the Aspose.Cells engine from the specified file 
 #### Example
 
 ```go
-if err := core.SetLicense(os.Getenv("LicensePath")); err != nil {
+if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
     log.Fatal(err)
 }
 ```
@@ -90,7 +90,7 @@ if err != nil {
 4. **Handle missing license gracefully**: For applications that support both evaluation and licensed modes:
 
    ```go
-   if path := os.Getenv("LicensePath"); path != "" {
+   if path := os.Getenv("LicenseFilePath"); path != "" {
        if err := core.SetLicense(path); err != nil {
            log.Printf("License error: %v; running in evaluation mode", err)
        }

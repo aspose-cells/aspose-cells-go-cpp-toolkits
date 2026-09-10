@@ -53,7 +53,7 @@ import (
 )
 
 func main() {
-  if err := core.SetLicense(os.Getenv("LicensePath")); err != nil {
+  if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
     log.Fatal(err)
   }
   converter.Convert(

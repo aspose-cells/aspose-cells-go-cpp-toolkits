@@ -17,10 +17,12 @@ import (
 //
 // Parameters:
 //   - licensePath: The absolute or relative path to a valid Aspose.Cells license
-//     file (typically with a .lic extension). If empty, the LicensePath
-//     environment variable is used. If the file is not found, unreadable, or
-//     contains an invalid license, subsequent operations may run in evaluation
-//     mode (e.g., with watermarks or feature limitations).
+//     file (typically with a .lic extension). If empty, the LicenseFilePath
+//     environment variable is used (falling back to the legacy LicensePath
+//     variable). If the file is not found or unreadable, SetLicense reports it
+//     directly; if it is readable but contains an invalid license, subsequent
+//     operations may run in evaluation mode (e.g., with watermarks or feature
+//     limitations).
 //
 // Returns:
 //   - error: nil when the license was applied; otherwise an error wrapping
@@ -40,12 +42,24 @@ import (
 //
 // Example:
 //
-//	if err := core.SetLicense(os.Getenv("LicensePath")); err != nil {
+//	if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
 //		log.Fatal(err)
 //	}
 func SetLicense(licensePath string) error {
 	if licensePath == "" {
+		licensePath = os.Getenv("LicenseFilePath")
+	}
+	if licensePath == "" {
+		// Legacy name, kept for callers that set it instead.
 		licensePath = os.Getenv("LicensePath")
+	}
+	if licensePath != "" {
+		// The engine reports a missing/unreadable license file silently and
+		// just keeps running in evaluation mode, so check readability here to
+		// honour the documented ErrLicenseInvalid contract.
+		if _, err := os.Stat(licensePath); err != nil {
+			return fmt.Errorf("license file %q: %w: %v", licensePath, toolkiterrors.ErrLicenseInvalid, err)
+		}
 	}
 	lic, err := asposecells.NewLicense()
 	if err != nil {

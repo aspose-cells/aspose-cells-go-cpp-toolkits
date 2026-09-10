@@ -15,7 +15,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	examples "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/examples/common"
@@ -33,10 +32,8 @@ type Row struct {
 }
 
 func main() {
-	if p := os.Getenv("LicensePath"); p != "" {
-		if err := core.SetLicense(p); err != nil {
-			log.Printf("license: %v", err)
-		}
+	if err := examples.SetLicense(); err != nil {
+		log.Printf("license: %v", err)
 	}
 	if err := os.MkdirAll(examples.OutDir("query"), 0o755); err != nil {
 		log.Fatal(err)
