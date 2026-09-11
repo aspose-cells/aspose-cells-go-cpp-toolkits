@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
@@ -59,6 +60,14 @@ func TestSentinelErrors(t *testing.T) {
 		}
 		if err == nil || !os.IsNotExist(err) {
 			t.Fatalf("ConvertSpreadsheetToFile missing file error = %v, want fs.ErrNotExist", err)
+		}
+	})
+
+	t.Run("invalid license", func(t *testing.T) {
+		// An invalid license path should return ErrLicenseInvalid
+		err := core.SetLicense(filepath.Join(t.TempDir(), "invalid.lic"))
+		if !errors.Is(err, toolkiterrors.ErrLicenseInvalid) {
+			t.Fatalf("SetLicense(invalid) error = %v, want ErrLicenseInvalid", err)
 		}
 	})
 }

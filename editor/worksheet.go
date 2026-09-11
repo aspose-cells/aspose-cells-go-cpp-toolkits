@@ -32,11 +32,73 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 		if err != nil {
 			return err
 		}
-		obj, err := toObject(value)
+		if err := putValue(cell, value); err != nil {
+			return err
+		}
+		if t, ok := value.(time.Time); ok {
+			return applyDateValueFormat(cell, t)
+		}
+		return nil
+	}
+}
+
+// putValue converts value into an engine object and writes it to the cell.
+func putValue(cell *asposecells.Cell, value interface{}) error {
+	obj, err := toObject(value)
+	if err != nil {
+		return err
+	}
+	return cell.PutValue_Object(obj)
+}
+
+// applyDateValueFormat sets a date number format on a cell that just received a
+// time.Time value. The engine's NewObject_Date writes a plain numeric serial
+// without a date format, so without this the cell would be displayed and read
+// back as a bare number. Applying a date format makes Excel render it as a date
+// and the query package's type detection recognize it as KindDateTime.
+func applyDateValueFormat(cell *asposecells.Cell, t time.Time) error {
+	style, err := cell.GetStyle()
+	if err != nil {
+		return err
+	}
+	if err := style.SetCustom_String(dateNumberFormat(t)); err != nil {
+		return err
+	}
+	return cell.SetStyle_Style(style)
+}
+
+// dateNumberFormat returns a date custom number format for t: a date-only
+// format when t has no time-of-day component, otherwise a date-time format.
+func dateNumberFormat(t time.Time) string {
+	if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 && t.Nanosecond() == 0 {
+		return "yyyy-mm-dd"
+	}
+	return "yyyy-mm-dd hh:mm:ss"
+}
+
+// SetFormula creates a WorksheetAction that assigns a formula to a specific
+// cell. The formula is evaluated when the workbook is calculated; pair it with
+// CalculateAll when the result needs to be current before the workbook is
+// saved or read back.
+//
+// Parameters:
+//   - row: The zero-based row index of the target cell.
+//   - column: The zero-based column index of the target cell.
+//   - formula: The formula text, e.g. "=SUM(A1:B1)".
+//
+// Returns:
+//   - WorksheetAction: A function that sets the cell's formula.
+func SetFormula(row, column int, formula string) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		cells, err := worksheet.GetCells()
 		if err != nil {
 			return err
 		}
-		return cell.PutValue_Object(obj)
+		cell, err := cells.Get_Int_Int(int32(row), int32(column))
+		if err != nil {
+			return err
+		}
+		return cell.SetFormula_String(formula)
 	}
 }
 
@@ -67,7 +129,20 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 		if err != nil {
 			return err
 		}
-		return cellsRange.SetValue(obj)
+		if err := cellsRange.SetValue(obj); err != nil {
+			return err
+		}
+		if t, ok := value.(time.Time); ok {
+			style, err := cells.GetStyle()
+			if err != nil {
+				return err
+			}
+			if err := style.SetCustom_String(dateNumberFormat(t)); err != nil {
+				return err
+			}
+			return cellsRange.SetStyle_Style(style)
+		}
+		return nil
 	}
 }
 
@@ -78,8 +153,12 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 	switch v := value.(type) {
 	case int8:
 		return asposecells.NewObject_Integer8(v)
+	case uint8:
+		return asposecells.NewObject_UInteger16(uint16(v))
 	case uint16:
 		return asposecells.NewObject_UInteger16(v)
+	case uint32:
+		return asposecells.NewObject_ULong(uint64(v))
 	case uint64:
 		return asposecells.NewObject_ULong(v)
 	case int16:
@@ -90,6 +169,8 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 		return asposecells.NewObject_Int64(int64(v))
 	case int64:
 		return asposecells.NewObject_Int64(v)
+	case uint:
+		return asposecells.NewObject_ULong(uint64(v))
 	case float32:
 		return asposecells.NewObject_Float(v)
 	case float64:
@@ -121,6 +202,9 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
 		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
 		cellsStyle, err := cells.GetStyle()
 		if err != nil {
 			return err
@@ -131,11 +215,10 @@ func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) 
 			}
 		}
 		_range, err := cells.CreateRange_Int_Int_Int_Int(int32(beginRow), int32(beginColumn), int32(rows), int32(columns))
-		err = _range.SetStyle_Style(cellsStyle)
 		if err != nil {
 			return err
 		}
-		return nil
+		return _range.SetStyle_Style(cellsStyle)
 	}
 }
 
@@ -265,6 +348,80 @@ func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 			return err
 		}
 		return cellsRange.ClearFormats()
+	}
+}
+
+// SetCellValues creates a WorksheetAction that sets values for a range of cells
+// starting from the specified row and column. The values are provided as a
+// two-dimensional slice, where each inner slice represents a row of values.
+//
+// Parameters:
+//   - beginRow: The zero-based starting row index.
+//   - beginColumn: The zero-based starting column index.
+//   - values: A 2D slice of values to set. Each inner slice represents a row.
+//     Supported value types are the same as SetCellValue: int, int64, float64,
+//     string, bool, time.Time, and their unsigned variants.
+//
+// Returns:
+//   - WorksheetAction: A function that populates the specified range with values.
+//
+// Example:
+//
+//	err := editor.EditSpreadsheet(source,
+//		editor.InWorksheet(0,
+//			editor.SetCellValues(0, 0, [][]interface{}{
+//				{"Name", "Age", "City"},
+//				{"Alice", 30, "New York"},
+//				{"Bob", 25, "Los Angeles"},
+//			}),
+//		))
+func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		cells, err := worksheet.GetCells()
+		if err != nil {
+			return err
+		}
+
+		rowCount := len(values)
+		if rowCount == 0 {
+			return nil
+		}
+
+		colCount := 0
+		for _, row := range values {
+			if len(row) > colCount {
+				colCount = len(row)
+			}
+		}
+
+		if colCount == 0 {
+			return nil
+		}
+
+		for r := 0; r < rowCount; r++ {
+			for c := 0; c < colCount; c++ {
+				var cell *asposecells.Cell
+				if r < len(values) && c < len(values[r]) {
+					val := values[r][c]
+					if val == nil {
+						continue
+					}
+					cell, err = cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c))
+					if err != nil {
+						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+					}
+					if err := putValue(cell, val); err != nil {
+						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+					}
+					if t, ok := val.(time.Time); ok {
+						if err := applyDateValueFormat(cell, t); err != nil {
+							return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
+						}
+					}
+				}
+			}
+		}
+		return nil
 	}
 }
 

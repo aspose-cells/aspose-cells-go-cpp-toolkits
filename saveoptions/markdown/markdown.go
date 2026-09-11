@@ -25,17 +25,7 @@ type Config struct {
 	alignColumnPadding         *byte
 	splitTablesByBlankRow      *bool
 	officeMathOutputType       *asposecells.HtmlOfficeMathOutputType
-	clearData                  *bool
-	cachedFileFolder           *string
-	validateMergedAreas        *bool
-	mergeAreas                 *bool
-	createDirectory            *bool
-	sortNames                  *bool
-	sortExternalNames          *bool
-	refreshChartCache          *bool
-	checkExcelRestriction      *bool
-	updateSmartArt             *bool
-	encryptDocumentProperties  *bool
+	saveoptions.CommonConfig
 }
 
 // Apply processes the given source byte slice as a Markdown file and returns the converted output.
@@ -108,60 +98,8 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	if c.clearData != nil {
-		if err := opts.SetClearData(*c.clearData); err != nil {
-			return nil, err
-		}
-	}
-	if c.cachedFileFolder != nil {
-		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
-			return nil, err
-		}
-	}
-	if c.validateMergedAreas != nil {
-		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.mergeAreas != nil {
-		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.createDirectory != nil {
-		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortNames != nil {
-		if err := opts.SetSortNames(*c.sortNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortExternalNames != nil {
-		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.refreshChartCache != nil {
-		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
-			return nil, err
-		}
-	}
-	if c.checkExcelRestriction != nil {
-		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
-			return nil, err
-		}
-	}
-	if c.updateSmartArt != nil {
-		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
-			return nil, err
-		}
-	}
-	if c.encryptDocumentProperties != nil {
-		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
-			return nil, err
-		}
+	if err := c.ApplyCommon(opts); err != nil {
+		return nil, err
 	}
 	workbook, err := asposecells.NewWorkbook_Stream(source)
 	if err != nil {
@@ -206,7 +144,6 @@ func init() {
 // create an instance with custom options
 //
 //	opts := New(
-//	    WithExportAsString(true),
 //	    WithCachedFileFolder("D:\\cached_folder"),
 //	    WithClearData(true),
 //
@@ -298,66 +235,66 @@ func WithOfficeMathOutputType(value asposecells.HtmlOfficeMathOutputType) Option
 }
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = &value
+		c.ClearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = &value
+		c.CachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = &value
+		c.ValidateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = &value
+		c.MergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = &value
+		c.CreateDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = &value
+		c.SortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = &value
+		c.SortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = &value
+		c.RefreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = &value
+		c.CheckExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = &value
+		c.UpdateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = &value
+		c.EncryptDocumentProperties = &value
 	}
 }

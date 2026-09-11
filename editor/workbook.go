@@ -2,14 +2,10 @@
 // using a fluent, action-based Domain Specific Language (DSL).
 package editor
 
-import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-
-//func WithDefaultStyle(styleAction StyleAction) WorkbookAction {
-//	return func(workbook *asposecells.Workbook) error {
-//		workbook.SetDefaultStyle(defaultStyle)
-//		return nil
-//	}
-//}
+import (
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+)
 
 // WithActiveSheet creates a WorkbookAction that activates the worksheet
 // with the given name.
@@ -80,7 +76,7 @@ func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_String(sheetName)
+		ws, err := cells.WorksheetByName(wss, sheetName)
 		if err != nil {
 			return err
 		}
@@ -110,6 +106,18 @@ func InDefaultStyle(actions ...StyleAction) WorkbookAction {
 			}
 		}
 		return nil
+	}
+}
+
+// CalculateAll creates a WorkbookAction that recalculates every formula in the
+// workbook. Place it after the actions that set or depend on formula values so
+// the saved workbook holds current results.
+//
+// Returns:
+//   - WorkbookAction: A function that recalculates the workbook.
+func CalculateAll() WorkbookAction {
+	return func(workbook *asposecells.Workbook) error {
+		return workbook.CalculateFormula()
 	}
 }
 
@@ -143,17 +151,3 @@ func InWorksheet(identifier interface{}, actions ...WorksheetAction) WorkbookAct
 		return nil
 	}
 }
-
-//func InChart(sheetID interface{}, chartIndex int, actions ...ChartAction) WorkbookAction {
-//	return func(wb *asposecells.Workbook) error {
-//		sheet, _ := resolveSheet(wb, sheetID)
-//		charts, _ := sheet.GetCharts()
-//		chart, _ := charts.Get_Int(int32(chartIndex))
-//		for _, action := range actions {
-//			if err := action(chart); err != nil {
-//				return err
-//			}
-//		}
-//		return nil
-//	}
-//}

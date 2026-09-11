@@ -19,7 +19,8 @@ package saveoptions
 //   - XLSXSaveOption: re-saves as XLSX with specific settings
 //
 // This interface enables a flexible, decoupled design where conversion logic can be extended
-// without modifying core conversion functions like ConvertSpreadsheet or ConvertToWriter.
+// without modifying core conversion functions like converter.Convert, manipulator.Merge, or
+// manipulator.Split.
 type SaveOption interface {
 	// Apply transforms the given input byte slice (representing a spreadsheet) into the desired output format.
 	// It returns the resulting byte slice and any error encountered during processing.

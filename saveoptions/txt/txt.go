@@ -13,7 +13,9 @@ import (
 // Pointer fields carry presence semantics: a nil pointer means the option
 // was never set (so the native default is kept), while a non-nil pointer
 // means the caller explicitly requested the value, including zero/false.
+// format discriminates the delimited-text sub-format: "" (TXT) or "tsv".
 type Config struct {
+	format                       string
 	separator                    *byte
 	separatorString              *string
 	encoding                     *asposecells.EncodingType
@@ -25,18 +27,11 @@ type Config struct {
 	exportArea                   *asposecells.CellArea
 	exportQuotePrefix            *bool
 	exportAllSheets              *bool
-	clearData                    *bool
-	cachedFileFolder             *string
-	validateMergedAreas          *bool
-	mergeAreas                   *bool
-	createDirectory              *bool
-	sortNames                    *bool
-	sortExternalNames            *bool
-	refreshChartCache            *bool
-	checkExcelRestriction        *bool
-	updateSmartArt               *bool
-	encryptDocumentProperties    *bool
+	saveoptions.CommonConfig
 }
+
+// isTsv reports whether the configured sub-format is TSV (tab-separated).
+func (c *Config) isTsv() bool { return c.format == "tsv" }
 
 // Apply processes the given source byte slice as a Txt file and returns the converted output.
 // This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Txt-specific export logic.
@@ -49,7 +44,13 @@ type Config struct {
 // - []byte: The resulting Txt file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
-	opts, err := asposecells.NewTxtSaveOptions()
+	var opts *asposecells.TxtSaveOptions
+	var err error
+	if c.isTsv() {
+		opts, err = asposecells.NewTxtSaveOptions_SaveFormat(asposecells.SaveFormat_Tsv)
+	} else {
+		opts, err = asposecells.NewTxtSaveOptions()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -108,60 +109,8 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	if c.clearData != nil {
-		if err := opts.SetClearData(*c.clearData); err != nil {
-			return nil, err
-		}
-	}
-	if c.cachedFileFolder != nil {
-		if err := opts.SetCachedFileFolder(*c.cachedFileFolder); err != nil {
-			return nil, err
-		}
-	}
-	if c.validateMergedAreas != nil {
-		if err := opts.SetValidateMergedAreas(*c.validateMergedAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.mergeAreas != nil {
-		if err := opts.SetMergeAreas(*c.mergeAreas); err != nil {
-			return nil, err
-		}
-	}
-	if c.createDirectory != nil {
-		if err := opts.SetCreateDirectory(*c.createDirectory); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortNames != nil {
-		if err := opts.SetSortNames(*c.sortNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.sortExternalNames != nil {
-		if err := opts.SetSortExternalNames(*c.sortExternalNames); err != nil {
-			return nil, err
-		}
-	}
-	if c.refreshChartCache != nil {
-		if err := opts.SetRefreshChartCache(*c.refreshChartCache); err != nil {
-			return nil, err
-		}
-	}
-	if c.checkExcelRestriction != nil {
-		if err := opts.SetCheckExcelRestriction(*c.checkExcelRestriction); err != nil {
-			return nil, err
-		}
-	}
-	if c.updateSmartArt != nil {
-		if err := opts.SetUpdateSmartArt(*c.updateSmartArt); err != nil {
-			return nil, err
-		}
-	}
-	if c.encryptDocumentProperties != nil {
-		if err := opts.SetEncryptDocumentProperties(*c.encryptDocumentProperties); err != nil {
-			return nil, err
-		}
+	if err := c.ApplyCommon(opts); err != nil {
+		return nil, err
 	}
 	workbook, err := asposecells.NewWorkbook_Stream(source)
 	if err != nil {
@@ -175,7 +124,10 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	return result, nil
 }
 func (c *Config) GetFormat() string {
-	return "txt"
+	if c.format == "" {
+		return "txt"
+	}
+	return c.format
 }
 
 type Option func(*Config)
@@ -184,6 +136,18 @@ func init() {
 	formats.Register("txt", func() saveoptions.SaveOption {
 		return New()
 	})
+	formats.Register("tsv", func() saveoptions.SaveOption {
+		return New(WithFormat("tsv"))
+	})
+}
+
+// WithFormat selects the delimited-text sub-format to emit: "" (TXT, the
+// default) or "tsv". The formats registry uses it, so formats.Get("tsv")
+// produces tab-separated values.
+func WithFormat(value string) Option {
+	return func(c *Config) {
+		c.format = value
+	}
 }
 
 // New creates a new instance of txt save options
@@ -206,7 +170,6 @@ func init() {
 // create an instance with custom options
 //
 //	opts := New(
-//	    WithExportAsString(true),
 //	    WithCachedFileFolder("D:\\cached_folder"),
 //	    WithClearData(true),
 //
@@ -299,66 +262,66 @@ func WithExportAllSheets(value bool) Option {
 
 func WithClearData(value bool) Option {
 	return func(c *Config) {
-		c.clearData = &value
+		c.ClearData = &value
 	}
 }
 
 func WithCachedFileFolder(value string) Option {
 	return func(c *Config) {
-		c.cachedFileFolder = &value
+		c.CachedFileFolder = &value
 	}
 }
 
 func WithValidateMergedAreas(value bool) Option {
 	return func(c *Config) {
-		c.validateMergedAreas = &value
+		c.ValidateMergedAreas = &value
 	}
 }
 
 func WithMergeAreas(value bool) Option {
 	return func(c *Config) {
-		c.mergeAreas = &value
+		c.MergeAreas = &value
 	}
 }
 
 func WithCreateDirectory(value bool) Option {
 	return func(c *Config) {
-		c.createDirectory = &value
+		c.CreateDirectory = &value
 	}
 }
 
 func WithSortNames(value bool) Option {
 	return func(c *Config) {
-		c.sortNames = &value
+		c.SortNames = &value
 	}
 }
 
 func WithSortExternalNames(value bool) Option {
 	return func(c *Config) {
-		c.sortExternalNames = &value
+		c.SortExternalNames = &value
 	}
 }
 
 func WithRefreshChartCache(value bool) Option {
 	return func(c *Config) {
-		c.refreshChartCache = &value
+		c.RefreshChartCache = &value
 	}
 }
 
 func WithCheckExcelRestriction(value bool) Option {
 	return func(c *Config) {
-		c.checkExcelRestriction = &value
+		c.CheckExcelRestriction = &value
 	}
 }
 
 func WithUpdateSmartArt(value bool) Option {
 	return func(c *Config) {
-		c.updateSmartArt = &value
+		c.UpdateSmartArt = &value
 	}
 }
 
 func WithEncryptDocumentProperties(value bool) Option {
 	return func(c *Config) {
-		c.encryptDocumentProperties = &value
+		c.EncryptDocumentProperties = &value
 	}
 }

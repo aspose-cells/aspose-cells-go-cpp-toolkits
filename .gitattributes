@@ -1,0 +1,5 @@
+# Force LF line endings for every file on every platform. Without this,
+# core.autocrlf=true on Windows checks out CRLF working trees and gofmt -l
+# flags every file, failing CI on windows-latest even though the committed
+# content (LF) is clean.
+* text eol=lf

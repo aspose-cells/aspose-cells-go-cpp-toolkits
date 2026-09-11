@@ -1,82 +1,63 @@
 // Package datasource abstracts spreadsheet input and output.
 //
-// DataSource implementations provide bytes for processing, and DataSink
-// implementations accept bytes written by the toolkit. Sources and sinks can
-// back onto files, in-memory buffers, or already-open streams, letting the
-// converter, editor, manipulator, and transfer packages stay agnostic about
-// where data comes from or goes to.
+// DataSource implementations provide readable input for processing; DataSink
+// implementations accept output written by the toolkit. The converter, editor,
+// manipulator, and transfer packages take these abstractions instead of
+// concrete file/bytes/stream types, so one signature covers every input and
+// output shape and the number of public entry points stays small.
 package datasource
 
 import (
+	"archive/zip"
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
-// The DataSource defines the general interface for data sources.
-// Any type that implements this interface can serve as a data provider.
-// The Open method is responsible for returning an io.ReadCloser, and the caller must close it after
+// DataSource abstracts a readable input. Any type that implements Open can
+// serve as a data provider; Open returns an io.ReadCloser that the caller
+// (the toolkit, via internal/aspose/cells.ReadSource) drains and closes.
 type DataSource interface {
 	Open() (io.ReadCloser, error)
-	ByteData() []byte
 }
 
-// FilePathSource is an implementation of a data source based on local file system paths.
-// It implements the DataSource interface and is used to read files from the specified path.
+// FilePathSource is a DataSource backed by a local file path.
 type FilePathSource string
 
-// Open Opens the file at the specified path.
-// It directly calls os.Open, so if the file does not exist or does not have the required permissions, it will return the corresponding system error.
+// Open opens the file at the specified path. It directly calls os.Open, so if
+// the file does not exist or lacks permissions, the corresponding system error
+// is returned.
 func (p FilePathSource) Open() (io.ReadCloser, error) {
 	return os.Open(string(p))
 }
 
-func (p FilePathSource) ByteData() []byte {
-	reader, errOpen := p.Open()
-	if errOpen != nil {
-		return nil
-	}
-	data, errRead := io.ReadAll(reader)
-	if errRead != nil {
-		return nil
-	}
-	reader.Close()
-	return data
-}
-
-// BytesSource is an implementation of a data source based on in-memory byte slices.
-// This is very useful in unit tests or when processing data that has been loaded into memory.
+// BytesSource is a DataSource backed by an in-memory byte slice.
 type BytesSource []byte
 
-// Open wraps the byte slice into an io.ReadCloser.
-// Since the data is in memory, this operation usually does not fail (returns nil error).
-// io.NopCloser is used to wrap an io.Reader into an io.ReadCloser, and its Close method is an empty operation.
+// Open wraps the byte slice into an io.ReadCloser. Since the data is in
+// memory, this operation does not fail.
 func (b BytesSource) Open() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(b)), nil
 }
 
-func (b BytesSource) ByteData() []byte {
-	return b
-}
-
-// ReaderSource is an adapter for an already-open io.ReadCloser, such as an
-// HTTP response body. It lets an open stream be used wherever a DataSource is
+// ReaderSource is an adapter for an already-open io.Reader, such as a file or
+// HTTP response body. It lets a stream be used wherever a DataSource is
 // expected.
 //
 // The wrapped stream is consumed lazily on the first access and buffered, so
-// Open and ByteData may be called repeatedly; subsequent calls serve the same
-// buffered bytes.
+// Open may be called repeatedly; subsequent calls serve the same buffered
+// bytes. The caller remains responsible for closing the underlying stream.
 type ReaderSource struct {
 	mu     sync.Mutex
-	reader io.ReadCloser
+	reader io.Reader
 	buf    []byte
 }
 
 // NewReaderSource wraps an already-open stream as a DataSource. The returned
-// source buffers the stream on first use; the wrapped stream is closed once
-// its contents have been read.
-func NewReaderSource(r io.ReadCloser) *ReaderSource {
+// source buffers the stream on first use.
+func NewReaderSource(r io.Reader) *ReaderSource {
 	return &ReaderSource{reader: r}
 }
 
@@ -91,14 +72,6 @@ func (r *ReaderSource) Open() (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
-// ByteData returns the source contents. It is safe to call repeatedly; the
-// wrapped stream is drained and closed exactly once, after which the bytes are
-// served from an internal buffer.
-func (r *ReaderSource) ByteData() []byte {
-	data, _ := r.readAll()
-	return data
-}
-
 func (r *ReaderSource) readAll() ([]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -109,9 +82,6 @@ func (r *ReaderSource) readAll() ([]byte, error) {
 		return nil, nil
 	}
 	data, err := io.ReadAll(r.reader)
-	if closeErr := r.reader.Close(); closeErr != nil && err == nil {
-		err = closeErr
-	}
 	r.reader = nil
 	if err != nil {
 		return nil, err
@@ -120,63 +90,96 @@ func (r *ReaderSource) readAll() ([]byte, error) {
 	return data, nil
 }
 
-// DataSink defines the general interface for data destinations.
-// Any type that implements this interface can serve as a data writer.
-// The Write method returns an io.WriteCloser, and the caller must close it after writing.
+// DataSink abstracts a writable output. The name parameter is used by
+// multi-output operations (for example manipulator.Split writing one file or
+// archive entry per worksheet); single-output sinks ignore it.
 type DataSink interface {
-	Write() (io.WriteCloser, error)
+	Write(name string, data []byte) error
 }
 
-// FilePathSink is an implementation of a data sink based on local file system paths.
-// It implements the DataSink interface and is used to write data to the specified file path.
+// FilePathSink writes each Write call to a file at the given path. name is
+// ignored.
 type FilePathSink string
 
-// Write creates or truncates the file at the specified path and returns a WriteCloser.
-// It directly calls os.Create, so if the directory does not exist or lacks permissions, it will return an error.
-func (p FilePathSink) Write() (io.WriteCloser, error) {
-	return os.Create(string(p))
+// Write writes data to the file at the sink's path, truncating any existing
+// file. Missing parent directories are created first, matching FolderSink, so
+// writing to a not-yet-existing output folder does not fail.
+func (p FilePathSink) Write(_ string, data []byte) error {
+	dir := filepath.Dir(string(p))
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	return os.WriteFile(string(p), data, 0o644)
 }
 
-// BytesSink is an in-memory implementation of a data sink.
-// It is useful for capturing written data into a byte slice, typically used in testing or buffering.
+// WriterSink writes each Write call to the wrapped io.Writer. name is ignored.
+type WriterSink struct {
+	w io.Writer
+}
+
+// NewWriterSink wraps an io.Writer as a DataSink.
+func NewWriterSink(w io.Writer) *WriterSink {
+	return &WriterSink{w: w}
+}
+
+// Write forwards data to the wrapped writer.
+func (s WriterSink) Write(_ string, data []byte) error {
+	_, err := s.w.Write(data)
+	return err
+}
+
+// BytesSink accumulates all Write calls into an in-memory buffer, so a caller
+// that wants the result as bytes can hand a BytesSink to any toolkit entry
+// point and read the output back with Bytes.
 type BytesSink struct {
 	buf bytes.Buffer
 }
 
-// Write returns a wrapper around the internal buffer.
-// The internal buffer is reset before writing to ensure a clean state.
-func (b *BytesSink) Write() (io.WriteCloser, error) {
-	b.buf.Reset()
-	return nopWriteCloser{&b.buf}, nil
+// Write appends data to the sink's buffer. name is ignored.
+func (b *BytesSink) Write(_ string, data []byte) error {
+	_, err := b.buf.Write(data)
+	return err
 }
 
-// Bytes returns the accumulated bytes written to the sink.
+// Bytes returns the accumulated output.
 func (b *BytesSink) Bytes() []byte {
 	return b.buf.Bytes()
 }
 
-// nopWriteCloser wraps an io.Writer to satisfy the io.WriteCloser interface.
-// Its Close method is a no-op.
-type nopWriteCloser struct {
-	io.Writer
+// FolderSink writes each Write call to a file named name inside the given
+// folder, creating the folder if needed. It backs manipulator.Split's
+// per-worksheet file output.
+type FolderSink string
+
+// Write creates the folder if needed and writes data to
+// <folder>/<name>.
+func (f FolderSink) Write(name string, data []byte) error {
+	if err := os.MkdirAll(string(f), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(string(f), name), data, 0o644)
 }
 
-// Close is a no-op for in-memory buffers.
-func (nopWriteCloser) Close() error {
-	return nil
+// ZipSink writes each Write call as a new entry named name inside a
+// zip.Writer, backing manipulator.Split's per-worksheet archive output.
+type ZipSink struct {
+	zw *zip.Writer
 }
 
-// FileStore is an implementation that supports both reading and writing to a local file.
-// It implements both DataSource and DataSink interfaces.
-// This is useful when a single entity represents a file that needs to be both read from and written to.
-type FileStore string
-
-// Open opens the file at the specified path for reading.
-func (f FileStore) Open() (io.ReadCloser, error) {
-	return os.Open(string(f))
+// NewZipSink wraps a zip.Writer as a DataSink. The caller closes the zip.Writer
+// after the operation completes to finalize the archive.
+func NewZipSink(zw *zip.Writer) *ZipSink {
+	return &ZipSink{zw: zw}
 }
 
-// Write creates or truncates the file at the specified path for writing.
-func (f FileStore) Write() (io.WriteCloser, error) {
-	return os.Create(string(f))
+// Write creates an entry named name in the archive and writes data to it.
+func (z ZipSink) Write(name string, data []byte) error {
+	entry, err := z.zw.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = entry.Write(data)
+	return err
 }

@@ -1,14 +1,14 @@
 // Package manipulator merges and splits spreadsheets.
 //
-// MergeSpreadsheets combines multiple input sources into one workbook; the
-// Split* functions export every worksheet of a workbook as a standalone file.
-// Output is returned as bytes, streamed to a zip writer, or written to a folder.
+// Merge combines multiple input sources into one workbook; Split exports every
+// worksheet of a workbook as a standalone file. Both write their result to a
+// datasource.DataSink, so the caller picks the output shape (file, writer,
+// bytes, folder, or zip archive) by choosing the sink.
 package manipulator
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -19,96 +19,36 @@ import (
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
-// MergeSpreadsheets Merge multi spreadsheets into a file with the specified output format.
+// Merge combines multiple spreadsheets into a single workbook in the format
+// described by opt and writes the result to sink.
 //
 // Parameters:
-//   - source: The data sources implementing the datasource.DataSource interface, which provides the input
-//     spreadsheets content (e.g., from a file, in-memory buffer, etc.).
-//   - outSaveOption: Split outfile options that define the output format and behavior, implementing the
-//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption, etc.).
-//
-// Returns:
-//   - []byte: The converted file content as a byte slice in the target format.
-//   - error: An error if the conversion fails due to reasons such as unreadable source,
-//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+//   - source: The data sources implementing the datasource.DataSource
+//     interface, which provide the input spreadsheets content (e.g., from
+//     files, in-memory buffers, etc.).
+//   - opt: Output options defining the merged workbook's format and behavior,
+//     implementing the saveoptions.SaveOption interface.
+//   - sink: The output destination implementing datasource.DataSink.
 //
 // Example:
 //
-//	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
-//	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
-//	if err != nil {
-//		println(err)
-//		return
+//	save_option := html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
+//	mergedDataSource := []datasource.DataSource{
+//		datasource.FilePathSource("examples/data/BookText.xlsx"),
+//		datasource.FilePathSource("examples/data/EmployeeSalesSummary.xlsx"),
 //	}
-//	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
-func MergeSpreadsheets(source []datasource.DataSource, outSaveOption saveoptions.SaveOption) ([]byte, error) {
-	if outSaveOption == nil {
-		return nil, toolkiterrors.ErrSaveOptionNil
-	}
-	newWorkbook, err := asposecells.NewWorkbook()
-	if err != nil {
-		return nil, err
-	}
-	worksheets, err := newWorkbook.GetWorksheets()
-	if err != nil {
-		return nil, err
-	}
-	err = worksheets.RemoveAt_Int(0)
-	if err != nil {
-		return nil, err
-	}
-	count := len(source)
-	for i := 0; i < count; i++ {
-		workbook, err := cells.GetWorkbookWithDataSource(source[i])
-		if err != nil {
-			return nil, err
-		}
-		err = newWorkbook.Combine(workbook)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	newData, err := newWorkbook.SaveToStream()
-	if err != nil {
-		return nil, err
-	}
-	outData, err := outSaveOption.Apply(newData)
-	if err != nil {
-		return nil, err
-	}
-	return outData, nil
-}
-
-// MergeSpreadsheetsToWriter Merge multi spreadsheets into a writer holder with the specified output format.
-//
-// Parameters:
-//   - source: The data sources implementing the datasource.DataSource interface, which provides the input
-//     spreadsheets content (e.g., from a file, in-memory buffer, etc.).
-//   - w: An io.Writer (such as a file, bytes.Buffer, or HTTP response writer) where the converted
-//     output will be written.
-//   - outSaveOption: Split outfile options that define the output format and behavior, implementing the
-//     saveoptions.SaveOption interface (e.g., PDFSaveOption, XLSXSaveOption, CSVSaveOption, etc.).
-//
-// Returns:
-//   - error: An error if the conversion fails due to reasons such as unreadable source,
-//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
-//
-// Example:
-//
-//	save_option = html.New(html.WithExportImagesAsBase64(true), html.WithSaveAsSingleFile(true))
-//	mergedDataSource := []datasource.DataSource{datasource.FilePathSource("TestData/Source/BookText.xlsx"), datasource.FilePathSource("TestData/Source/EmployeeSalesSummary.xlsx")}
-//	bytes_data, err = manipulator.MergeSpreadsheets(mergedDataSource, save_option)
-//	if err != nil {
-//		println(err)
-//		return
-//	}
-//	os.WriteFile("TestData/Output/mergedOutput2.html", bytes_data, 0644)
-func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outSaveOption saveoptions.SaveOption) error {
-	if outSaveOption == nil {
+//	err := manipulator.Merge(mergedDataSource, save_option,
+//		datasource.FilePathSink("out/mergedOutput2.html"))
+func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
+	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
 	}
+	if sink == nil {
+		return toolkiterrors.ErrDataSinkNil
+	}
+	if len(sources) == 0 {
+		return toolkiterrors.ErrNoSources
+	}
 	newWorkbook, err := asposecells.NewWorkbook()
 	if err != nil {
 		return err
@@ -121,83 +61,68 @@ func MergeSpreadsheetsToWriter(source []datasource.DataSource, w io.Writer, outS
 	if err != nil {
 		return err
 	}
-	count := len(source)
-	for i := 0; i < count; i++ {
-		workbook, err := cells.GetWorkbookWithDataSource(source[i])
+	for i := 0; i < len(sources); i++ {
+		if sources[i] == nil {
+			return fmt.Errorf("source %d is nil: %w", i, toolkiterrors.ErrDataSourceNil)
+		}
+		workbook, err := cells.GetWorkbookWithDataSource(sources[i])
 		if err != nil {
-			return err
+			return fmt.Errorf("source %d: %w", i, err)
 		}
 		err = newWorkbook.Combine(workbook)
 		if err != nil {
-			return err
+			return fmt.Errorf("combine source %d: %w", i, err)
 		}
 	}
+
 	newData, err := newWorkbook.SaveToStream()
 	if err != nil {
 		return err
 	}
-	outData, errApply := outSaveOption.Apply(newData)
-	if errApply != nil {
-		return errApply
+	outData, err := opt.Apply(newData)
+	if err != nil {
+		return err
 	}
-	_, errWrite := w.Write(outData)
-	return errWrite
+	return sink.Write("", outData)
 }
 
-// MergeSpreadsheetsToFile  Merge multi spreadsheets into a file.
+// MergeSpreadsheets merges multiple spreadsheets into a file with the specified
+// output format and returns the resulting binary data.
 //
-// Parameters:
-//   - inputPath: A data source implementing the datasource.DataSource interface, which provides the input
-//     spreadsheet content (e.g., from a file, in-memory buffer, HTTP URL, etc.).
-//   - outputPath: The output file path.
+// Deprecated: use Merge with a datasource.BytesSink instead.
+func MergeSpreadsheets(sources []datasource.DataSource, opt saveoptions.SaveOption) ([]byte, error) {
+	var out datasource.BytesSink
+	if err := Merge(sources, opt, &out); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+// MergeSpreadsheetsToWriter merges multiple spreadsheets into a writer with the
+// specified output format.
 //
-// Returns:
-//   - error: An error if the conversion fails due to reasons such as unreadable source,
-//     unsupported format, missing license, or failure in the underlying Aspose.Cells engine.
+// Deprecated: use Merge with a datasource.WriterSink instead.
+func MergeSpreadsheetsToWriter(sources []datasource.DataSource, w io.Writer, opt saveoptions.SaveOption) error {
+	return Merge(sources, opt, datasource.NewWriterSink(w))
+}
+
+// MergeSpreadsheetsToFile merges multiple spreadsheet files into a single
+// output file. The output format is inferred from the output file's extension.
 //
-// Example:
-//
-// manipulator.MergeSpreadsheetsToFile([]string{"TestData/Source/CompanySales.xlsx", "TestData/Source/BookText.xlsx", "TestData/Source/EmployeeSalesSummary.xlsx"}, "TestData/Output/MergeBook.xlsx")
+// Deprecated: use Merge with datasource.FilePathSource inputs and a
+// datasource.FilePathSink instead.
 func MergeSpreadsheetsToFile(inputPaths []string, outputPath string) error {
 	ext := filepath.Ext(outputPath)
 	if len(ext) <= 1 {
 		return fmt.Errorf("invalid output path %q: missing file extension: %w", outputPath, toolkiterrors.ErrInvalidOutputPath)
 	}
-	outSaveOption := formats.Get(ext[1:])
-	if outSaveOption == nil {
+	opt := formats.Get(ext[1:])
+	if opt == nil {
 		return fmt.Errorf("unsupported output format %q: %w", ext[1:], toolkiterrors.ErrUnsupportedFormat)
 	}
-
-	newWorkbook, err := asposecells.NewWorkbook()
-	if err != nil {
-		return err
+	sources := make([]datasource.DataSource, 0, len(inputPaths))
+	for _, p := range inputPaths {
+		sources = append(sources, datasource.FilePathSource(p))
 	}
-	worksheets, err := newWorkbook.GetWorksheets()
-	if err != nil {
-		return err
-	}
-	err = worksheets.RemoveAt_Int(0)
-	if err != nil {
-		return err
-	}
-	count := len(inputPaths)
-	for i := 0; i < count; i++ {
-		workbook, err := asposecells.NewWorkbook_String(inputPaths[i])
-		if err != nil {
-			return err
-		}
-		err = newWorkbook.Combine(workbook)
-		if err != nil {
-			return err
-		}
-	}
-	newData, err := newWorkbook.SaveToStream()
-	if err != nil {
-		return err
-	}
-	outData, err := outSaveOption.Apply(newData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(outputPath, outData, 0644)
+	return Merge(sources, opt, datasource.FilePathSink(outputPath))
 }

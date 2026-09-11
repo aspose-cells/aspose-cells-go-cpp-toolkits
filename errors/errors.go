@@ -44,4 +44,42 @@ var (
 	// ErrInputIsFolder is returned when a file operation receives a directory
 	// path where a file is required.
 	ErrInputIsFolder = errors.New("input path is a folder, expected a file")
+
+	// ErrWorksheetNotFound is returned when a worksheet is referenced by name
+	// but no worksheet with that name exists in the workbook.
+	ErrWorksheetNotFound = errors.New("worksheet not found")
+
+	// ErrDataSourceNil is returned when a nil datasource.DataSource is passed
+	// to a toolkit entry point.
+	ErrDataSourceNil = errors.New("data source is nil")
+
+	// ErrDataSinkNil is returned when a nil datasource.DataSink is passed to a
+	// toolkit entry point.
+	ErrDataSinkNil = errors.New("data sink is nil")
+
+	// ErrNoSources is returned when a merge entry point receives no input
+	// sources, which would otherwise silently produce an empty workbook.
+	ErrNoSources = errors.New("no data sources to merge")
+
+	// ErrInvalidCellRef is returned when a cell reference string (e.g. "B3")
+	// cannot be parsed into a cell coordinate.
+	ErrInvalidCellRef = errors.New("invalid cell reference")
+
+	// ErrInvalidRange is returned when a cell range has an invalid shape, e.g. a
+	// range whose start cell lies below or to the right of its end cell, or an
+	// area string with more than one ":" separator.
+	ErrInvalidRange = errors.New("invalid cell range")
+
+	// ErrLicenseInvalid is returned when the Aspose.Cells license cannot be
+	// created or applied (e.g. the file is missing, unreadable, or invalid).
+	ErrLicenseInvalid = errors.New("invalid license")
+
+	// ErrColumnNotFound is returned when a struct field mapped by a row reader
+	// (query.ReadRows) has no matching column in the worksheet's header row, or
+	// when the header row is empty so no column mapping can be established.
+	ErrColumnNotFound = errors.New("column not found in header row")
+
+	// ErrNameNotFound is returned when a named range is referenced by name but
+	// no such name exists in the workbook.
+	ErrNameNotFound = errors.New("named range not found")
 )

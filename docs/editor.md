@@ -17,7 +17,7 @@ Parameters:
 
   - source: A datasource.DataSource providing access to the raw spreadsheet data. This abstracts the input source (e.g., file, HTTP request, in-memory buffer).
 
-  - actions: A variadic list of WorkbookAction functions. These are the specific instructions (e.g., "SetCellStyle", "UpdateValue") that will be executed sequentially on the loaded workbook.
+  - actions: A variadic list of WorkbookAction functions. These are the specific instructions (e.g., "SetStyle", "UpdateValue") that will be executed sequentially on the loaded workbook.
 
 Returns:
 
@@ -27,11 +27,177 @@ Returns:
 
 Example:
 
-data, err := EditSpreadsheet(fileSource, WithActiveSheet(0), InSheet("Sheet1", SetCellValue(0, 0, "Hello World")), )
+data, err := EditSpreadsheet(fileSource, WithActiveSheet("Sheet1"), InWorksheet("Sheet1", SetCellValue(0, 0, "Hello World")), )
 
 	if err != nil {
 	   log.Fatal(err)
 	}
+
+### EditSpreadsheetToSink
+
+```go
+func EditSpreadsheetToSink(source datasource.DataSource, sink datasource.DataSink, actions ...WorkbookAction) error
+```
+
+EditSpreadsheetToSink applies a series of workbook actions to a spreadsheet and
+writes the result to a datasource.DataSink. It is the sink-based form of
+EditSpreadsheet: the caller picks the output shape (file, io.Writer, or
+in-memory bytes) by choosing the sink. The result is saved in the source
+workbook's original format.
+
+Example:
+
+```go
+var sink datasource.BytesSink
+err := EditSpreadsheetToSink(fileSource, &sink, InWorksheet("Sheet1", SetCellValue(0, 0, "Hello World")))
+data := sink.Bytes()
+```
+
+### SetFormula
+
+```go
+func SetFormula(row, column int, formula string) WorksheetAction
+```
+
+SetFormula assigns a formula to a specific cell. The formula is evaluated when
+the workbook is calculated; pair it with CalculateAll when the result needs to
+be current before the workbook is saved or read back.
+
+Example:
+
+```go
+EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1",
+        SetCellValue(0, 0, 100),
+        SetCellValue(0, 1, 200),
+        SetFormula(0, 2, "=A1+B1"),
+    ),
+    CalculateAll(),
+)
+```
+
+### CalculateAll
+
+```go
+func CalculateAll() WorkbookAction
+```
+
+CalculateAll recalculates every formula in the workbook. Place it after the
+actions that set or depend on formula values so the saved workbook holds
+current results.
+
+### WriteRows
+
+```go
+func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, rows []T, opts ...WriteRowsOption) error
+```
+
+Writes a slice of `T` into a worksheet and saves the result to a sink — the
+write counterpart of [`query.ReadRows`](query.md#readrows), using the same
+column mapping. `T` must be a struct; each field becomes a column named by its
+`excel:"name"` tag, or by its own field name when no tag is present; `excel:"-"`
+skips a field. With `WithWriteHeader(true)` the column names are written as a
+header row (row 0) before the data rows; otherwise data starts at row 0. Cells
+outside the written block are left untouched. The workbook is saved in its
+original format.
+
+```go
+type Employee struct {
+    ID   int    `excel:"id"`
+    Name string `excel:"name"`
+}
+
+err := editor.WriteRows(
+    datasource.FilePathSource("template.xlsx"),
+    datasource.FilePathSink("employees.xlsx"),
+    []Employee{{ID: 1, Name: "Ada"}},
+    editor.WithSheetIndex(0),
+    editor.WithWriteHeader(true),
+)
+```
+
+Supported field values are the types `SetCellValue` accepts: integers, unsigned
+integers, floats, `string`, `bool`, and `time.Time` (written as a date).
+
+**WriteRowsOption** (default sheet: first worksheet by index, aligned with
+`query` and `transfer`):
+
+```go
+func WithWriteHeader(b bool) WriteRowsOption   // write column names as row 0
+func WithSheetIndex(i int) WriteRowsOption     // target sheet by index (recommended)
+func WithSheet(name string) WriteRowsOption    // target sheet by name
+```
+
+### SetCellComment
+
+```go
+func SetCellComment(row, column int, text string) WorksheetAction
+```
+
+Adds or replaces the comment note on a specific cell. An existing comment on the
+cell is overwritten. Read it back with
+[`query.ReadCellComment`](query.md#readcellcomment).
+
+```go
+EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1",
+        SetCellValue(0, 0, "total"),
+        SetCellComment(0, 0, "computed in step 2"),
+    ),
+)
+```
+
+### ClearComments
+
+```go
+func ClearComments() WorksheetAction
+```
+
+Removes every comment on the worksheet.
+
+### DefineNamedRange
+
+```go
+func DefineNamedRange(name string, startRow, startColumn, endRow, endColumn int) WorksheetAction
+```
+
+Defines a workbook-level **named range** referring to a block of cells on the
+applied worksheet. If a name with the same text already exists, its reference is
+updated instead, so the action is idempotent. The stored reference is written as
+`='SheetName'!$A$1:$B$2` (absolute cell refs, quoted sheet name). A start cell
+below or to the right of the end cell returns `ErrInvalidRange`.
+
+```go
+EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1",
+        SetCellValue(0, 0, 10),
+        SetCellValue(1, 1, 20),
+        DefineNamedRange("Scores", 0, 0, 1, 1),
+    ),
+)
+```
+
+Read the names back with [`query.NamedRanges`](query.md#namedranges) and the
+cells with [`query.ReadNamedRange`](query.md#readnamedrange).
+
+### Encrypt
+
+```go
+func Encrypt(password string) WorkbookAction
+```
+
+Encrypts the workbook so the **saved file requires the password to open**. It
+sets the workbook's encryption password and selects strong (AES) encryption.
+Loading an encrypted file back requires supplying the password at load time,
+which the toolkit's loader does not yet expose — read encrypted files with a
+password through the underlying engine (`LoadOptions` + `NewWorkbook_Stream`).
+
+```go
+data, err := EditSpreadsheet(fileSource,
+    InWorksheet("Sheet1", SetCellValue(0, 0, "confidential")),
+    Encrypt("hunter2"),
+)
+```
 
 ## Types
 
@@ -41,7 +207,7 @@ data, err := EditSpreadsheet(fileSource, WithActiveSheet(0), InSheet("Sheet1", S
 type StyleAction func(style *asposecells.Style) error
 ```
 
-StyleAction represents an operation that modifies a style object. These actions are used in conjunction with style-targeting containers like InDefaultStyle or SetCellStyle. They encapsulate formatting changes such as font adjustments, color modifications, and alignment settings.
+StyleAction represents an operation that modifies a style object. These actions are used in conjunction with style-targeting containers like InDefaultStyle or SetStyle. They encapsulate formatting changes such as font adjustments, color modifications, and alignment settings.
 
 ### WorkbookAction
 
@@ -57,5 +223,5 @@ WorkbookAction represents an operation that targets the entire workbook. It is t
 type WorksheetAction func(worksheet *asposecells.Worksheet) error
 ```
 
-WorksheetAction represents an operation scoped to a specific worksheet. These actions are typically passed as nested arguments to container functions such as InWorksheet or InSheet. They allow developers to perform targeted manipulations (e.g., modifying cells, setting print areas) within a single sheet.
+WorksheetAction represents an operation scoped to a specific worksheet. These actions are typically passed as nested arguments to container functions such as InWorksheet. They allow developers to perform targeted manipulations (e.g., modifying cells, setting print areas) within a single sheet.
 
