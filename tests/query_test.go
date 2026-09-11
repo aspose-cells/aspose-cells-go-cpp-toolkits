@@ -191,7 +191,9 @@ func TestQueryReadRange(t *testing.T) {
 			return fmt.Errorf("ReadRange: %w", err)
 		}
 		if len(grid) != 2 || len(grid[0]) != 2 {
-			return fmt.Errorf("ReadRange grid = %d rows x %d cols, want 2 x 2", len(grid), len(grid[0]))
+			// len(grid[0]) is only safe once len(grid) == 2 is known, so report
+			// the row count alone when the grid came back short/empty.
+			return fmt.Errorf("ReadRange grid = %d rows, want 2 rows x 2 cols", len(grid))
 		}
 		if s, _ := grid[0][0].String(); grid[0][0].Kind() != query.KindText || s != "hello" {
 			return fmt.Errorf("grid[0][0] = %+v, want text hello", grid[0][0])

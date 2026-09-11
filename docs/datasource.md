@@ -38,6 +38,16 @@ func NewReaderSource(r io.Reader) *ReaderSource
 
 `NewReaderSource` adapts an already-open stream (an HTTP response body, an open file, etc.) into a `DataSource`. The stream is consumed lazily on first use and buffered, so `Open` may be called repeatedly; every call returns a fresh reader over the same bytes. The caller remains responsible for closing the underlying stream.
 
+### NewEmptyWorkbook
+
+```go
+func NewEmptyWorkbook() (BytesSource, error)
+```
+
+`NewEmptyWorkbook` creates a brand-new, blank XLSX workbook entirely in memory and returns it as a `BytesSource`. It is the toolkit's way to "start from nothing": pass the result to any entry point that accepts a `DataSource` — for example `editor.EditSpreadsheet` to author a table with the DSL, or `transfer.ImportCSV` to import data into a fresh file.
+
+The workbook contains a single default worksheet at index 0. Creating it never touches the disk and, unlike loading an existing file, never consumes the engine's evaluation-mode load budget.
+
 ## Output
 
 ### DataSink
