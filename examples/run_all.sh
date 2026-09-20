@@ -36,6 +36,9 @@ echo "=== 5. Run tests ==="
 go test -v ./...
 
 echo "=== 6. Run examples ==="
+echo "Running chart example..."
+"$script_dir/run.sh" chart
+
 echo "Running convert example..."
 "$script_dir/run.sh" convert
 

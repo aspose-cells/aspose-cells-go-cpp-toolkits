@@ -6,6 +6,7 @@ import (
 	"time"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -531,5 +532,115 @@ func DeleteBlankColumns() WorksheetAction {
 			return err
 		}
 		return cells.DeleteBlankColumns()
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Chart operations
+//
+// A chart is sheet content, so adding and removing one is a worksheet-level
+// operation and lives here with the rest of them. Actions that modify an
+// existing chart act on the chart itself and live in charts.go.
+// ---------------------------------------------------------------------------
+
+// AddChart creates a WorksheetAction that adds a chart to the applied worksheet
+// and returns it.
+//
+// The chart is created over dataRange, a bare A1-style range such as "A1:B5"
+// that is resolved against the same worksheet. A range carrying a sheet
+// qualifier is rejected: a chart cannot source its data from another worksheet
+// through this API.
+//
+// byColumn selects how the range is read into series. With true the range is
+// read down its columns: each column is a series. With false it is read across
+// its rows: each row is a series.
+//
+// With byColumn true the engine also looks at the range's first column, and this
+// is worth knowing before choosing a range. When that column holds text and the
+// range is at least two columns wide, the engine treats it as the category axis
+// rather than as data, so the series come from the remaining columns: "A1:B5"
+// over a text column A yields one series, not two, while "A1:C5" yields two. A
+// first column of numbers is not consumed this way, and a single-column range is
+// never consumed. Pass the category range explicitly with WithChartCategoryData
+// when the automatic choice is not what you want.
+//
+// The chart is placed over the cell rectangle bounded by topRow, leftColumn,
+// bottomRow and rightColumn, all zero-based. There is no default position: where
+// the chart sits is the caller's to state, and the rectangle is validated the
+// same way WithChartBounds validates it. Cover no cells you still need to read,
+// since a chart drawn over a table hides it.
+//
+// The actions are applied to the new chart in order, so a later one overrides an
+// earlier one.
+//
+// Parameters:
+//   - chartType: The chart type. See ChartType for the accepted names.
+//   - dataRange: The source range, e.g. "A1:B5".
+//   - byColumn: Whether each column of dataRange is a series (true) or each row is.
+//   - topRow: The zero-based row of the chart's top edge.
+//   - leftColumn: The zero-based column of the chart's left edge.
+//   - bottomRow: The zero-based row of the chart's bottom edge.
+//   - rightColumn: The zero-based column of the chart's right edge.
+//   - actions: A variadic list of ChartAction functions to apply to the new chart.
+//
+// Returns:
+//   - WorksheetAction: A function that adds the chart. Returns ErrInvalidChartType
+//     for an unknown type name, or ErrInvalidRange when dataRange is not a
+//     plottable in-grid range or the rectangle is reversed, negative, zero-area,
+//     or outside the worksheet grid.
+//
+// Example:
+//
+//	editor.InWorksheet(0, editor.AddChart(
+//		editor.ChartTypeColumn, "A1:B5", true, 0, 3, 15, 10,
+//		editor.WithChartTitle("Quarterly sales"),
+//		editor.WithChartStyle(7),
+//	))
+func AddChart(chartType ChartType, dataRange string, byColumn bool,
+	topRow, leftColumn, bottomRow, rightColumn int, actions ...ChartAction) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		resolved, err := cells.ResolveChartType(string(chartType))
+		if err != nil {
+			return err
+		}
+		chart, err := cells.AddChartChartType(
+			worksheet, resolved, dataRange, byColumn,
+			topRow, leftColumn, bottomRow, rightColumn)
+		if err != nil {
+			return err
+		}
+		for _, action := range actions {
+			if err := action(chart); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// DeleteChart creates a WorksheetAction that removes the worksheet's chart at the
+// given index. The charts after it shift down, so deleting index 0 from a sheet
+// with two charts leaves the second one at index 0.
+//
+// Parameters:
+//   - index: The zero-based index of the chart to remove.
+//
+// Returns:
+//   - WorksheetAction: A function that removes the chart. Returns
+//     ErrChartNotFound when no chart has that index.
+func DeleteChart(index int) WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		return cells.DeleteChartAt(worksheet, index)
+	}
+}
+
+// DeleteAllCharts creates a WorksheetAction that removes every chart from the
+// worksheet. It is not an error to call it on a worksheet with no charts.
+//
+// Returns:
+//   - WorksheetAction: A function that clears the sheet's charts.
+func DeleteAllCharts() WorksheetAction {
+	return func(worksheet *asposecells.Worksheet) error {
+		return cells.ClearCharts(worksheet)
 	}
 }

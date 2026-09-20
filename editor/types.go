@@ -20,3 +20,9 @@ type WorksheetAction func(worksheet *asposecells.Worksheet) error
 // like InDefaultStyle or SetStyle. They encapsulate formatting changes
 // such as font adjustments, color modifications, and alignment settings.
 type StyleAction func(style *asposecells.Style) error
+
+// ChartAction represents an operation that modifies an existing chart object.
+// These actions are used in conjunction with chart-targeting containers and
+// entry points like InChart and AddChart. They encapsulate chart changes such
+// as the title, the built-in style, the legend, and the source data.
+type ChartAction func(chart *asposecells.Chart) error

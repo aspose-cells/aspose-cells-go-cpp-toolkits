@@ -2,7 +2,7 @@
 #
 # Usage:
 #   powershell examples/run.ps1            # run every example in order
-#   powershell examples/run.ps1 convert    # run a single example (convert|edit|merge-split|query|transfer)
+#   powershell examples/run.ps1 convert    # run a single example (chart|convert|edit|merge-split|query|transfer)
 #
 # Each example is a self-contained command; it reads its sample data from
 # examples/data and writes outputs to examples/<name>/out (absolute paths, so
@@ -35,18 +35,19 @@ if ($args.Count -eq 0) {
 
 switch ($target) {
     "all" {
+        Run-Example "chart"
         Run-Example "convert"
         Run-Example "edit"
         Run-Example "merge-split"
         Run-Example "query"
         Run-Example "transfer"
     }
-    {$_ -eq "convert" -or $_ -eq "edit" -or $_ -eq "merge-split" -or $_ -eq "query" -or $_ -eq "transfer"}  {
+    {$_ -eq "chart" -or $_ -eq "convert" -or $_ -eq "edit" -or $_ -eq "merge-split" -or $_ -eq "query" -or $_ -eq "transfer"}  {
         Run-Example $target
     }
     default {
         Write-Host "unknown example: $target" -ForegroundColor Red
-        Write-Host "usage: powershell examples/run.ps1 [all|convert|edit|merge-split|query|transfer]" -ForegroundColor Red
+        Write-Host "usage: powershell examples/run.ps1 [all|chart|convert|edit|merge-split|query|transfer]" -ForegroundColor Red
         exit 1
     }
 }

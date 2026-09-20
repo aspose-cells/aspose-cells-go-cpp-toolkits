@@ -82,4 +82,20 @@ var (
 	// ErrNameNotFound is returned when a named range is referenced by name but
 	// no such name exists in the workbook.
 	ErrNameNotFound = errors.New("named range not found")
+
+	// ErrChartNotFound is returned when a chart is referenced by an index that
+	// is out of range for the target worksheet.
+	ErrChartNotFound = errors.New("chart not found")
+
+	// ErrInvalidChartType is returned when a chart type name is not one the
+	// engine recognizes.
+	ErrInvalidChartType = errors.New("invalid chart type")
+
+	// ErrInvalidChartStyle is returned when a chart style number falls outside
+	// the engine's supported 1..48 range.
+	ErrInvalidChartStyle = errors.New("invalid chart style")
+
+	// ErrInvalidChartPosition is returned when a chart legend position name is
+	// not one the engine recognizes.
+	ErrInvalidChartPosition = errors.New("invalid chart legend position")
 )

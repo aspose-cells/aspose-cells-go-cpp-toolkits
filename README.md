@@ -10,6 +10,7 @@
 - **Read spreadsheets into Go values** — Typed cell reads (`query`): text, int, float, bool, and date values, ranges, merged regions, sheet names, dimensions, named ranges, and cell comments — plus `query.ReadRows[T]` to map a whole table into `[]struct` via `excel` tags.
 - **Merge & split workbooks** — Merge multiple spreadsheets into one; split a workbook into per-sheet files, a ZIP archive, or in-memory bytes.
 - **Fluent spreadsheet editing** — Set cell values and formulas, apply cell styles (font, color, alignment), merge / unmerge ranges, insert / delete rows & columns, add / delete / rename worksheets, write `[]struct` tables with `editor.WriteRows`, attach cell comments, define named ranges, and encrypt the saved workbook with `editor.Encrypt`.
+- **Charts** — Add, modify, and delete charts with `editor.AddChart` / `editor.InChart` / `editor.DeleteChart`: set the title, the built-in style (1–48), the chart type, the legend and its position, the placement, and the source data. All 81 chart types are reachable by name, and chart types and legend positions are toolkit-native values rather than engine enums.
 - **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction for files, bytes, and streams.
 
 ## Overview

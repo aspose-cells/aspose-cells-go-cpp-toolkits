@@ -27,6 +27,9 @@ Write-Host "=== 5. Run tests ===" -ForegroundColor Cyan
 go test -v ./...
 
 Write-Host "=== 6. Run examples ===" -ForegroundColor Cyan
+Write-Host "Running chart example..." -ForegroundColor Yellow
+& .\examples\run.ps1 chart
+
 Write-Host "Running convert example..." -ForegroundColor Yellow
 & .\examples\run.ps1 convert
 
