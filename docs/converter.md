@@ -78,3 +78,145 @@ func ConvertSpreadsheetToFile(inputPath string, outputPath string) error
 ```
 
 Converts a spreadsheet file from `inputPath` to `outputPath`, inferring the output format from the file extension.
+
+## Chart Export
+
+The `converter` package provides functions to export charts from a workbook to various image formats.
+
+### ChartExportFormat
+
+```go
+type ChartExportFormat string
+
+const (
+    ChartExportFormatPNG  ChartExportFormat = "png"   // PNG image
+    ChartExportFormatJPEG ChartExportFormat = "jpeg"  // JPEG image
+    ChartExportFormatSVG  ChartExportFormat = "svg"   // SVG vector image
+    ChartExportFormatPDF  ChartExportFormat = "pdf"   // PDF (EMF vector format)
+)
+```
+
+### ChartExportOptions
+
+```go
+type ChartExportOptions struct {
+    Format  ChartExportFormat  // Output format (PNG, JPEG, SVG, or PDF)
+    Width   int                // Desired width in pixels (0 = use chart default)
+    Height  int                // Desired height in pixels (0 = use chart default)
+    Quality int                // JPEG quality 1-100 (only applies to JPEG format)
+}
+```
+
+### ExportChartToSink
+
+```go
+func ExportChartToSink(src datasource.DataSource, sink datasource.DataSink, sheetIndex, chartIndex int, opts *ChartExportOptions) error
+```
+
+Exports a chart from a workbook to a data sink. The chart is identified by its worksheet index and chart index (both zero-based).
+
+Parameters:
+
+  - src: The data source containing the workbook
+  - sink: The data sink to write the exported chart to
+  - sheetIndex: Zero-based index of the worksheet containing the chart
+  - chartIndex: Zero-based index of the chart to export
+  - opts: Export options. If nil, defaults to PNG format
+
+Example:
+
+```go
+err := converter.ExportChartToSink(
+    datasource.FilePathSource("workbook.xlsx"),
+    datasource.FilePathSink("chart.png"),
+    0, 0,
+    &converter.ChartExportOptions{Format: converter.ChartExportFormatPNG},
+)
+```
+
+### ExportChartToBytes
+
+```go
+func ExportChartToBytes(src datasource.DataSource, sheetIndex, chartIndex int, opts *ChartExportOptions) ([]byte, error)
+```
+
+Exports a chart from a workbook and returns it as a byte slice.
+
+Example:
+
+```go
+data, err := converter.ExportChartToBytes(
+    datasource.FilePathSource("workbook.xlsx"),
+    0, 0,
+    &converter.ChartExportOptions{Format: converter.ChartExportFormatPNG},
+)
+if err != nil {
+    log.Fatal(err)
+}
+// data contains the PNG image bytes
+```
+
+### ExportChartToFile
+
+```go
+func ExportChartToFile(src datasource.DataSource, outputPath string, sheetIndex, chartIndex int, opts *ChartExportOptions) error
+```
+
+Convenience function that exports a chart to a file.
+
+Example — export as PNG:
+
+```go
+err := converter.ExportChartToFile(
+    datasource.FilePathSource("workbook.xlsx"),
+    "chart.png",
+    0, 0,
+    &converter.ChartExportOptions{Format: converter.ChartExportFormatPNG},
+)
+```
+
+Example — export as JPEG with custom quality:
+
+```go
+err := converter.ExportChartToFile(
+    datasource.FilePathSource("workbook.xlsx"),
+    "chart.jpg",
+    0, 0,
+    &converter.ChartExportOptions{
+        Format:  converter.ChartExportFormatJPEG,
+        Quality: 90,
+    },
+)
+```
+
+Example — export as SVG with custom dimensions:
+
+```go
+err := converter.ExportChartToFile(
+    datasource.FilePathSource("workbook.xlsx"),
+    "chart.svg",
+    0, 0,
+    &converter.ChartExportOptions{
+        Format: converter.ChartExportFormatSVG,
+        Width:  1200,
+        Height: 800,
+    },
+)
+```
+
+### Supported Formats
+
+  - **PNG**: Lossless raster image format, ideal for web display and high-quality prints
+  - **JPEG**: Compressed raster image format with adjustable quality, smaller file sizes
+  - **SVG**: Scalable vector graphics, resolution-independent, ideal for web and print
+  - **PDF**: Vector format (implemented as EMF), suitable for high-quality printing
+
+### Errors
+
+| Condition | Sentinel |
+|-----------|----------|
+| nil `datasource.DataSource` | `ErrDataSourceNil` |
+| nil `datasource.DataSink` | `ErrDataSinkNil` |
+| Sheet index out of range | Wrapped engine error |
+| Chart index out of range | `ErrChartNotFound` |
+| Unsupported format | `ErrUnsupportedFormat` |

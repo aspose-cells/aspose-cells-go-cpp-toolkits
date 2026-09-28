@@ -98,4 +98,28 @@ var (
 	// ErrInvalidChartPosition is returned when a chart legend position name is
 	// not one the engine recognizes.
 	ErrInvalidChartPosition = errors.New("invalid chart legend position")
+
+	// ErrValidationNotFound is returned when a data validation is referenced by
+	// an index that is out of range for the target worksheet.
+	ErrValidationNotFound = errors.New("validation not found")
+
+	// ErrInvalidValidationType is returned when a validation type name is not
+	// one the engine recognizes.
+	ErrInvalidValidationType = errors.New("invalid validation type")
+
+	// ErrInvalidOperatorType is returned when an operator type name is not one
+	// the engine recognizes.
+	ErrInvalidOperatorType = errors.New("invalid operator type")
+
+	// ErrConditionNotFound is returned when a conditional formatting condition
+	// is referenced by an index that is out of range.
+	ErrConditionNotFound = errors.New("condition not found")
+
+	// ErrInvalidFormatConditionType is returned when a format condition type
+	// name is not one the engine recognizes.
+	ErrInvalidFormatConditionType = errors.New("invalid format condition type")
+
+	// ErrInvalidIconSetType is returned when an icon set type name is not one
+	// the engine recognizes.
+	ErrInvalidIconSetType = errors.New("invalid icon set type")
 )

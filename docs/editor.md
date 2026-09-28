@@ -221,6 +221,14 @@ while `"A1:C5"` yields two. A numeric first column is not consumed this way, and
 single-column range never is. Pass the categories explicitly with
 `WithChartCategoryData` when the automatic choice is not what you want.
 
+The range must contain more than one cell and must span more than one row when
+`byColumn` is true (or more than one column when `byColumn` is false). A
+single-cell range is rejected because it cannot produce a series, and a range that
+spans only one row (with `byColumn` true) is rejected because it would yield a
+single series with a single data point, which the engine accepts but produces a
+visually empty chart. The toolkit rejects these upfront rather than letting the
+engine silently produce a chart with no data.
+
 The four bounds place the chart over a cell rectangle, all zero-based, with the
 same rules as `WithChartBounds`. There is no default position — every chart says
 where it goes, so pick a rectangle that covers no cells you still need to read.
@@ -381,7 +389,8 @@ func WithChartDataRange(dataRange string, byColumn bool) ChartAction
 Re-points the chart at a different source range. This is the way to change a
 chart's data wholesale: the series are rebuilt from the new range, so the series
 follow whatever the new range holds. See `AddChart` for the first-column category
-rule, which applies here too.
+rule, which applies here too, and for the range validation rules (single-cell and
+single-row/column ranges are rejected).
 
 ```go
 InChart(0, WithChartDataRange("A1:C10", true))
@@ -504,3 +513,435 @@ type WorksheetAction func(worksheet *asposecells.Worksheet) error
 
 WorksheetAction represents an operation scoped to a specific worksheet. These actions are typically passed as nested arguments to container functions such as InWorksheet. They allow developers to perform targeted manipulations (e.g., modifying cells, setting print areas) within a single sheet.
 
+
+### ChartStylePreset
+
+```go
+type ChartStylePreset struct {
+    ChartType      ChartType
+    Style          int
+    Title          string
+    ShowLegend     bool
+    LegendPosition ChartLegendPosition
+    DataRange      string
+    ByColumn       bool
+    CategoryData   string
+    Bounds         ChartBounds
+}
+
+type ChartBounds struct {
+    TopRow      int
+    LeftColumn  int
+    BottomRow   int
+    RightColumn int
+}
+```
+
+Bundles common chart configuration and styling options into a single value for
+reuse across multiple charts or workbooks. Rather than applying `WithChartType`,
+`WithChartStyle`, `WithChartTitle`, `WithChartLegend`, `WithChartLegendPosition`,
+`WithChartDataRange`, `WithChartCategoryData`, and `WithChartBounds` separately,
+a preset combines them.
+
+A preset can be partial: zero-value fields are skipped when applied, so a preset
+can specify only the settings it cares about and leave the rest unchanged. This
+makes presets useful for both complete chart templates and targeted style bundles.
+
+### WithChartPreset
+
+```go
+func WithChartPreset(preset ChartStylePreset) ChartAction
+```
+
+Applies a `ChartStylePreset`'s configuration and styling options to the chart.
+The preset's fields are applied in order: chart type, data range, category data,
+bounds, style, title, legend visibility, and legend position.
+
+```go
+preset := editor.ChartStylePreset{
+    ChartType:      editor.ChartTypeColumn,
+    Style:          7,
+    Title:          "Quarterly sales",
+    ShowLegend:     true,
+    LegendPosition: editor.ChartLegendBottom,
+    DataRange:      "A1:C5",
+    ByColumn:       true,
+    CategoryData:   "A2:A5",
+    Bounds:         editor.ChartBounds{TopRow: 5, LeftColumn: 0, BottomRow: 20, RightColumn: 7},
+}
+editor.InChart(0, editor.WithChartPreset(preset))
+```
+
+Returns `ErrInvalidChartType` for an unknown chart type name,
+`ErrInvalidChartStyle` when `preset.Style` is outside 1..48 (unless zero),
+`ErrInvalidRange` for malformed data/category ranges or reversed bounds, and
+`ErrInvalidChartPosition` for an unknown legend position name.
+
+## Chart Templates
+
+The `editor` package ships with predefined chart templates for common use cases.
+Each template is a `ChartStylePreset` with sensible defaults for a particular
+chart style. Use them directly or as a starting point for custom presets.
+
+### Available Templates
+
+```go
+// ProfessionalColumn is a clean, professional column chart with a title,
+// bottom legend, and built-in style 7. Suitable for business reports.
+editor.ProfessionalColumn
+
+// MinimalPie is a simple pie chart without a legend, relying on data labels.
+// Suitable for presentations where space is limited.
+editor.MinimalPie
+
+// PresentationBar is a bar chart optimized for presentations: clear title,
+// right legend, and built-in style 10.
+editor.PresentationBar
+
+// DashboardLine is a line chart with markers, suitable for dashboards. Style
+// 12 provides good visibility on screens.
+editor.DashboardLine
+
+// ReportArea is an area chart for showing trends over time in reports. Style
+// 5 provides a clean look.
+editor.ReportArea
+
+// SimpleScatter is a scatter plot without a legend, suitable for showing
+// correlations.
+editor.SimpleScatter
+```
+
+### Using Templates
+
+Apply a template directly:
+
+```go
+editor.AddChart(editor.ChartTypeColumn, "A1:C5", true, 5, 0, 20, 7,
+    editor.WithChartPreset(editor.ProfessionalColumn),
+    editor.WithChartTitle("Quarterly sales"),
+)
+```
+
+Customize a template by copying it and modifying fields:
+
+```go
+custom := editor.ProfessionalColumn
+custom.Style = 15                        // Override the style
+custom.LegendPosition = editor.ChartLegendTop // Move legend to top
+editor.AddChart(editor.ChartTypeColumn, "A1:C5", true, 5, 0, 20, 7,
+    editor.WithChartPreset(custom),
+)
+```
+
+Templates provide consistent styling with minimal code, making them ideal for
+applications that generate multiple charts with a standard look.
+
+## Deep Styling Control
+
+The `editor` package provides fine-grained control over chart element styling
+beyond the built-in styles. These functions allow you to customize fonts,
+colors, and other visual properties of chart titles, legends, and series.
+
+### Title Styling
+
+```go
+// Set title font
+editor.WithChartTitleFont("Arial", 14, true)  // font name, size, bold
+
+// Set title color
+editor.WithChartTitleColor("#FF0000")  // hex color or color name
+```
+
+### Legend Styling
+
+```go
+// Set legend font
+editor.WithChartLegendFont("Calibri", 10, false)  // font name, size, bold
+```
+
+### Series Styling
+
+```go
+// Set series color
+editor.WithChartSeriesColor(0, "#00FF00")  // series index, color
+
+// Set series name (appears in legend)
+editor.WithChartSeriesName(0, "Q1 Sales")  // series index, name
+```
+
+### Example
+
+```go
+editor.InChart(0,
+    editor.WithChartTitle("Quarterly Report"),
+    editor.WithChartTitleFont("Arial", 16, true),
+    editor.WithChartTitleColor("#2E74B5"),
+    editor.WithChartLegendFont("Calibri", 10, false),
+    editor.WithChartSeriesColor(0, "#4472C4"),
+    editor.WithChartSeriesColor(1, "#ED7D31"),
+    editor.WithChartSeriesName(0, "Product A"),
+    editor.WithChartSeriesName(1, "Product B"),
+)
+```
+
+These styling functions can be combined with `ChartStylePreset` for comprehensive
+chart customization. The preset provides the overall structure, and the deep
+styling functions fine-tune individual elements.
+
+## Data Validation
+
+Data validation controls what users can enter into cells. The editor provides
+a fluent API for adding, modifying, and deleting validation rules.
+
+### AddDataValidation
+
+```go
+func AddDataValidation(cellRange string, actions ...DataValidationAction) WorksheetAction
+```
+
+AddDataValidation creates a validation rule for the specified cell range. The
+range is an A1-style reference (e.g., "A1:A10"). The validation is configured
+by the provided DataValidationActions.
+
+Example:
+
+```go
+editor.InWorksheet("Sheet1",
+    editor.AddDataValidation("A1:A10",
+        editor.WithValidationType(editor.ValidationTypeWholeNumber),
+        editor.WithValidationOperator(editor.OperatorTypeBetween),
+        editor.WithValidationFormula1("1"),
+        editor.WithValidationFormula2("100"),
+        editor.WithValidationErrorMessage("Please enter a number between 1 and 100"),
+    ),
+)
+```
+
+### InValidation
+
+```go
+func InValidation(index int, actions ...DataValidationAction) WorksheetAction
+```
+
+InValidation applies data validation actions to an existing validation at the
+given index. Validations are indexed from zero in the order they were added.
+
+Example:
+
+```go
+editor.InWorksheet("Sheet1",
+    editor.InValidation(0,
+        editor.WithValidationErrorMessage("Updated message"),
+    ),
+)
+```
+
+### DeleteValidation
+
+```go
+func DeleteValidation(index int) WorksheetAction
+```
+
+DeleteValidation removes the data validation at the given index from the worksheet.
+
+### Validation Types
+
+The following validation types are available:
+
+- `ValidationTypeAnyValue` - No restriction
+- `ValidationTypeWholeNumber` - Integer values only
+- `ValidationTypeDecimal` - Decimal values only
+- `ValidationTypeList` - Value must be from a list
+- `ValidationTypeDate` - Date values only
+- `ValidationTypeTime` - Time values only
+- `ValidationTypeTextLength` - Text length restriction
+- `ValidationTypeCustom` - Custom formula validation
+
+### Operators
+
+Comparison operators for numeric, date, time, and text length validations:
+
+- `OperatorTypeBetween` - Value between two bounds
+- `OperatorTypeEqual` - Value equals
+- `OperatorTypeNotEqual` - Value not equals
+- `OperatorTypeLessThan` - Value less than
+- `OperatorTypeLessOrEqual` - Value less than or equal
+- `OperatorTypeGreaterThan` - Value greater than
+- `OperatorTypeGreaterOrEqual` - Value greater than or equal
+
+### Validation Actions
+
+- `WithValidationType(t)` - Set the validation type
+- `WithValidationOperator(op)` - Set the comparison operator
+- `WithValidationFormula1(f)` - Set the first formula/value
+- `WithValidationFormula2(f)` - Set the second formula/value (for Between)
+- `WithValidationList(items)` - Set a dropdown list of allowed values
+- `WithValidationInCellDropDown(show)` - Show/hide dropdown for list validations
+- `WithValidationIgnoreBlank(ignore)` - Ignore blank cells
+- `WithValidationShowInput(show)` - Show input message when cell is selected
+- `WithValidationShowError(show)` - Show error alert when validation fails
+- `WithValidationAlertStyle(style)` - Set alert style (information/warning/stop)
+- `WithValidationErrorTitle(title)` - Set error dialog title
+- `WithValidationErrorMessage(msg)` - Set error dialog message
+- `WithValidationInputTitle(title)` - Set input message title
+- `WithValidationInputMessage(msg)` - Set input message
+
+### Dropdown List Example
+
+```go
+editor.AddDataValidation("C2:C100",
+    editor.WithValidationList([]string{"Active", "Inactive", "Pending"}),
+    editor.WithValidationInCellDropDown(true),
+)
+```
+
+## Conditional Formatting
+
+Conditional formatting applies visual formatting to cells based on their values.
+The editor provides a fluent API for adding, modifying, and deleting conditional
+formatting rules.
+
+### AddConditionalFormatting
+
+```go
+func AddConditionalFormatting(sheetID interface{}, cellRange string, actions ...ConditionalFormatAction) WorkbookAction
+```
+
+AddConditionalFormatting creates a conditional formatting rule for the specified
+cell range on the given worksheet. The range is an A1-style reference.
+
+Example:
+
+```go
+editor.AddConditionalFormatting("Sheet1", "A1:A10",
+    editor.WithColorScale("#F8696B", "#63BE7B", nil),
+)
+```
+
+### InConditionalFormatting
+
+```go
+func InConditionalFormatting(index int, actions ...ConditionalFormatAction) WorksheetAction
+```
+
+InConditionalFormatting applies actions to an existing conditional formatting
+collection at the given index.
+
+### DeleteConditionalFormatting
+
+```go
+func DeleteConditionalFormatting(index int) WorksheetAction
+```
+
+DeleteConditionalFormatting removes the conditional formatting collection at the
+given index from the worksheet.
+
+### Color Scales
+
+Color scales apply a gradient fill to cells based on their values.
+
+```go
+// 2-color scale (red to green)
+editor.WithColorScale("#F8696B", "#63BE7B", nil)
+
+// 3-color scale (red to yellow to green)
+editor.WithColorScale("#F8696B", "#63BE7B", "#FFEB84")
+```
+
+### Data Bars
+
+Data bars display a horizontal bar in each cell proportional to the cell's value.
+
+```go
+editor.WithDataBar("#63BE7B")
+```
+
+### Icon Sets
+
+Icon sets display icons in cells based on their values relative to thresholds.
+
+Available icon sets:
+
+- `IconSetArrows3`, `IconSetArrows4`, `IconSetArrows5`
+- `IconSetArrowsGray3`, `IconSetArrowsGray4`, `IconSetArrowsGray5`
+- `IconSetFlags3`
+- `IconSetSigns3`
+- `IconSetSymbols3`, `IconSetSymbols32`
+- `IconSetTrafficLights31`, `IconSetTrafficLights32`, `IconSetTrafficLights4`
+- `IconSetRating4`, `IconSetRating5`
+- `IconSetStars3`
+- `IconSetBoxes5`, `IconSetQuarters5`, `IconSetTriangles3`
+
+Example:
+
+```go
+editor.WithIconSet(editor.IconSetTrafficLights31)
+```
+
+### Cell Value Rules
+
+Cell value rules apply formatting when a cell's value meets a condition.
+
+```go
+editor.WithCellValueRule(editor.OperatorTypeGreaterThan, "90", "",
+    editor.WithFontColor("#FF0000"),
+    editor.WithFontIsBold(true),
+    editor.WithBackgroundColor("#FFC7CE"),
+)
+```
+
+### Expression Rules
+
+Expression rules apply formatting when a formula evaluates to true.
+
+```go
+editor.WithExpressionRule("=A2>100",
+    editor.WithBackgroundColor("#FFFF00"),
+)
+```
+
+### Above Average Rule
+
+Highlights cells above or below the average value.
+
+```go
+editor.WithAboveAverageRule(
+    editor.WithFontColor("#006100"),
+    editor.WithBackgroundColor("#C6EFCE"),
+)
+```
+
+### Top 10 Rule
+
+Highlights the top N or bottom N values.
+
+```go
+// Top 10 values
+editor.WithTop10Rule(10, true,
+    editor.WithFontColor("#9C5700"),
+    editor.WithBackgroundColor("#FFEB9C"),
+)
+
+// Bottom 5 values
+editor.WithTop10Rule(5, false,
+    editor.WithFontColor("#9C0006"),
+    editor.WithBackgroundColor("#FFC7CE"),
+)
+```
+
+### Combining Rules
+
+You can add multiple conditional formatting collections to the same worksheet,
+each with its own range and rules. Each collection can have multiple conditions.
+
+```go
+editor.AddConditionalFormatting("Sheet1", "A1:A10",
+    editor.WithColorScale("#F8696B", "#63BE7B", nil),
+)
+editor.AddConditionalFormatting("Sheet1", "B1:B10",
+    editor.WithDataBar("#4472C4"),
+)
+editor.AddConditionalFormatting("Sheet1", "C1:C10",
+    editor.WithIconSet(editor.IconSetArrows3),
+)
+```

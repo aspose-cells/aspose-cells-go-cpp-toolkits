@@ -26,3 +26,16 @@ type StyleAction func(style *asposecells.Style) error
 // entry points like InChart and AddChart. They encapsulate chart changes such
 // as the title, the built-in style, the legend, and the source data.
 type ChartAction func(chart *asposecells.Chart) error
+
+// DataValidationAction represents an operation that modifies a data validation
+// object. These actions are used in conjunction with validation-targeting
+// containers like InValidation and AddDataValidation. They encapsulate changes
+// such as the validation type, the allowed values, and the error message.
+type DataValidationAction func(validation *asposecells.Validation) error
+
+// ConditionalFormatAction represents an operation that modifies a conditional
+// formatting collection. These actions are used in conjunction with conditional
+// formatting containers like InConditionalFormatting and AddConditionalFormatting.
+// They encapsulate changes such as adding rules, setting color scales, data bars,
+// and icon sets.
+type ConditionalFormatAction func(collection *asposecells.FormatConditionCollection) error

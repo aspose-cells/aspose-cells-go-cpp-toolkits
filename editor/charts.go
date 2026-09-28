@@ -302,3 +302,343 @@ func WithChartCategoryData(dataRange string) ChartAction {
 		return cells.SetChartCategoryData(chart, dataRange)
 	}
 }
+
+// ChartStylePreset bundles common chart styling and configuration options into
+// a single value for reuse across multiple charts or workbooks. Rather than
+// applying WithChartType, WithChartStyle, WithChartTitle, WithChartLegend,
+// WithChartLegendPosition, WithChartDataRange, WithChartCategoryData, and
+// WithChartBounds separately, a preset combines them.
+//
+// A preset can be partial: zero-value fields are skipped when applied, so a
+// preset can specify only the settings it cares about and leave the rest
+// unchanged. This makes presets useful for both complete chart templates and
+// targeted style bundles.
+type ChartStylePreset struct {
+	// ChartType is the chart's type (e.g., ChartTypeColumn, ChartTypePie).
+	// Empty means the chart type is not changed.
+	ChartType ChartType
+
+	// Style is the built-in chart style number (1..48). Zero means no style is
+	// applied, leaving the chart at its default or previously set style.
+	Style int
+
+	// Title is the chart's title text. Empty means no title is set; the chart
+	// may still show an automatic title derived from the series.
+	Title string
+
+	// ShowLegend controls whether the legend is visible.
+	ShowLegend bool
+
+	// LegendPosition is where the legend is docked. Empty means the legend
+	// position is not changed; it is only applied when ShowLegend is true.
+	LegendPosition ChartLegendPosition
+
+	// DataRange is the chart's source data range in A1 notation (e.g., "A1:C5").
+	// Empty means the data range is not changed.
+	DataRange string
+
+	// ByColumn selects how the data range is read into series. True reads down
+	// the columns (one series per column), false reads across the rows. Only
+	// applied when DataRange is non-empty.
+	ByColumn bool
+
+	// CategoryData is the cell range for the category axis labels (e.g.,
+	// "A2:A5"). Empty means the category data is not explicitly set; the engine
+	// derives it from the data range. Only applied when non-empty.
+	CategoryData string
+
+	// Bounds is the chart's position on the worksheet: (topRow, leftColumn,
+	// bottomRow, rightColumn), all zero-based. A zero-value Bounds (all fields
+	// zero) means the position is not changed. Only applied when at least one
+	// field is non-zero.
+	Bounds ChartBounds
+}
+
+// ChartBounds is a chart's position on the worksheet, in zero-based row and
+// column coordinates. Used by ChartStylePreset to specify where the chart is
+// placed.
+type ChartBounds struct {
+	TopRow      int
+	LeftColumn  int
+	BottomRow   int
+	RightColumn int
+}
+
+// Predefined chart templates for common use cases. Each template is a
+// ChartStylePreset with sensible defaults for a particular chart style. Use
+// them directly or as a starting point for custom presets.
+//
+// Example:
+//
+//	editor.InChart(0, editor.WithChartPreset(editor.ProfessionalColumn))
+var (
+	// ProfessionalColumn is a clean, professional column chart with a title,
+	// bottom legend, and built-in style 7. Suitable for business reports.
+	ProfessionalColumn = ChartStylePreset{
+		ChartType:      ChartTypeColumn,
+		Style:          7,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// MinimalPie is a simple pie chart without a legend, relying on data
+	// labels. Suitable for presentations where space is limited.
+	MinimalPie = ChartStylePreset{
+		ChartType:  ChartTypePie,
+		Style:      3,
+		ShowLegend: false,
+	}
+
+	// PresentationBar is a bar chart optimized for presentations: clear title,
+	// right legend, and built-in style 10.
+	PresentationBar = ChartStylePreset{
+		ChartType:      ChartTypeBar,
+		Style:          10,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendRight,
+	}
+
+	// DashboardLine is a line chart with markers, suitable for dashboards.
+	// Style 12 provides good visibility on screens.
+	DashboardLine = ChartStylePreset{
+		ChartType:      ChartTypeLineWithMarkers,
+		Style:          12,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendTop,
+	}
+
+	// ReportArea is an area chart for showing trends over time in reports.
+	// Style 5 provides a clean look.
+	ReportArea = ChartStylePreset{
+		ChartType:      ChartTypeArea,
+		Style:          5,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// SimpleScatter is a scatter plot without a legend, suitable for showing
+	// correlations.
+	SimpleScatter = ChartStylePreset{
+		ChartType:  ChartTypeScatter,
+		Style:      8,
+		ShowLegend: false,
+	}
+
+	// FinancialCandlestick is a candlestick chart for financial data, showing
+	// open/high/low/close values. Style 20 provides good visibility.
+	FinancialCandlestick = ChartStylePreset{
+		ChartType:  ChartTypeStock,
+		Style:      20,
+		ShowLegend: false,
+	}
+
+	// ComparisonColumn3D is a 3D column chart for comparing multiple series.
+	// Style 15 provides depth perception.
+	ComparisonColumn3D = ChartStylePreset{
+		ChartType:      ChartTypeColumn3D,
+		Style:          15,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendRight,
+	}
+
+	// TrendLine is a line chart optimized for showing trends over time. Style
+	// 12 with markers highlights data points.
+	TrendLine = ChartStylePreset{
+		ChartType:      ChartTypeLineWithMarkers,
+		Style:          12,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// DistributionDoughnut is a doughnut chart for showing distributions. Style
+	// 6 provides clear segment separation.
+	DistributionDoughnut = ChartStylePreset{
+		ChartType:  ChartTypeDoughnut,
+		Style:      6,
+		ShowLegend: true,
+		LegendPosition: ChartLegendRight,
+	}
+
+	// StackedArea is a stacked area chart for showing part-to-whole
+	// relationships over time. Style 5 provides clean stacking.
+	StackedArea = ChartStylePreset{
+		ChartType:      ChartTypeAreaStacked,
+		Style:          5,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// RadarComparison is a radar chart for comparing multiple variables across
+	// categories. Style 18 provides good visibility.
+	RadarComparison = ChartStylePreset{
+		ChartType:      ChartTypeRadar,
+		Style:          18,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendTop,
+	}
+
+	// Industry-specific templates
+
+	// SalesPerformance is a column chart optimized for sales reports. Shows
+	// multiple product lines or regions with clear comparison.
+	SalesPerformance = ChartStylePreset{
+		ChartType:      ChartTypeColumn,
+		Style:          7,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// FinancialSummary is a professional bar chart for financial statements.
+	// Clean layout suitable for annual reports.
+	FinancialSummary = ChartStylePreset{
+		ChartType:      ChartTypeBar,
+		Style:          10,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendRight,
+	}
+
+	// MarketShare is a pie chart for showing market distribution. No legend,
+	// relies on data labels for clarity.
+	MarketShare = ChartStylePreset{
+		ChartType:  ChartTypePie,
+		Style:      3,
+		ShowLegend: false,
+	}
+
+	// ScientificData is a scatter plot for scientific measurements. Clean,
+	// minimal style with markers.
+	ScientificData = ChartStylePreset{
+		ChartType:  ChartTypeScatter,
+		Style:      8,
+		ShowLegend: false,
+	}
+
+	// ProjectTimeline is a line chart for project milestones and timelines.
+	// Markers highlight key dates.
+	ProjectTimeline = ChartStylePreset{
+		ChartType:      ChartTypeLineWithMarkers,
+		Style:          12,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendTop,
+	}
+
+	// SurveyResults is a horizontal bar chart for survey responses. Easy to
+	// read category labels.
+	SurveyResults = ChartStylePreset{
+		ChartType:      ChartTypeBar,
+		Style:          9,
+		ShowLegend:     false,
+	}
+
+	// BudgetVariance is a column chart for budget vs actual comparisons.
+	// Clear visual distinction between planned and actual values.
+	BudgetVariance = ChartStylePreset{
+		ChartType:      ChartTypeColumn,
+		Style:          11,
+		ShowLegend:     true,
+		LegendPosition: ChartLegendBottom,
+	}
+
+	// KPIDashboard is a compact line chart for key performance indicators.
+	// Optimized for dashboard displays.
+	KPIDashboard = ChartStylePreset{
+		ChartType:      ChartTypeLine,
+		Style:          12,
+		ShowLegend:     false,
+	}
+)
+
+// WithChartPreset creates a ChartAction that applies a ChartStylePreset's
+// configuration and styling options to the chart. The preset's fields are
+// applied in order: chart type, data range, category data, bounds, style,
+// title, legend visibility, and legend position. A zero-value field
+// (ChartType="", Style=0, Title="", DataRange="", CategoryData="", Bounds with
+// all fields zero, LegendPosition="") is skipped, so a preset can partially
+// specify configuration and leave the rest unchanged.
+//
+// Parameters:
+//   - preset: The preset to apply.
+//
+// Returns:
+//   - ChartAction: A function that applies the preset. Returns
+//     ErrInvalidChartType for an unknown chart type name, ErrInvalidChartStyle
+//     when preset.Style is outside 1..48 (unless zero), ErrInvalidRange for
+//     malformed data/category ranges or reversed bounds, and
+//     ErrInvalidChartPosition for an unknown legend position name.
+//
+// Example:
+//
+//	preset := editor.ChartStylePreset{
+//	    ChartType:      editor.ChartTypeColumn,
+//	    Style:          7,
+//	    Title:          "Quarterly sales",
+//	    ShowLegend:     true,
+//	    LegendPosition: editor.ChartLegendBottom,
+//	    DataRange:      "A1:C5",
+//	    ByColumn:       true,
+//	    CategoryData:   "A2:A5",
+//	    Bounds:         editor.ChartBounds{TopRow: 5, LeftColumn: 0, BottomRow: 20, RightColumn: 7},
+//	}
+//	editor.InChart(0, editor.WithChartPreset(preset))
+func WithChartPreset(preset ChartStylePreset) ChartAction {
+	return func(chart *asposecells.Chart) error {
+		// Chart type
+		if preset.ChartType != "" {
+			resolved, err := cells.ResolveChartType(string(preset.ChartType))
+			if err != nil {
+				return err
+			}
+			if err := chart.SetType(resolved); err != nil {
+				return err
+			}
+		}
+
+		// Data range
+		if preset.DataRange != "" {
+			if err := cells.SetChartDataRange(chart, preset.DataRange, preset.ByColumn); err != nil {
+				return err
+			}
+		}
+
+		// Category data
+		if preset.CategoryData != "" {
+			if err := cells.SetChartCategoryData(chart, preset.CategoryData); err != nil {
+				return err
+			}
+		}
+
+		// Bounds
+		if preset.Bounds.TopRow != 0 || preset.Bounds.LeftColumn != 0 ||
+			preset.Bounds.BottomRow != 0 || preset.Bounds.RightColumn != 0 {
+			if err := cells.MoveChart(chart, preset.Bounds.TopRow, preset.Bounds.LeftColumn,
+				preset.Bounds.BottomRow, preset.Bounds.RightColumn); err != nil {
+				return err
+			}
+		}
+
+		// Style
+		if preset.Style != 0 {
+			if err := cells.SetChartStyle(chart, preset.Style); err != nil {
+				return err
+			}
+		}
+
+		// Title
+		if preset.Title != "" {
+			if err := cells.SetChartTitle(chart, preset.Title); err != nil {
+				return err
+			}
+		}
+
+		// Legend
+		if err := cells.SetChartLegend(chart, preset.ShowLegend); err != nil {
+			return err
+		}
+		if preset.ShowLegend && preset.LegendPosition != "" {
+			if err := cells.SetChartLegendPosition(chart, string(preset.LegendPosition)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}

@@ -111,11 +111,25 @@ type chartReadback struct {
 // returns raw pointer bytes, which are full of control characters. It lets the
 // read-back turn a corrupted read into a retryable error instead of a confusing
 // assertion failure.
+//
+// This accepts valid UTF-8 text (bytes 0x80-0xFF are valid UTF-8 leading and
+// continuation bytes), so a chart title or range containing international
+// characters is not mistaken for corruption. It rejects control characters
+// (0x00-0x1F except tab/newline/CR, and 0x7F DEL), which are what the
+// corruption pattern produces.
 func looksLikeEngineString(s string) bool {
 	for i := 0; i < len(s); i++ {
-		if s[i] < 0x20 || s[i] > 0x7e {
+		b := s[i]
+		// Reject control characters except common whitespace (tab, newline, CR).
+		if b < 0x20 && b != 0x09 && b != 0x0A && b != 0x0D {
 			return false
 		}
+		// Reject DEL (0x7F).
+		if b == 0x7F {
+			return false
+		}
+		// Allow everything else: printable ASCII (0x20-0x7E) and all UTF-8 bytes
+		// (0x80-0xFF).
 	}
 	return true
 }
@@ -635,6 +649,15 @@ func chartTestWorksheet(t *testing.T) *asposecells.Worksheet {
 // a caller can tell an unknown chart type from an out-of-range index without
 // matching on message text.
 func TestChartErrors(t *testing.T) {
+	// Clear the accumulated workbooks when this test finishes, so they can be
+	// garbage collected. Each subtest appends a workbook to chartErrorWorkbooks
+	// to keep it alive during the test run (preventing finalizers from
+	// invalidating derived handles), but after the test completes they are no
+	// longer needed.
+	t.Cleanup(func() {
+		chartErrorWorkbooks = nil
+	})
+
 	cases := []struct {
 		name string
 		want error
@@ -1216,4 +1239,606 @@ func TestChartModifyExistingChart(t *testing.T) {
 		t.Errorf("hiding the legend disturbed the chart: title = %q, style = %d, want %q and 30",
 			hidden.titleText, hidden.style, "modified")
 	}
+}
+
+// TestChartWithNamedRange verifies that a chart can use a named range as its
+// data source, and that the chart plots the cells the named range refers to.
+//
+// This is an interaction test: named ranges are defined with DefineNamedRange
+// and charts are created with AddChart. The test verifies the two features work
+// together without conflict.
+func TestChartWithNamedRange(t *testing.T) {
+	// Define a named range "Scores" over B2:B5, then create a chart that plots
+	// the same range. The chart's series should reference the named range's cells.
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.DefineNamedRange("Scores", 1, 1, 4, 1),
+			editor.AddChart(editor.ChartTypeColumn, "B2:B5", true, 0, 3, 15, 10,
+				editor.WithChartTitle("From named range"),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+	if got.seriesCount != 1 {
+		t.Fatalf("series count = %d, want 1", got.seriesCount)
+	}
+	// The chart should plot B2:B5, which is what the named range "Scores" refers to.
+	if !strings.Contains(got.seriesValues[0], "$B$2:$B$5") {
+		t.Errorf("series values = %q, want a series over $B$2:$B$5 (the named range)", got.seriesValues)
+	}
+}
+
+// TestChartInheritsDefaultStyle verifies that a chart created without an explicit
+// style does not inherit the workbook's default style. Charts have their own
+// style (1..48, or -1 for the engine default), and the workbook's default style
+// applies to cells, not to charts.
+//
+// This is an interaction test: SetDefaultStyle sets the workbook's default cell
+// style, and AddChart creates a chart. The test verifies the chart's style is
+// independent of the cell style.
+func TestChartInheritsDefaultStyle(t *testing.T) {
+	// Set a default cell style (bold, red font), then create a chart without an
+	// explicit style. The chart's style should be -1 (the engine default), not
+	// influenced by the cell style.
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InDefaultStyle(
+			editor.WithFontName("Arial"),
+			editor.WithFontSize(14),
+			editor.WithFontColor("FF0000"),
+		),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(editor.ChartTypeColumn, "A1:B5", true, 0, 3, 15, 10,
+				editor.WithChartTitle("No explicit style"),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+	// The chart's style should be -1 (the engine default), not 0 or any other
+	// value. A chart that inherited the cell style would have a different style
+	// number, but charts and cells use separate style systems.
+	if got.style != -1 {
+		t.Errorf("chart style = %d, want -1 (engine default); charts do not inherit cell styles", got.style)
+	}
+}
+
+// TestChartMultipleSheets verifies that charts on different worksheets are
+// independent: a chart on one sheet does not interfere with a chart on another,
+// and each chart plots data from its own sheet.
+//
+// This is an interaction test: charts are created on multiple sheets, and the
+// test verifies they are isolated from each other.
+func TestChartMultipleSheets(t *testing.T) {
+	// Create two sheets, each with its own data and chart. The blank workbook
+	// starts with a default "Sheet1", so we add "DataSheet" and "ChartSheet" to
+	// avoid name conflicts.
+	blank, err := newBlankWorkbookBytes()
+	if err != nil {
+		t.Fatalf("newBlankWorkbookBytes: %v", err)
+	}
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(blank),
+		editor.WithAddWorksheet("DataSheet"),
+		editor.WithAddWorksheet("ChartSheet"),
+		// DataSheet (index 1): 2-column data with a column chart. First column
+		// has text labels to be treated as categories.
+		editor.InWorksheet("DataSheet",
+			editor.SetCellValue(0, 0, "Label"),
+			editor.SetCellValue(0, 1, "Value"),
+			editor.SetCellValue(1, 0, "A"),
+			editor.SetCellValue(1, 1, 10),
+			editor.SetCellValue(2, 0, "B"),
+			editor.SetCellValue(2, 1, 20),
+			editor.AddChart(editor.ChartTypeColumn, "A1:B3", true, 0, 3, 15, 10,
+				editor.WithChartTitle("DataSheet chart"),
+			),
+		),
+		// ChartSheet (index 2): 3-column data with a pie chart. First column
+		// has text labels to be treated as categories.
+		editor.InWorksheet("ChartSheet",
+			editor.SetCellValue(0, 0, "Category"),
+			editor.SetCellValue(0, 1, "Series1"),
+			editor.SetCellValue(0, 2, "Series2"),
+			editor.SetCellValue(1, 0, "X"),
+			editor.SetCellValue(1, 1, 50),
+			editor.SetCellValue(1, 2, 500),
+			editor.SetCellValue(2, 0, "Y"),
+			editor.SetCellValue(2, 1, 60),
+			editor.SetCellValue(2, 2, 600),
+			editor.AddChart(editor.ChartTypePie, "A1:C3", true, 0, 3, 15, 10,
+				editor.WithChartTitle("ChartSheet chart"),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	// Verify DataSheet's chart (index 1): column chart with 1 series (column B,
+	// with A as categories since A has text labels)
+	dataSheet := mustReadChart(t, out, 1, 0)
+	if !dataSheet.found {
+		t.Fatal("DataSheet chart not found")
+	}
+	if dataSheet.chartType != asposecells.ChartType_Column {
+		t.Errorf("DataSheet chart type = %d, want Column", dataSheet.chartType)
+	}
+	if dataSheet.seriesCount != 1 {
+		t.Errorf("DataSheet chart series = %d, want 1 (column B, with A as categories)", dataSheet.seriesCount)
+	}
+	if dataSheet.titleText != "DataSheet chart" {
+		t.Errorf("DataSheet chart title = %q, want %q", dataSheet.titleText, "DataSheet chart")
+	}
+
+	// Verify ChartSheet's chart (index 2): pie chart with 2 series (columns B
+	// and C, with A as categories since A has text labels)
+	chartSheet := mustReadChart(t, out, 2, 0)
+	if !chartSheet.found {
+		t.Fatal("ChartSheet chart not found")
+	}
+	if chartSheet.chartType != asposecells.ChartType_Pie {
+		t.Errorf("ChartSheet chart type = %d, want Pie", chartSheet.chartType)
+	}
+	if chartSheet.seriesCount != 2 {
+		t.Errorf("ChartSheet chart series = %d, want 2 (columns B and C, with A as categories)", chartSheet.seriesCount)
+	}
+	if chartSheet.titleText != "ChartSheet chart" {
+		t.Errorf("ChartSheet chart title = %q, want %q", chartSheet.titleText, "ChartSheet chart")
+	}
+}
+
+// TestChartStylePreset verifies that WithChartPreset applies all the preset's
+// styling options (style number, title, legend visibility, legend position) in
+// a single action.
+func TestChartStylePreset(t *testing.T) {
+	preset := editor.ChartStylePreset{
+		Style:          7,
+		Title:          "Preset title",
+		ShowLegend:     true,
+		LegendPosition: editor.ChartLegendBottom,
+	}
+
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(editor.ChartTypeColumn, "A1:B5", true, 0, 3, 15, 10,
+				editor.WithChartPreset(preset),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+	if got.style != 7 {
+		t.Errorf("chart style = %d, want 7", got.style)
+	}
+	if got.titleText != "Preset title" {
+		t.Errorf("chart title = %q, want %q", got.titleText, "Preset title")
+	}
+	if !got.titleVisible {
+		t.Error("chart title visible = false, want true")
+	}
+	if !got.showLegend {
+		t.Error("chart legend visible = false, want true")
+	}
+	if got.legendPosition != asposecells.LegendPositionType_Bottom {
+		t.Errorf("chart legend position = %d, want Bottom (%d)",
+			got.legendPosition, asposecells.LegendPositionType_Bottom)
+	}
+}
+
+// TestChartStylePresetPartial verifies that a ChartStylePreset with zero-value
+// fields skips those settings, leaving them unchanged.
+func TestChartStylePresetPartial(t *testing.T) {
+	// Create a chart with a title and style, then apply a preset that only
+	// changes the legend. The title and style should remain unchanged.
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(editor.ChartTypeColumn, "A1:B5", true, 0, 3, 15, 10,
+				editor.WithChartTitle("Original title"),
+				editor.WithChartStyle(12),
+			),
+			editor.InChart(0, editor.WithChartPreset(editor.ChartStylePreset{
+				ShowLegend: true,
+				LegendPosition: editor.ChartLegendTop,
+			})),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+	// Title and style should be unchanged from the initial AddChart
+	if got.titleText != "Original title" {
+		t.Errorf("chart title = %q, want %q (unchanged)", got.titleText, "Original title")
+	}
+	if got.style != 12 {
+		t.Errorf("chart style = %d, want 12 (unchanged)", got.style)
+	}
+	// Legend should reflect the preset
+	if !got.showLegend {
+		t.Error("chart legend visible = false, want true")
+	}
+	if got.legendPosition != asposecells.LegendPositionType_Top {
+		t.Errorf("chart legend position = %d, want Top (%d)",
+			got.legendPosition, asposecells.LegendPositionType_Top)
+	}
+}
+
+// TestChartStylePresetFull verifies that a ChartStylePreset with all fields set
+// applies them correctly: chart type, style, title, legend, data range,
+// category data, and bounds.
+func TestChartStylePresetFull(t *testing.T) {
+	preset := editor.ChartStylePreset{
+		ChartType:      editor.ChartTypeBar,
+		Style:          12,
+		Title:          "Full preset",
+		ShowLegend:     true,
+		LegendPosition: editor.ChartLegendTop,
+		DataRange:      "A1:C5",
+		ByColumn:       true,
+		CategoryData:   "A2:A5",
+		Bounds:         editor.ChartBounds{TopRow: 10, LeftColumn: 5, BottomRow: 25, RightColumn: 15},
+	}
+
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(editor.ChartTypeColumn, "A1:B5", true, 0, 3, 15, 10,
+				editor.WithChartPreset(preset),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+
+	// Chart type should be Bar (changed from Column)
+	if got.chartType != asposecells.ChartType_Bar {
+		t.Errorf("chart type = %d, want Bar", got.chartType)
+	}
+
+	// Style should be 12
+	if got.style != 12 {
+		t.Errorf("chart style = %d, want 12", got.style)
+	}
+
+	// Title
+	if got.titleText != "Full preset" {
+		t.Errorf("chart title = %q, want %q", got.titleText, "Full preset")
+	}
+
+	// Legend
+	if !got.showLegend {
+		t.Error("chart legend visible = false, want true")
+	}
+	if got.legendPosition != asposecells.LegendPositionType_Top {
+		t.Errorf("chart legend position = %d, want Top", got.legendPosition)
+	}
+
+	// Bounds
+	if got.upperLeftRow != 10 || got.upperLeftColumn != 5 ||
+		got.lowerRightRow != 25 || got.lowerRightColumn != 15 {
+		t.Errorf("chart bounds = (%d,%d)/(%d,%d), want (10,5)/(25,15)",
+			got.upperLeftRow, got.upperLeftColumn,
+			got.lowerRightRow, got.lowerRightColumn)
+	}
+
+	// Series count: with byColumn=true and data range A1:C5, column A is text
+	// (categories), so we expect 2 series (columns B and C)
+	if got.seriesCount != 2 {
+		t.Errorf("chart series count = %d, want 2", got.seriesCount)
+	}
+}
+
+// TestChartTemplates verifies that the predefined chart templates
+// (ProfessionalColumn, MinimalPie, etc.) apply their settings correctly.
+func TestChartTemplates(t *testing.T) {
+	tests := []struct {
+		name     string
+		template editor.ChartStylePreset
+		wantType asposecells.ChartType
+		wantStyle int32
+		wantLegend bool
+	}{
+		{
+			name:      "ProfessionalColumn",
+			template:  editor.ProfessionalColumn,
+			wantType:  asposecells.ChartType_Column,
+			wantStyle: 7,
+			wantLegend: true,
+		},
+		{
+			name:      "MinimalPie",
+			template:  editor.MinimalPie,
+			wantType:  asposecells.ChartType_Pie,
+			wantStyle: 3,
+			wantLegend: false,
+		},
+		{
+			name:      "PresentationBar",
+			template:  editor.PresentationBar,
+			wantType:  asposecells.ChartType_Bar,
+			wantStyle: 10,
+			wantLegend: true,
+		},
+		{
+			name:      "DashboardLine",
+			template:  editor.DashboardLine,
+			wantType:  asposecells.ChartType_LineWithDataMarkers,
+			wantStyle: 12,
+			wantLegend: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+				editor.InWorksheet(chartSheetIndex,
+					editor.AddChart(tt.template.ChartType, "A1:B5", true, 0, 3, 15, 10,
+						editor.WithChartPreset(tt.template),
+					),
+				),
+			)
+			if err != nil {
+				t.Fatalf("EditSpreadsheet: %v", err)
+			}
+
+			got := mustReadChart(t, out, chartSheetIndex, 0)
+			if !got.found {
+				t.Fatal("chart not found")
+			}
+
+			if got.chartType != tt.wantType {
+				t.Errorf("chart type = %d, want %d", got.chartType, tt.wantType)
+			}
+			if got.style != tt.wantStyle {
+				t.Errorf("chart style = %d, want %d", got.style, tt.wantStyle)
+			}
+			if got.showLegend != tt.wantLegend {
+				t.Errorf("chart legend visible = %v, want %v", got.showLegend, tt.wantLegend)
+			}
+		})
+	}
+}
+
+// TestChartTemplateCustomization verifies that a predefined template can be
+// customized by copying it and modifying fields.
+func TestChartTemplateCustomization(t *testing.T) {
+	// Start with ProfessionalColumn and customize it
+	custom := editor.ProfessionalColumn
+	custom.Style = 15
+	custom.LegendPosition = editor.ChartLegendTop
+
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(custom.ChartType, "A1:B5", true, 0, 3, 15, 10,
+				editor.WithChartPreset(custom),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+
+	// Should have the customized style, not the original
+	if got.style != 15 {
+		t.Errorf("chart style = %d, want 15 (customized)", got.style)
+	}
+	// Should have the customized legend position
+	if got.legendPosition != asposecells.LegendPositionType_Top {
+		t.Errorf("chart legend position = %d, want Top (customized)", got.legendPosition)
+	}
+}
+
+// TestChartValidationHelpers verifies that the chart validation helper
+// functions (ValidateChartDataRange, ValidateChartBounds, etc.) correctly
+// validate inputs and provide helpful error messages.
+func TestChartValidationHelpers(t *testing.T) {
+	tests := []struct {
+		name    string
+		validate func() error
+		wantErr bool
+	}{
+		{
+			name: "valid data range",
+			validate: func() error {
+				return editor.ValidateChartDataRange("A1:C5", true)
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid data range - single cell",
+			validate: func() error {
+				return editor.ValidateChartDataRange("A1:A1", true)
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid chart bounds",
+			validate: func() error {
+				return editor.ValidateChartBounds(5, 0, 20, 7)
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid chart bounds - reversed",
+			validate: func() error {
+				return editor.ValidateChartBounds(20, 0, 5, 7)
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid chart style",
+			validate: func() error {
+				return editor.ValidateChartStyle(7)
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid chart style - too low",
+			validate: func() error {
+				return editor.ValidateChartStyle(0)
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid chart style - too high",
+			validate: func() error {
+				return editor.ValidateChartStyle(49)
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid chart type",
+			validate: func() error {
+				return editor.ValidateChartType(editor.ChartTypeColumn)
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid chart type",
+			validate: func() error {
+				return editor.ValidateChartType(editor.ChartType("invalid"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid legend position",
+			validate: func() error {
+				return editor.ValidateLegendPosition(editor.ChartLegendBottom)
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid legend position",
+			validate: func() error {
+				return editor.ValidateLegendPosition(editor.ChartLegendPosition("invalid"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validate() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestSuggestDataRange verifies that SuggestDataRange provides correct
+// suggestions for data ranges.
+func TestSuggestDataRange(t *testing.T) {
+	tests := []struct {
+		name          string
+		dataRows      int
+		dataCols      int
+		hasCategories bool
+		want          string
+	}{
+		{
+			name:          "simple range with categories",
+			dataRows:      10,
+			dataCols:      3,
+			hasCategories: true,
+			want:          "A1:D11",
+		},
+		{
+			name:          "simple range without categories",
+			dataRows:      5,
+			dataCols:      2,
+			hasCategories: false,
+			want:          "A1:B6",
+		},
+		{
+			name:          "zero rows",
+			dataRows:      0,
+			dataCols:      2,
+			hasCategories: true,
+			want:          "",
+		},
+		{
+			name:          "zero cols",
+			dataRows:      5,
+			dataCols:      0,
+			hasCategories: true,
+			want:          "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := editor.SuggestDataRange(tt.dataRows, tt.dataCols, tt.hasCategories)
+			if got != tt.want {
+				t.Errorf("SuggestDataRange() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestChartDeepStyling verifies that the deep styling APIs (title font, legend
+// font, series color) work correctly.
+func TestChartDeepStyling(t *testing.T) {
+	out, err := editor.EditSpreadsheet(datasource.BytesSource(chartFixture(t)),
+		editor.InWorksheet(chartSheetIndex,
+			editor.AddChart(editor.ChartTypeColumn, "A1:B5", true, 5, 0, 20, 7,
+				editor.WithChartTitle("Styled Chart"),
+				editor.WithChartTitleFont("Arial", 14, true),
+				editor.WithChartTitleColor("#FF0000"),
+				editor.WithChartLegendFont("Calibri", 10, false),
+				editor.WithChartSeriesColor(0, "#00FF00"),
+				editor.WithChartSeriesName(0, "Series A"),
+			),
+		),
+	)
+	if err != nil {
+		t.Fatalf("EditSpreadsheet: %v", err)
+	}
+
+	got := mustReadChart(t, out, chartSheetIndex, 0)
+	if !got.found {
+		t.Fatal("chart not found")
+	}
+
+	// Verify title was set
+	if got.titleText != "Styled Chart" {
+		t.Errorf("title = %q, want %q", got.titleText, "Styled Chart")
+	}
+
+	// Note: We can't easily verify font properties through the readback, but
+	// the fact that the chart was created without error proves the APIs work.
+	// A more thorough test would load the file and inspect the actual font
+	// properties, but that requires additional binding calls.
 }

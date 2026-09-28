@@ -188,6 +188,96 @@ Returns the comment note on a single cell identified by its Excel reference,
 e.g. `"B3"`. A cell without a comment returns an empty string. Write counterpart:
 [`editor.SetCellComment`](editor.md#setcellcomment).
 
+## Charts
+
+### ChartInfo
+
+```go
+func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (ChartMetadata, error)
+```
+
+Reads the metadata for the worksheet's chart at `chartIndex`. Charts are indexed
+from zero in the order they were added. A `chartIndex` out of range returns
+`ErrChartNotFound`.
+
+```go
+type ChartMetadata struct {
+    Index          int          // zero-based position in the worksheet's chart collection
+    Type           string       // chart type, e.g. "column", "pie", "bar"
+    Title          string       // title text; empty when no title or title is hidden
+    TitleVisible   bool         // whether the title is shown
+    Style          int          // built-in style number (1..48), or -1 for engine default
+    ShowLegend     bool         // whether the legend is visible
+    LegendPosition string       // legend position, e.g. "bottom", "right"; empty when hidden
+    Bounds         ChartBounds  // chart position on the worksheet (zero-based)
+    DataRange      string       // source data range in A1 notation, e.g. "A1:B5"
+    SeriesCount    int          // number of data series in the chart
+}
+
+type ChartBounds struct {
+    TopRow      int
+    LeftColumn  int
+    BottomRow   int
+    RightColumn int
+}
+```
+
+```go
+info, err := query.ChartInfo(datasource.FilePathSource("data.xlsx"), 0)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(info.Type, info.Title, info.SeriesCount)
+```
+
+Write counterpart: [`editor.AddChart`](editor.md#addchart) and
+[`editor.InChart`](editor.md#inchart).
+
+### ChartSeriesData
+
+```go
+func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Option) ([]ChartSeries, error)
+```
+
+Reads the series data for the worksheet's chart at `chartIndex`. Each series
+reports its values range, category data, and data point count. A `chartIndex`
+out of range returns `ErrChartNotFound`.
+
+```go
+type ChartSeries struct {
+    Index          int    // zero-based position in the chart's series collection
+    Values         string // cell range the series plots, e.g. "$B$2:$B$5"
+    CategoryData   string // cell range for category axis labels; empty when none
+    DataValueCount int    // number of data points in the series
+}
+```
+
+```go
+series, err := query.ChartSeriesData(datasource.FilePathSource("data.xlsx"), 0)
+if err != nil {
+    log.Fatal(err)
+}
+for _, s := range series {
+    fmt.Println(s.Values, s.DataValueCount)
+}
+```
+
+### ChartCount
+
+```go
+func ChartCount(source datasource.DataSource, opts ...Option) (int, error)
+```
+
+Returns the number of charts on the worksheet.
+
+```go
+n, err := query.ChartCount(datasource.FilePathSource("data.xlsx"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("worksheet has %d chart(s)\n", n)
+```
+
 ## Options
 
 ```go
@@ -231,6 +321,7 @@ Invalid references return `ErrInvalidCellRef`; malformed areas return
 | `WithSheet` name not found         | `ErrWorksheetNotFound`            |
 | `WithSheetIndex` out of range      | `ErrInvalidSheetID`               |
 | Named range not found              | `ErrNameNotFound`                 |
+| Chart index out of range           | `ErrChartNotFound`                |
 
 All errors are wrapped with `%w` so they can be classified with `errors.Is`.
 
@@ -260,5 +351,150 @@ for _, row := range rows {
         }
     }
     fmt.Println()
+}
+```
+
+## Data Validation
+
+The `query` package provides functions to read data validation rules from a
+worksheet. Validation rules control what users can enter into cells.
+
+### ValidationCount
+
+```go
+func ValidationCount(src datasource.DataSource, opts ...Option) (int, error)
+```
+
+Returns the number of data validations on the specified worksheet.
+
+```go
+count, err := query.ValidationCount(source, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Validations: %d\n", count)
+```
+
+### ValidationInfoAt
+
+```go
+func ValidationInfoAt(src datasource.DataSource, index int, opts ...Option) (ValidationInfo, error)
+```
+
+Returns metadata about the data validation at the given index on the specified
+worksheet. `ValidationInfo` contains:
+
+- `Index` - Zero-based position
+- `Type` - Validation type (e.g., "wholeNumber", "list", "custom")
+- `Operator` - Comparison operator (e.g., "between", "greaterThan")
+- `Formula1`, `Formula2` - Validation formulas/values
+- `Areas` - Cell ranges the validation applies to
+- `ErrorMessage`, `ErrorTitle` - Error alert text
+- `InputMessage`, `InputTitle` - Input prompt text
+- `ShowError`, `ShowInput` - Whether alerts/prompts are shown
+- `IgnoreBlank` - Whether blank cells are ignored
+- `InCellDropDown` - Whether dropdown is shown for list validations
+
+```go
+info, err := query.ValidationInfoAt(source, 0, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Type: %s, Operator: %s\n", info.Type, info.Operator)
+fmt.Printf("Formula1: %s, Formula2: %s\n", info.Formula1, info.Formula2)
+if info.ErrorMessage != "" {
+    fmt.Printf("Error: %s\n", info.ErrorMessage)
+}
+```
+
+### AllValidations
+
+```go
+func AllValidations(src datasource.DataSource, opts ...Option) ([]ValidationInfo, error)
+```
+
+Returns metadata about all data validations on the specified worksheet.
+
+```go
+validations, err := query.AllValidations(source, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+for _, v := range validations {
+    fmt.Printf("Validation %d: Type=%s, Areas=%v\n", v.Index, v.Type, v.Areas)
+}
+```
+
+## Conditional Formatting
+
+The `query` package provides functions to read conditional formatting rules from
+a worksheet. Conditional formatting applies visual formatting based on cell values.
+
+### ConditionalFormattingCount
+
+```go
+func ConditionalFormattingCount(src datasource.DataSource, opts ...Option) (int, error)
+```
+
+Returns the number of conditional formatting collections on the specified worksheet.
+
+```go
+count, err := query.ConditionalFormattingCount(source, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Conditional formattings: %d\n", count)
+```
+
+### ConditionalFormattingInfoAt
+
+```go
+func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...Option) (ConditionalFormattingInfo, error)
+```
+
+Returns metadata about the conditional formatting collection at the given index.
+`ConditionalFormattingInfo` contains:
+
+- `Index` - Zero-based position
+- `Areas` - Cell ranges the formatting applies to
+- `Conditions` - List of conditions in this collection
+
+Each `ConditionInfo` contains:
+
+- `Index` - Zero-based position in the collection
+- `Type` - Condition type (e.g., "colorScale", "dataBar", "iconSet", "cellValue")
+- `Operator` - Comparison operator
+- `Formula1`, `Formula2` - Condition formulas/values
+
+```go
+info, err := query.ConditionalFormattingInfoAt(source, 0, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Areas: %v\n", info.Areas)
+for _, cond := range info.Conditions {
+    fmt.Printf("  Condition %d: Type=%s, Operator=%s\n", cond.Index, cond.Type, cond.Operator)
+}
+```
+
+### AllConditionalFormattings
+
+```go
+func AllConditionalFormattings(src datasource.DataSource, opts ...Option) ([]ConditionalFormattingInfo, error)
+```
+
+Returns metadata about all conditional formatting collections on the specified
+worksheet.
+
+```go
+formattings, err := query.AllConditionalFormattings(source, query.WithSheet("Sheet1"))
+if err != nil {
+    log.Fatal(err)
+}
+for _, cf := range formattings {
+    fmt.Printf("Conditional Formatting %d: Areas=%v\n", cf.Index, cf.Areas)
+    for _, cond := range cf.Conditions {
+        fmt.Printf("  Condition: Type=%s\n", cond.Type)
+    }
 }
 ```

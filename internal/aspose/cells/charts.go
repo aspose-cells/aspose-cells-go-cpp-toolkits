@@ -205,7 +205,10 @@ func ValidateGridArea(area Area) error {
 // error the caller can act on. That is the silently-wrong outcome this layer
 // exists to convert into an error.
 func ValidateChartBounds(topRow, leftColumn, bottomRow, rightColumn int) error {
-	if topRow < 0 || leftColumn < 0 {
+	// Check all four coordinates for negativity first, so the error message
+	// identifies the actual problem (a negative coordinate) rather than a
+	// misleading "reversed" error when bottomRow or rightColumn is negative.
+	if topRow < 0 || leftColumn < 0 || bottomRow < 0 || rightColumn < 0 {
 		return fmt.Errorf("chart bounds (%d, %d, %d, %d) must not be negative: %w",
 			topRow, leftColumn, bottomRow, rightColumn, toolkiterrors.ErrInvalidRange)
 	}
@@ -321,19 +324,16 @@ func AddChartChartType(ws *asposecells.Worksheet, chartType asposecells.ChartTyp
 	// The binding names the last two "rightrow, bottomcolumn", which is
 	// misleading: measured, the 4th argument sets the bottom row and the 5th the
 	// right column, matching Chart.Move.
-	_, err = charts.Add_ChartType_String_Bool_Int_Int_Int_Int(
+	index, err := charts.Add_ChartType_String_Bool_Int_Int_Int_Int(
 		chartType, dataRange, byColumn,
 		int32(topRow), int32(leftColumn), int32(bottomRow), int32(rightColumn))
 	if err != nil {
 		return nil, err
 	}
-	// Add returns the new chart's index; the collection appends, so the new
-	// chart is the last one.
-	count, err := charts.GetCount()
-	if err != nil {
-		return nil, err
-	}
-	return Chart(ws, int(count)-1)
+	// Use the index returned by Add directly rather than assuming the chart was
+	// appended at the end. This avoids a fragile assumption about the engine's
+	// collection behavior.
+	return Chart(ws, int(index))
 }
 
 // DeleteChartAt removes the chart at index, or returns ErrChartNotFound.
