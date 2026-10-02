@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -21,20 +22,20 @@ var (
 	chartExportFixtureErr  error
 )
 
-// getChartExportFixture returns a workbook with a chart for testing.
+// getChartExportFixture returns a workbook with one column chart over a small
+// table. It is built once per process because every EditSpreadsheet costs one
+// of the evaluation copy's per-process loads.
 func getChartExportFixture(t *testing.T) []byte {
 	t.Helper()
 	chartExportFixtureOnce.Do(func() {
-		// Create a workbook with sample data and a chart
-		src, err := datasource.NewEmptyWorkbook()
+		seed, err := datasource.NewEmptyWorkbook()
 		if err != nil {
 			chartExportFixtureErr = err
 			return
 		}
 		out, err := editor.EditSpreadsheet(
-			src,
+			seed,
 			editor.InWorksheet(0,
-				// Add sample data
 				editor.SetCellValue(0, 0, "Category"),
 				editor.SetCellValue(0, 1, "Value"),
 				editor.SetCellValue(1, 0, "A"),
@@ -43,7 +44,6 @@ func getChartExportFixture(t *testing.T) []byte {
 				editor.SetCellValue(2, 1, 20),
 				editor.SetCellValue(3, 0, "C"),
 				editor.SetCellValue(3, 1, 30),
-				// Add a chart
 				editor.AddChart(editor.ChartTypeColumn, "A1:B4", false, 0, 3, 15, 10,
 					editor.WithChartTitle("Test Chart"),
 					editor.WithChartStyle(7),
@@ -62,356 +62,347 @@ func getChartExportFixture(t *testing.T) []byte {
 	return chartExportFixtureData
 }
 
-func TestExportChartToBytes_PNG(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
-
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
+// pngDimensions reads a PNG's pixel size from its IHDR chunk.
+func pngDimensions(t *testing.T, data []byte) (width, height int) {
+	t.Helper()
+	if len(data) < 24 || string(data[12:16]) != "IHDR" {
+		t.Fatalf("exported data is not a PNG (len=%d)", len(data))
 	}
+	return int(binary.BigEndian.Uint32(data[16:20])), int(binary.BigEndian.Uint32(data[20:24]))
+}
 
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
+func isPNG(data []byte) bool {
+	return len(data) >= 8 && bytes.Equal(data[:8], []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A})
+}
+
+func isJPEG(data []byte) bool {
+	return len(data) >= 2 && data[0] == 0xFF && data[1] == 0xD8
+}
+
+func isPDF(data []byte) bool {
+	return bytes.HasPrefix(data, []byte("%PDF-"))
+}
+
+// --- format tests ---------------------------------------------------------
+
+func TestExportChartToBytes_PNG(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
+		Format: converter.ChartExportFormatPNG,
+	})
 	if err != nil {
 		t.Fatalf("ExportChartToBytes PNG: %v", err)
 	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported PNG data is empty")
+	if !isPNG(data) {
+		t.Fatal("exported data is not PNG")
 	}
-
-	// PNG files start with specific magic bytes
-	if len(data) < 8 || data[0] != 0x89 || data[1] != 0x50 || data[2] != 0x4E || data[3] != 0x47 {
-		t.Error("Exported data does not appear to be PNG format")
+	width, height := pngDimensions(t, data)
+	if width <= 0 || height <= 0 {
+		t.Fatalf("PNG reports implausible size %dx%d", width, height)
 	}
 }
 
 func TestExportChartToBytes_JPEG(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
+	data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
 		Format:  converter.ChartExportFormatJPEG,
 		Quality: 85,
-	}
-
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
+	})
 	if err != nil {
 		t.Fatalf("ExportChartToBytes JPEG: %v", err)
 	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported JPEG data is empty")
-	}
-
-	// JPEG files start with specific magic bytes
-	if len(data) < 2 || data[0] != 0xFF || data[1] != 0xD8 {
-		t.Error("Exported data does not appear to be JPEG format")
+	if !isJPEG(data) {
+		t.Fatal("exported data is not JPEG")
 	}
 }
 
 func TestExportChartToBytes_SVG(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
+	data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
 		Format: converter.ChartExportFormatSVG,
-	}
-
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
+	})
 	if err != nil {
 		t.Fatalf("ExportChartToBytes SVG: %v", err)
 	}
-
 	if len(data) == 0 {
-		t.Fatal("Exported SVG data is empty")
+		t.Fatal("exported SVG is empty")
 	}
-
-	// SVG files are XML and should contain "<svg"
-	svgContent := string(data)
-	if !bytes.Contains(data, []byte("<svg")) && !bytes.Contains(data, []byte("<?xml")) {
-		end := 100
-		if len(svgContent) < 100 {
-			end = len(svgContent)
-		}
-		t.Errorf("Exported data does not appear to be SVG format, got: %s", svgContent[:end])
+	if !bytes.Contains(data, []byte("<svg")) {
+		t.Fatal("exported data contains no <svg> element")
 	}
 }
 
+// TestExportChartToBytes_PDF checks the PDF path produces a real PDF document,
+// not the EMF bytes that a chart-to-image call yields.
 func TestExportChartToBytes_PDF(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
+	data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
 		Format: converter.ChartExportFormatPDF,
-	}
-
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
+	})
 	if err != nil {
-		t.Fatalf("ExportChartToBytes PDF (EMF): %v", err)
+		t.Fatalf("ExportChartToBytes PDF: %v", err)
 	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported PDF (EMF) data is empty")
+	if !isPDF(data) {
+		head := data
+		if len(head) > 16 {
+			head = head[:16]
+		}
+		t.Fatalf("exported data is not a PDF, header = %q", head)
+	}
+	if !bytes.Contains(data, []byte("%%EOF")) {
+		t.Error("PDF is missing its EOF trailer, so it is likely truncated")
 	}
 }
 
-func TestExportChartToBytes_WithDimensions(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+// --- sizing ---------------------------------------------------------------
 
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-		Width:  800,
-		Height: 600,
-	}
+// TestExportChartToBytes_ExactDimensions is the test that makes the size
+// option meaningful: a requested size must be the delivered size, exactly.
+func TestExportChartToBytes_ExactDimensions(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
-	if err != nil {
-		t.Fatalf("ExportChartToBytes with dimensions: %v", err)
-	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported PNG data is empty")
-	}
-}
-
-func TestExportChartToBytes_WidthOnly(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
-
-	// Test with Width > 0, Height = 0 (should use default height)
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-		Width:  1000,
-		Height: 0,
-	}
-
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
-	if err != nil {
-		t.Fatalf("ExportChartToBytes with width only: %v", err)
-	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported PNG data is empty")
-	}
-}
-
-func TestExportChartToBytes_HeightOnly(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
-
-	// Test with Width = 0, Height > 0 (should use default width)
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-		Width:  0,
-		Height: 800,
-	}
-
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
-	if err != nil {
-		t.Fatalf("ExportChartToBytes with height only: %v", err)
-	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported PNG data is empty")
-	}
-}
-
-func TestExportChartToBytes_JPEGQualityEdgeCases(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
-
-	// Test various JPEG quality values
-	qualityLevels := []int{1, 50, 95, 100}
-
-	for _, quality := range qualityLevels {
-		t.Run(fmt.Sprintf("Quality_%d", quality), func(t *testing.T) {
-			opts := &converter.ChartExportOptions{
-				Format:  converter.ChartExportFormatJPEG,
-				Quality: quality,
-			}
-
-			data, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
+	for _, size := range []struct{ width, height int }{
+		{320, 240},
+		{800, 600},
+		{1200, 400},
+	} {
+		t.Run(fmt.Sprintf("%dx%d", size.width, size.height), func(t *testing.T) {
+			data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
+				Format: converter.ChartExportFormatPNG,
+				Width:  size.width,
+				Height: size.height,
+			})
 			if err != nil {
-				t.Fatalf("ExportChartToBytes JPEG with quality %d: %v", quality, err)
+				t.Fatalf("ExportChartToBytes %dx%d: %v", size.width, size.height, err)
 			}
-
-			if len(data) == 0 {
-				t.Fatalf("Exported JPEG data is empty for quality %d", quality)
-			}
-
-			// Verify it's still JPEG format
-			if len(data) < 2 || data[0] != 0xFF || data[1] != 0xD8 {
-				t.Errorf("Quality %d: exported data is not JPEG format", quality)
+			gotWidth, gotHeight := pngDimensions(t, data)
+			if gotWidth != size.width || gotHeight != size.height {
+				t.Errorf("exported size = %dx%d, want %dx%d",
+					gotWidth, gotHeight, size.width, size.height)
 			}
 		})
 	}
 }
 
-func TestExportChartToSink_File(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+// TestExportChartToBytes_DefaultSize leaves both dimensions at zero, which
+// means "use the chart's own size" and must not be an error.
+func TestExportChartToBytes_DefaultSize(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	tmpFile := t.TempDir() + "/chart_export.png"
-	sink := datasource.FilePathSink(tmpFile)
+	data, err := converter.ExportChartToBytes(src, 0, 0, nil)
+	if err != nil {
+		t.Fatalf("ExportChartToBytes with no options: %v", err)
+	}
+	if !isPNG(data) {
+		t.Fatal("default format should be PNG")
+	}
+	if width, height := pngDimensions(t, data); width <= 0 || height <= 0 {
+		t.Fatalf("default-size PNG reports %dx%d", width, height)
+	}
+}
 
-	opts := &converter.ChartExportOptions{
+// TestExportChartToBytes_PartialSize rejects a half-specified size rather than
+// guessing the missing dimension.
+func TestExportChartToBytes_PartialSize(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	for _, tc := range []struct {
+		name          string
+		width, height int
+	}{
+		{"width only", 800, 0},
+		{"height only", 0, 600},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
+				Format: converter.ChartExportFormatPNG,
+				Width:  tc.width,
+				Height: tc.height,
+			})
+			if !errors.Is(err, toolkiterrors.ErrInvalidChartSize) {
+				t.Fatalf("error = %v, want ErrInvalidChartSize", err)
+			}
+		})
+	}
+}
+
+func TestExportChartToBytes_NegativeSize(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	_, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
 		Format: converter.ChartExportFormatPNG,
+		Width:  -10,
+		Height: 100,
+	})
+	if !errors.Is(err, toolkiterrors.ErrInvalidChartSize) {
+		t.Fatalf("error = %v, want ErrInvalidChartSize", err)
+	}
+}
+
+// --- quality --------------------------------------------------------------
+
+// TestExportChartToBytes_JPEGQuality checks the quality setting actually
+// reaches the encoder: a low quality must produce a smaller file than a high
+// one, and both must still be valid JPEG.
+func TestExportChartToBytes_JPEGQuality(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	export := func(quality int) []byte {
+		t.Helper()
+		data, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
+			Format:  converter.ChartExportFormatJPEG,
+			Quality: quality,
+		})
+		if err != nil {
+			t.Fatalf("ExportChartToBytes JPEG quality %d: %v", quality, err)
+		}
+		if !isJPEG(data) {
+			t.Fatalf("quality %d output is not JPEG", quality)
+		}
+		return data
 	}
 
-	err := converter.ExportChartToSink(dataSource, sink, 0, 0, opts)
+	low := export(10)
+	high := export(95)
+
+	if bytes.Equal(low, high) {
+		t.Error("quality 10 and quality 95 produced identical bytes, so quality is not applied")
+	}
+	if len(high) <= len(low) {
+		t.Errorf("quality 95 produced %d bytes, quality 10 produced %d; high quality should be larger",
+			len(high), len(low))
+	}
+}
+
+func TestExportChartToBytes_InvalidQuality(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	for _, quality := range []int{-1, 101, 1000} {
+		t.Run(fmt.Sprintf("quality_%d", quality), func(t *testing.T) {
+			_, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
+				Format:  converter.ChartExportFormatJPEG,
+				Quality: quality,
+			})
+			if !errors.Is(err, toolkiterrors.ErrInvalidValue) {
+				t.Fatalf("error = %v, want ErrInvalidValue", err)
+			}
+		})
+	}
+}
+
+// --- sinks ----------------------------------------------------------------
+
+func TestExportChartToSink_File(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+	outPath := t.TempDir() + "/chart_export.png"
+
+	err := converter.ExportChartToSink(src, datasource.FilePathSink(outPath), 0, 0,
+		&converter.ChartExportOptions{Format: converter.ChartExportFormatPNG})
 	if err != nil {
 		t.Fatalf("ExportChartToSink: %v", err)
 	}
-
-	// Verify file was created and has content
-	fileData, err := os.ReadFile(tmpFile)
+	written, err := os.ReadFile(outPath)
 	if err != nil {
-		t.Fatalf("Read exported file: %v", err)
+		t.Fatalf("read exported file: %v", err)
 	}
-
-	if len(fileData) == 0 {
-		t.Fatal("Exported file is empty")
+	if !isPNG(written) {
+		t.Fatal("written file is not a PNG")
 	}
 }
 
 func TestExportChartToFile(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
+	outPath := t.TempDir() + "/chart_file.pdf"
 
-	tmpFile := t.TempDir() + "/chart_export_file.png"
-
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-	}
-
-	err := converter.ExportChartToFile(dataSource, tmpFile, 0, 0, opts)
+	err := converter.ExportChartToFile(src, outPath, 0, 0,
+		&converter.ChartExportOptions{Format: converter.ChartExportFormatPDF})
 	if err != nil {
 		t.Fatalf("ExportChartToFile: %v", err)
 	}
-
-	// Verify file was created
-	fileData, err := os.ReadFile(tmpFile)
+	written, err := os.ReadFile(outPath)
 	if err != nil {
-		t.Fatalf("Read exported file: %v", err)
+		t.Fatalf("read exported file: %v", err)
 	}
-
-	if len(fileData) == 0 {
-		t.Fatal("Exported file is empty")
+	if !isPDF(written) {
+		t.Fatal("file written with a .pdf name does not contain a PDF")
 	}
 }
+
+// --- errors ---------------------------------------------------------------
 
 func TestExportChartToBytes_InvalidChartIndex(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-	}
-
-	_, err := converter.ExportChartToBytes(dataSource, 0, 99, opts)
-	if err == nil {
-		t.Fatal("Expected error for invalid chart index")
-	}
-
+	_, err := converter.ExportChartToBytes(src, 0, 99, nil)
 	if !errors.Is(err, toolkiterrors.ErrChartNotFound) {
-		t.Errorf("Expected ErrChartNotFound, got: %v", err)
+		t.Fatalf("error = %v, want ErrChartNotFound", err)
 	}
 }
 
-func TestExportChartToBytes_InvalidSheetIndex(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+func TestExportChartToBytes_NegativeChartIndex(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
+	_, err := converter.ExportChartToBytes(src, 0, -1, nil)
+	if !errors.Is(err, toolkiterrors.ErrChartNotFound) {
+		t.Fatalf("error = %v, want ErrChartNotFound", err)
 	}
+}
 
-	_, err := converter.ExportChartToBytes(dataSource, 99, 0, opts)
-	if err == nil {
-		t.Fatal("Expected error for invalid sheet index")
+// TestExportChartToBytes_InvalidSheetIndex checks the sheet lookup is guarded
+// by a sentinel rather than surfacing a raw engine error.
+func TestExportChartToBytes_InvalidSheetIndex(t *testing.T) {
+	src := datasource.BytesSource(getChartExportFixture(t))
+
+	for _, sheetIndex := range []int{99, -1} {
+		t.Run(fmt.Sprintf("sheet_%d", sheetIndex), func(t *testing.T) {
+			_, err := converter.ExportChartToBytes(src, sheetIndex, 0, nil)
+			if !errors.Is(err, toolkiterrors.ErrInvalidSheetID) {
+				t.Fatalf("error = %v, want ErrInvalidSheetID", err)
+			}
+		})
 	}
 }
 
 func TestExportChartToBytes_NilDataSource(t *testing.T) {
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-	}
-
-	_, err := converter.ExportChartToBytes(nil, 0, 0, opts)
-	if err == nil {
-		t.Fatal("Expected error for nil data source")
-	}
-
+	_, err := converter.ExportChartToBytes(nil, 0, 0, nil)
 	if !errors.Is(err, toolkiterrors.ErrDataSourceNil) {
-		t.Errorf("Expected ErrDataSourceNil, got: %v", err)
+		t.Fatalf("error = %v, want ErrDataSourceNil", err)
 	}
 }
 
 func TestExportChartToSink_NilDataSink(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
-		Format: converter.ChartExportFormatPNG,
-	}
-
-	err := converter.ExportChartToSink(dataSource, nil, 0, 0, opts)
-	if err == nil {
-		t.Fatal("Expected error for nil data sink")
-	}
-
+	err := converter.ExportChartToSink(src, nil, 0, 0, nil)
 	if !errors.Is(err, toolkiterrors.ErrDataSinkNil) {
-		t.Errorf("Expected ErrDataSinkNil, got: %v", err)
+		t.Fatalf("error = %v, want ErrDataSinkNil", err)
 	}
 }
 
 func TestExportChartToBytes_UnsupportedFormat(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	opts := &converter.ChartExportOptions{
+	_, err := converter.ExportChartToBytes(src, 0, 0, &converter.ChartExportOptions{
 		Format: "unsupported",
-	}
-
-	_, err := converter.ExportChartToBytes(dataSource, 0, 0, opts)
-	if err == nil {
-		t.Fatal("Expected error for unsupported format")
-	}
-
+	})
 	if !errors.Is(err, toolkiterrors.ErrUnsupportedFormat) {
-		t.Errorf("Expected ErrUnsupportedFormat, got: %v", err)
+		t.Fatalf("error = %v, want ErrUnsupportedFormat", err)
 	}
 }
 
-func TestExportChartToBytes_DefaultOptions(t *testing.T) {
-	src := getChartExportFixture(t)
-	dataSource := datasource.BytesSource(src)
-
-	// Pass nil options - should default to PNG
-	data, err := converter.ExportChartToBytes(dataSource, 0, 0, nil)
-	if err != nil {
-		t.Fatalf("ExportChartToBytes with nil options: %v", err)
-	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported data is empty")
-	}
-
-	// Should be PNG format
-	if len(data) < 8 || data[0] != 0x89 || data[1] != 0x50 {
-		t.Error("Default format should be PNG")
-	}
-}
+// --- selection and composition --------------------------------------------
 
 func TestExportChartToBytes_MultipleCharts(t *testing.T) {
-	// Create a workbook with multiple charts
-	src, err := datasource.NewEmptyWorkbook()
+	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
 		t.Fatalf("NewEmptyWorkbook: %v", err)
 	}
-	out, err := editor.EditSpreadsheet(
-		src,
+	workbook, err := editor.EditSpreadsheet(
+		seed,
 		editor.InWorksheet(0,
 			editor.SetCellValue(0, 0, "Data"),
 			editor.SetCellValue(1, 0, 10),
@@ -425,88 +416,70 @@ func TestExportChartToBytes_MultipleCharts(t *testing.T) {
 		),
 	)
 	if err != nil {
-		t.Fatalf("Create multi-chart fixture: %v", err)
+		t.Fatalf("create multi-chart workbook: %v", err)
 	}
+	src := datasource.BytesSource(workbook)
 
-	dataSource := datasource.BytesSource(out)
-
-	// Export first chart
-	data1, err := converter.ExportChartToBytes(dataSource, 0, 0, nil)
+	first, err := converter.ExportChartToBytes(src, 0, 0, nil)
 	if err != nil {
-		t.Fatalf("Export first chart: %v", err)
+		t.Fatalf("export chart 0: %v", err)
 	}
-	if len(data1) == 0 {
-		t.Fatal("First chart export is empty")
-	}
-
-	// Export second chart
-	data2, err := converter.ExportChartToBytes(dataSource, 0, 1, nil)
+	second, err := converter.ExportChartToBytes(src, 0, 1, nil)
 	if err != nil {
-		t.Fatalf("Export second chart: %v", err)
+		t.Fatalf("export chart 1: %v", err)
 	}
-	if len(data2) == 0 {
-		t.Fatal("Second chart export is empty")
+	if !isPNG(first) || !isPNG(second) {
+		t.Fatal("both exports should be PNG")
+	}
+	if bytes.Equal(first, second) {
+		t.Error("chart 0 and chart 1 exported identical bytes; index is not selecting the chart")
 	}
 }
 
 func TestExportChartToBytes_AfterModification(t *testing.T) {
-	// Create initial workbook with chart
-	src := getChartExportFixture(t)
-
-	// Modify the chart title
 	modified, err := editor.EditSpreadsheet(
-		datasource.BytesSource(src),
+		datasource.BytesSource(getChartExportFixture(t)),
 		editor.InWorksheet(0,
-			editor.InChart(0,
-				editor.WithChartTitle("Modified Chart Title"),
-			),
+			editor.InChart(0, editor.WithChartTitle("Modified Chart Title")),
 		),
 	)
 	if err != nil {
-		t.Fatalf("Modify chart: %v", err)
+		t.Fatalf("modify chart: %v", err)
 	}
 
-	// Export the modified chart
 	data, err := converter.ExportChartToBytes(datasource.BytesSource(modified), 0, 0, nil)
 	if err != nil {
-		t.Fatalf("Export modified chart: %v", err)
+		t.Fatalf("export modified chart: %v", err)
 	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported modified chart is empty")
+	if !isPNG(data) {
+		t.Fatal("exported modified chart is not a PNG")
 	}
 }
 
 func TestExportChartIntegration(t *testing.T) {
-	// Integration test: create workbook, export chart, verify chart info matches
-	src := getChartExportFixture(t)
+	src := datasource.BytesSource(getChartExportFixture(t))
 
-	// Verify chart exists
-	count, err := query.ChartCount(datasource.BytesSource(src))
+	count, err := query.ChartCount(src)
 	if err != nil {
-		t.Fatalf("Query chart count: %v", err)
+		t.Fatalf("query chart count: %v", err)
 	}
 	if count != 1 {
-		t.Fatalf("Expected 1 chart, got %d", count)
+		t.Fatalf("expected 1 chart, got %d", count)
 	}
 
-	// Export the chart
-	data, err := converter.ExportChartToBytes(datasource.BytesSource(src), 0, 0, nil)
+	info, err := query.ChartInfo(src, 0)
 	if err != nil {
-		t.Fatalf("Export chart: %v", err)
+		t.Fatalf("query chart info: %v", err)
 	}
-
-	if len(data) == 0 {
-		t.Fatal("Exported chart is empty")
-	}
-
-	// Get chart info
-	info, err := query.ChartInfo(datasource.BytesSource(src), 0)
-	if err != nil {
-		t.Fatalf("Query chart info: %v", err)
-	}
-
 	if info.Title != "Test Chart" {
-		t.Errorf("Expected title 'Test Chart', got '%s'", info.Title)
+		t.Errorf("title = %q, want %q", info.Title, "Test Chart")
+	}
+
+	data, err := converter.ExportChartToBytes(src, 0, 0, nil)
+	if err != nil {
+		t.Fatalf("export chart: %v", err)
+	}
+	if !isPNG(data) {
+		t.Fatal("exported chart is not a PNG")
 	}
 }

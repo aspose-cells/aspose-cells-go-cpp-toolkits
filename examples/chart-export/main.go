@@ -114,7 +114,23 @@ func main() {
 	}
 	fmt.Printf("✓ Exported chart as SVG: %s\n", svgPath)
 
-	// Export with custom dimensions
+	// Export as a real PDF document
+	pdfPath := filepath.Join(outDir, "chart.pdf")
+	err = converter.ExportChartToFile(
+		dataSource,
+		pdfPath,
+		0, // sheet index
+		0, // chart index
+		&converter.ChartExportOptions{
+			Format: converter.ChartExportFormatPDF,
+		},
+	)
+	if err != nil {
+		log.Fatalf("export chart as PDF: %v", err)
+	}
+	fmt.Printf("✓ Exported chart as PDF: %s\n", pdfPath)
+
+	// Export at an exact pixel size (both dimensions required)
 	customPath := filepath.Join(outDir, "chart-custom-size.png")
 	err = converter.ExportChartToFile(
 		dataSource,

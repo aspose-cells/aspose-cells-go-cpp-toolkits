@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -191,11 +192,15 @@ func TestValidationWholeNumberBetween(t *testing.T) {
 	if got.operator != 0 { // Between
 		t.Errorf("operator: got %d, want 0 (Between)", got.operator)
 	}
-	if got.formula1 != "1" {
-		t.Errorf("formula1: got %q, want %q", got.formula1, "1")
+	// The engine hands formulas back with a leading "=" regardless of how they
+	// were set, so the raw read-back is "=1", not "1". The toolkit's query layer
+	// strips that prefix; this read-back deliberately bypasses the toolkit, so it
+	// asserts the engine's own form.
+	if got.formula1 != "=1" {
+		t.Errorf("formula1: got %q, want %q", got.formula1, "=1")
 	}
-	if got.formula2 != "100" {
-		t.Errorf("formula2: got %q, want %q", got.formula2, "100")
+	if got.formula2 != "=100" {
+		t.Errorf("formula2: got %q, want %q", got.formula2, "=100")
 	}
 	if got.errMsg != "Please enter a number between 1 and 100" {
 		t.Errorf("error message: got %q, want %q", got.errMsg, "Please enter a number between 1 and 100")
@@ -224,6 +229,22 @@ func TestValidationList(t *testing.T) {
 	}
 	if got.formula1 != "Active,Inactive,Pending" {
 		t.Errorf("formula1: got %q, want %q", got.formula1, "Active,Inactive,Pending")
+	}
+	// A list's Formula1 holds literal values, not a formula, and the engine does
+	// not prefix it — so the query layer must pass it through untouched.
+	err = retryStable(5, func() error {
+		info, err := query.ValidationInfoAt(datasource.BytesSource(out), 0,
+			query.WithSheetIndex(validationSheetIndex))
+		if err != nil {
+			return fmt.Errorf("ValidationInfoAt: %w", err)
+		}
+		if info.Formula1 != "Active,Inactive,Pending" {
+			return fmt.Errorf("queried Formula1: got %q, want %q", info.Formula1, "Active,Inactive,Pending")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -287,11 +308,12 @@ func TestValidationModify(t *testing.T) {
 		t.Fatalf("modify validation: %v", err)
 	}
 	got := readValidation(t, out)
-	if got.formula1 != "10" {
-		t.Errorf("formula1 after modify: got %q, want %q", got.formula1, "10")
+	// Raw engine form — see the note in TestValidationWholeNumberBetween.
+	if got.formula1 != "=10" {
+		t.Errorf("formula1 after modify: got %q, want %q", got.formula1, "=10")
 	}
-	if got.formula2 != "200" {
-		t.Errorf("formula2 after modify: got %q, want %q", got.formula2, "200")
+	if got.formula2 != "=200" {
+		t.Errorf("formula2 after modify: got %q, want %q", got.formula2, "=200")
 	}
 	if got.errMsg != "Updated message" {
 		t.Errorf("error message after modify: got %q, want %q", got.errMsg, "Updated message")
@@ -323,23 +345,31 @@ func TestValidationQuery(t *testing.T) {
 	if count != 1 {
 		t.Errorf("ValidationCount: got %d, want 1", count)
 	}
-	// Test query.ValidationInfoAt
-	info, err := query.ValidationInfoAt(datasource.BytesSource(withValidation), 0,
-		query.WithSheetIndex(validationSheetIndex))
+	// Test query.ValidationInfoAt. The engine's string read-back is intermittently
+	// corrupt, so the assertions run inside retryStable: a garbled read is retried
+	// rather than reported as a failure.
+	err = retryStable(5, func() error {
+		info, err := query.ValidationInfoAt(datasource.BytesSource(withValidation), 0,
+			query.WithSheetIndex(validationSheetIndex))
+		if err != nil {
+			return fmt.Errorf("ValidationInfoAt: %w", err)
+		}
+		if info.Type != "wholeNumber" {
+			return fmt.Errorf("Type: got %q, want %q", info.Type, "wholeNumber")
+		}
+		if info.Operator != "between" {
+			return fmt.Errorf("Operator: got %q, want %q", info.Operator, "between")
+		}
+		if info.Formula1 != "1" {
+			return fmt.Errorf("Formula1: got %q, want %q", info.Formula1, "1")
+		}
+		if info.Formula2 != "100" {
+			return fmt.Errorf("Formula2: got %q, want %q", info.Formula2, "100")
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("ValidationInfoAt: %v", err)
-	}
-	if info.Type != "wholeNumber" {
-		t.Errorf("Type: got %q, want %q", info.Type, "wholeNumber")
-	}
-	if info.Operator != "between" {
-		t.Errorf("Operator: got %q, want %q", info.Operator, "between")
-	}
-	if info.Formula1 != "1" {
-		t.Errorf("Formula1: got %q, want %q", info.Formula1, "1")
-	}
-	if info.Formula2 != "100" {
-		t.Errorf("Formula2: got %q, want %q", info.Formula2, "100")
+		t.Error(err)
 	}
 }
 

@@ -387,7 +387,13 @@ worksheet. `ValidationInfo` contains:
 - `Index` - Zero-based position
 - `Type` - Validation type (e.g., "wholeNumber", "list", "custom")
 - `Operator` - Comparison operator (e.g., "between", "greaterThan")
-- `Formula1`, `Formula2` - Validation formulas/values
+- `Formula1`, `Formula2` - Validation formulas/values, read back without a leading
+  `=`. The engine stores every formula `=` -prefixed and hands it back that way, so
+  the toolkit strips exactly one `=` on read: `WithValidationFormula1("1")` reads
+  back as `"1"`, not `"=1"`. The one exception is a **list** validation, whose
+  `Formula1` holds literal comma-separated values rather than a formula; the engine
+  does not prefix it and the toolkit does not strip it, so a list of
+  `["Yes", "No"]` reads back as `"Yes,No"`.
 - `Areas` - Cell ranges the validation applies to
 - `ErrorMessage`, `ErrorTitle` - Error alert text
 - `InputMessage`, `InputTitle` - Input prompt text
@@ -464,7 +470,11 @@ Each `ConditionInfo` contains:
 - `Index` - Zero-based position in the collection
 - `Type` - Condition type (e.g., "colorScale", "dataBar", "iconSet", "cellValue")
 - `Operator` - Comparison operator
-- `Formula1`, `Formula2` - Condition formulas/values
+- `Formula1`, `Formula2` - Condition formulas/values, read back without the
+  leading `=` the engine stores them with — a rule set as `"90"` reads back as
+  `"90"`, and one set as `"=A2>80"` reads back as `"A2>80"`. Conditions carry no
+  list form, so the prefix is always stripped. `Formula1`/`Formula2` are empty for
+  `colorScale`, `dataBar`, and `iconSet` conditions, which hold no formula.
 
 ```go
 info, err := query.ConditionalFormattingInfoAt(source, 0, query.WithSheet("Sheet1"))

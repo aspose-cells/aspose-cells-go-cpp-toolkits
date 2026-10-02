@@ -34,12 +34,12 @@ type OperatorType string
 
 // The curated operator types. Each names a comparison operator.
 const (
-	OperatorTypeBetween      OperatorType = "between"
-	OperatorTypeEqual        OperatorType = "equal"
-	OperatorTypeNotEqual     OperatorType = "notEqual"
-	OperatorTypeLessThan     OperatorType = "lessThan"
-	OperatorTypeLessOrEqual  OperatorType = "lessOrEqual"
-	OperatorTypeGreaterThan  OperatorType = "greaterThan"
+	OperatorTypeBetween        OperatorType = "between"
+	OperatorTypeEqual          OperatorType = "equal"
+	OperatorTypeNotEqual       OperatorType = "notEqual"
+	OperatorTypeLessThan       OperatorType = "lessThan"
+	OperatorTypeLessOrEqual    OperatorType = "lessOrEqual"
+	OperatorTypeGreaterThan    OperatorType = "greaterThan"
 	OperatorTypeGreaterOrEqual OperatorType = "greaterOrEqual"
 )
 

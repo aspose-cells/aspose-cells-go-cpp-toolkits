@@ -453,9 +453,9 @@ var (
 	// DistributionDoughnut is a doughnut chart for showing distributions. Style
 	// 6 provides clear segment separation.
 	DistributionDoughnut = ChartStylePreset{
-		ChartType:  ChartTypeDoughnut,
-		Style:      6,
-		ShowLegend: true,
+		ChartType:      ChartTypeDoughnut,
+		Style:          6,
+		ShowLegend:     true,
 		LegendPosition: ChartLegendRight,
 	}
 
@@ -525,9 +525,9 @@ var (
 	// SurveyResults is a horizontal bar chart for survey responses. Easy to
 	// read category labels.
 	SurveyResults = ChartStylePreset{
-		ChartType:      ChartTypeBar,
-		Style:          9,
-		ShowLegend:     false,
+		ChartType:  ChartTypeBar,
+		Style:      9,
+		ShowLegend: false,
 	}
 
 	// BudgetVariance is a column chart for budget vs actual comparisons.
@@ -542,9 +542,9 @@ var (
 	// KPIDashboard is a compact line chart for key performance indicators.
 	// Optimized for dashboard displays.
 	KPIDashboard = ChartStylePreset{
-		ChartType:      ChartTypeLine,
-		Style:          12,
-		ShowLegend:     false,
+		ChartType:  ChartTypeLine,
+		Style:      12,
+		ShowLegend: false,
 	}
 )
 

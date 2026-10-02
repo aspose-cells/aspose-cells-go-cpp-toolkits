@@ -182,7 +182,11 @@ func readValidationInfo(v *asposecells.Validation, index int) (ValidationInfo, e
 	}
 	info.Operator = operatorTypeName(int32(op))
 
-	// Formulas
+	// Formulas. The engine stores every formula "=" -prefixed and hands it back
+	// that way, so one prefix is stripped here and a formula always reads back
+	// bare (see cells.StripFormulaPrefix). A list validation is exempt: its
+	// Formula1 holds literal values rather than a formula and is never prefixed
+	// by the engine, so it is passed through untouched.
 	info.Formula1, err = v.GetFormula1()
 	if err != nil {
 		return ValidationInfo{}, err
@@ -190,6 +194,10 @@ func readValidationInfo(v *asposecells.Validation, index int) (ValidationInfo, e
 	info.Formula2, err = v.GetFormula2()
 	if err != nil {
 		return ValidationInfo{}, err
+	}
+	if vt != asposecells.ValidationType_List {
+		info.Formula1 = cells.StripFormulaPrefix(info.Formula1)
+		info.Formula2 = cells.StripFormulaPrefix(info.Formula2)
 	}
 
 	// Areas

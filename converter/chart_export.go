@@ -1,13 +1,13 @@
-// Package converter provides functionality for converting spreadsheets and
-// their components (charts, worksheets) to different formats.
 package converter
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/pdf"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -21,19 +21,33 @@ const (
 	ChartExportFormatJPEG ChartExportFormat = "jpeg"
 	// ChartExportFormatSVG exports the chart as an SVG vector image.
 	ChartExportFormatSVG ChartExportFormat = "svg"
-	// ChartExportFormatPDF exports the chart as a PDF document.
+	// ChartExportFormatPDF exports the chart as a real PDF document: the chart
+	// is rendered to an image, embedded in a single-sheet workbook, and that
+	// workbook is saved as PDF. The PDF is therefore a raster image of the
+	// chart on a page sized to it, not vector artwork.
 	ChartExportFormatPDF ChartExportFormat = "pdf"
+)
+
+// Default row height (points-to-pixels at 96 DPI for Excel's 15pt default row)
+// and column width (Excel's 8.43-character default) used to translate a pixel
+// size into the cell rectangle a PDF page is sized to.
+const (
+	defaultRowHeightPx   = 20
+	defaultColumnWidthPx = 64
 )
 
 // ChartExportOptions configures chart export behavior.
 type ChartExportOptions struct {
 	// Format is the output format (PNG, JPEG, SVG, or PDF).
 	Format ChartExportFormat
-	// Width is the desired width in pixels (for raster formats). Zero means use chart's default width.
-	Width int
-	// Height is the desired height in pixels (for raster formats). Zero means use chart's default height.
+	// Width and Height are the exact output size in pixels. Either both are
+	// set to a positive number, or both are left at zero to use the chart's own
+	// size. Setting exactly one is an error (ErrInvalidChartSize), because the
+	// engine cannot size an image from one dimension alone.
+	Width  int
 	Height int
-	// Quality is the JPEG quality (1-100). Only applies to JPEG format. Default is 95.
+	// Quality is the JPEG quality, 1-100. Only applies to the JPEG format; zero
+	// leaves the engine's default. A value outside 1-100 is ErrInvalidValue.
 	Quality int
 }
 
@@ -44,7 +58,7 @@ type ChartExportOptions struct {
 //   - sink: The data sink to write the exported chart to.
 //   - sheetIndex: The zero-based index of the worksheet containing the chart.
 //   - chartIndex: The zero-based index of the chart to export.
-//   - opts: Export options. If nil, defaults to PNG format.
+//   - opts: Export options. If nil, defaults to PNG format at the chart's own size.
 //
 // Returns:
 //   - error: An error if the export fails.
@@ -64,72 +78,13 @@ func ExportChartToSink(src datasource.DataSource, sink datasource.DataSink, shee
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	if opts == nil {
-		opts = &ChartExportOptions{Format: ChartExportFormatPNG}
-	}
-
-	// Load the workbook
-	data, err := cells.ReadSource(src)
+	data, err := exportChart(src, sheetIndex, chartIndex, opts)
 	if err != nil {
-		return fmt.Errorf("read source: %w", err)
+		return err
 	}
-	wb, err := asposecells.NewWorkbook_Stream(data)
-	if err != nil {
-		return fmt.Errorf("open workbook: %w", err)
-	}
-	defer wb.Dispose()
-
-	// Get the worksheet
-	wss, err := wb.GetWorksheets()
-	if err != nil {
-		return fmt.Errorf("get worksheets: %w", err)
-	}
-	ws, err := wss.Get_Int(int32(sheetIndex))
-	if err != nil {
-		return fmt.Errorf("get worksheet %d: %w", sheetIndex, err)
-	}
-
-	// Get the chart
-	charts, err := ws.GetCharts()
-	if err != nil {
-		return fmt.Errorf("get charts: %w", err)
-	}
-	chartCount, err := charts.GetCount()
-	if err != nil {
-		return fmt.Errorf("get chart count: %w", err)
-	}
-	if chartIndex < 0 || int32(chartIndex) >= chartCount {
-		return fmt.Errorf("chart index %d out of range [0, %d): %w", chartIndex, chartCount, toolkiterrors.ErrChartNotFound)
-	}
-	chart, err := charts.Get_Int(int32(chartIndex))
-	if err != nil {
-		return fmt.Errorf("get chart %d: %w", chartIndex, err)
-	}
-
-	// Export based on format
-	var outputData []byte
-	switch opts.Format {
-	case ChartExportFormatPNG:
-		outputData, err = exportChartToImage(chart, asposecells.ImageType_Png, opts)
-	case ChartExportFormatJPEG:
-		outputData, err = exportChartToImage(chart, asposecells.ImageType_Jpeg, opts)
-	case ChartExportFormatSVG:
-		outputData, err = exportChartToImage(chart, asposecells.ImageType_Svg, opts)
-	case ChartExportFormatPDF:
-		outputData, err = exportChartToPDF(chart, opts)
-	default:
-		return fmt.Errorf("unsupported chart export format %q: %w", opts.Format, toolkiterrors.ErrUnsupportedFormat)
-	}
-
-	if err != nil {
-		return fmt.Errorf("export chart: %w", err)
-	}
-
-	// Write to sink
-	if err := sink.Write("", outputData); err != nil {
+	if err := sink.Write("", data); err != nil {
 		return fmt.Errorf("write to sink: %w", err)
 	}
-
 	return nil
 }
 
@@ -139,7 +94,7 @@ func ExportChartToSink(src datasource.DataSource, sink datasource.DataSink, shee
 //   - src: The data source containing the workbook.
 //   - sheetIndex: The zero-based index of the worksheet containing the chart.
 //   - chartIndex: The zero-based index of the chart to export.
-//   - opts: Export options. If nil, defaults to PNG format.
+//   - opts: Export options. If nil, defaults to PNG format at the chart's own size.
 //
 // Returns:
 //   - []byte: The exported chart data.
@@ -156,145 +111,7 @@ func ExportChartToBytes(src datasource.DataSource, sheetIndex, chartIndex int, o
 	if src == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	if opts == nil {
-		opts = &ChartExportOptions{Format: ChartExportFormatPNG}
-	}
-
-	// Load the workbook
-	data, err := cells.ReadSource(src)
-	if err != nil {
-		return nil, fmt.Errorf("read source: %w", err)
-	}
-	wb, err := asposecells.NewWorkbook_Stream(data)
-	if err != nil {
-		return nil, fmt.Errorf("open workbook: %w", err)
-	}
-	defer wb.Dispose()
-
-	// Get the worksheet
-	wss, err := wb.GetWorksheets()
-	if err != nil {
-		return nil, fmt.Errorf("get worksheets: %w", err)
-	}
-	ws, err := wss.Get_Int(int32(sheetIndex))
-	if err != nil {
-		return nil, fmt.Errorf("get worksheet %d: %w", sheetIndex, err)
-	}
-
-	// Get the chart
-	charts, err := ws.GetCharts()
-	if err != nil {
-		return nil, fmt.Errorf("get charts: %w", err)
-	}
-	chartCount, err := charts.GetCount()
-	if err != nil {
-		return nil, fmt.Errorf("get chart count: %w", err)
-	}
-	if chartIndex < 0 || int32(chartIndex) >= chartCount {
-		return nil, fmt.Errorf("chart index %d out of range [0, %d): %w", chartIndex, chartCount, toolkiterrors.ErrChartNotFound)
-	}
-	chart, err := charts.Get_Int(int32(chartIndex))
-	if err != nil {
-		return nil, fmt.Errorf("get chart %d: %w", chartIndex, err)
-	}
-
-	// Export based on format
-	switch opts.Format {
-	case ChartExportFormatPNG:
-		return exportChartToImage(chart, asposecells.ImageType_Png, opts)
-	case ChartExportFormatJPEG:
-		return exportChartToImage(chart, asposecells.ImageType_Jpeg, opts)
-	case ChartExportFormatSVG:
-		return exportChartToImage(chart, asposecells.ImageType_Svg, opts)
-	case ChartExportFormatPDF:
-		return exportChartToPDF(chart, opts)
-	default:
-		return nil, fmt.Errorf("unsupported chart export format %q: %w", opts.Format, toolkiterrors.ErrUnsupportedFormat)
-	}
-}
-
-// exportChartToImage exports a chart to a raster or vector image format.
-func exportChartToImage(chart *asposecells.Chart, imageType asposecells.ImageType, opts *ChartExportOptions) ([]byte, error) {
-	// Create image options
-	imgOpts, err := asposecells.NewImageOrPrintOptions()
-	if err != nil {
-		return nil, fmt.Errorf("create image options: %w", err)
-	}
-
-	// Set image type
-	if err := imgOpts.SetImageType(imageType); err != nil {
-		return nil, fmt.Errorf("set image type: %w", err)
-	}
-
-	// Set dimensions if specified
-	if opts.Width > 0 || opts.Height > 0 {
-		width := int32(opts.Width)
-		height := int32(opts.Height)
-		if width == 0 {
-			width = 800 // default width
-		}
-		if height == 0 {
-			height = 600 // default height
-		}
-		if err := imgOpts.SetDesiredSize(width, height, true); err != nil {
-			return nil, fmt.Errorf("set dimensions: %w", err)
-		}
-	}
-
-	// Set JPEG quality if applicable
-	if imageType == asposecells.ImageType_Jpeg && opts.Quality > 0 {
-		if err := imgOpts.SetQuality(int32(opts.Quality)); err != nil {
-			return nil, fmt.Errorf("set quality: %w", err)
-		}
-	}
-
-	// Export to image
-	return chart.ToImage_ImageOrPrintOptions(imgOpts)
-}
-
-// exportChartToPDF exports a chart to PDF format.
-// Note: The engine doesn't have a direct Chart.ToPDF method, so we use
-// ImageOrPrintOptions with PDF-like settings and export as an image.
-// For true PDF export, users should export the entire worksheet or use
-// the converter package's spreadsheet conversion functions.
-func exportChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions) ([]byte, error) {
-	// Create image options configured for high-quality output
-	imgOpts, err := asposecells.NewImageOrPrintOptions()
-	if err != nil {
-		return nil, fmt.Errorf("create image options: %w", err)
-	}
-
-	// Use EMF format which is vector-based and can be converted to PDF
-	// EMF is Windows Enhanced Metafile, which is vector-based like PDF
-	if err := imgOpts.SetImageType(asposecells.ImageType_Emf); err != nil {
-		return nil, fmt.Errorf("set image type to EMF: %w", err)
-	}
-
-	// Set dimensions if specified
-	if opts.Width > 0 || opts.Height > 0 {
-		width := int32(opts.Width)
-		height := int32(opts.Height)
-		if width == 0 {
-			width = 800 // default width
-		}
-		if height == 0 {
-			height = 600 // default height
-		}
-		if err := imgOpts.SetDesiredSize(width, height, true); err != nil {
-			return nil, fmt.Errorf("set dimensions: %w", err)
-		}
-	}
-
-	// Export to EMF (vector format, similar to PDF)
-	data, err := chart.ToImage_ImageOrPrintOptions(imgOpts)
-	if err != nil {
-		return nil, fmt.Errorf("export chart to EMF: %w", err)
-	}
-
-	// Note: For true PDF output, users would need to convert the EMF to PDF
-	// using an external tool or library. The engine doesn't provide direct
-	// chart-to-PDF conversion.
-	return data, nil
+	return exportChart(src, sheetIndex, chartIndex, opts)
 }
 
 // ExportChartToFile is a convenience function that exports a chart to a file.
@@ -304,7 +121,7 @@ func exportChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions) ([]byt
 //   - outputPath: The path to write the exported chart to.
 //   - sheetIndex: The zero-based index of the worksheet containing the chart.
 //   - chartIndex: The zero-based index of the chart to export.
-//   - opts: Export options. If nil, defaults to PNG format.
+//   - opts: Export options. If nil, defaults to PNG format at the chart's own size.
 //
 // Returns:
 //   - error: An error if the export fails.
@@ -318,6 +135,222 @@ func exportChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions) ([]byt
 //	    &converter.ChartExportOptions{Format: converter.ChartExportFormatPNG},
 //	)
 func ExportChartToFile(src datasource.DataSource, outputPath string, sheetIndex, chartIndex int, opts *ChartExportOptions) error {
-	sink := datasource.FilePathSink(outputPath)
-	return ExportChartToSink(src, sink, sheetIndex, chartIndex, opts)
+	return ExportChartToSink(src, datasource.FilePathSink(outputPath), sheetIndex, chartIndex, opts)
+}
+
+// exportChart is the single export path. Both public byte-returning entry
+// points route through it, so the workbook load, the sheet lookup, the chart
+// lookup, and the format dispatch exist exactly once.
+func exportChart(src datasource.DataSource, sheetIndex, chartIndex int, opts *ChartExportOptions) ([]byte, error) {
+	if opts == nil {
+		opts = &ChartExportOptions{Format: ChartExportFormatPNG}
+	}
+	width, height, err := resolveSize(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateQuality(opts); err != nil {
+		return nil, err
+	}
+
+	chart, workbook, err := resolveChart(src, sheetIndex, chartIndex)
+	if err != nil {
+		return nil, err
+	}
+	defer workbook.Dispose()
+
+	switch opts.Format {
+	case ChartExportFormatPNG:
+		return renderChart(chart, asposecells.ImageType_Png, opts, width, height)
+	case ChartExportFormatJPEG:
+		return renderChart(chart, asposecells.ImageType_Jpeg, opts, width, height)
+	case ChartExportFormatSVG:
+		return renderChart(chart, asposecells.ImageType_Svg, opts, width, height)
+	case ChartExportFormatPDF:
+		return renderChartToPDF(chart, opts, width, height)
+	default:
+		return nil, fmt.Errorf("unsupported chart export format %q: %w", opts.Format, toolkiterrors.ErrUnsupportedFormat)
+	}
+}
+
+// resolveChart loads the workbook from src and returns the chart at
+// (sheetIndex, chartIndex) together with the workbook that owns it. The caller
+// owns the workbook and must Dispose it.
+//
+// Both lookups run through the guarded internal helpers, which range-check the
+// index against the collection before touching the engine: the binding returns
+// a dangling handle for an out-of-range index, and using one crashes the
+// process. This is the only place either lookup happens.
+func resolveChart(src datasource.DataSource, sheetIndex, chartIndex int) (*asposecells.Chart, *asposecells.Workbook, error) {
+	workbook, err := cells.GetWorkbookWithDataSource(src)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open workbook: %w", err)
+	}
+	worksheet, err := cells.SheetByIndex(workbook, sheetIndex)
+	if err != nil {
+		_ = workbook.Dispose()
+		return nil, nil, err
+	}
+	chart, err := cells.Chart(worksheet, chartIndex)
+	if err != nil {
+		_ = workbook.Dispose()
+		return nil, nil, err
+	}
+	return chart, workbook, nil
+}
+
+// resolveSize validates the requested output size and reports whether it was
+// set. Following the engine's SetDesiredSize contract, a size is either fully
+// specified (both dimensions positive) or not specified at all; a half-specified
+// size cannot be honored and is an error rather than a guess.
+func resolveSize(opts *ChartExportOptions) (width, height int, err error) {
+	if opts.Width < 0 || opts.Height < 0 {
+		return 0, 0, fmt.Errorf("chart export size %dx%d is negative: %w",
+			opts.Width, opts.Height, toolkiterrors.ErrInvalidChartSize)
+	}
+	if (opts.Width == 0) != (opts.Height == 0) {
+		return 0, 0, fmt.Errorf("chart export size %dx%d sets only one dimension; set both or neither: %w",
+			opts.Width, opts.Height, toolkiterrors.ErrInvalidChartSize)
+	}
+	return opts.Width, opts.Height, nil
+}
+
+// validateQuality rejects a JPEG quality outside the engine's 1-100 range
+// instead of letting the engine silently clamp it. Zero means "unset".
+func validateQuality(opts *ChartExportOptions) error {
+	if opts.Quality != 0 && (opts.Quality < 1 || opts.Quality > 100) {
+		return fmt.Errorf("JPEG quality %d is outside 1-100: %w", opts.Quality, toolkiterrors.ErrInvalidValue)
+	}
+	return nil
+}
+
+// renderChart renders the chart to a raster or vector image. When width and
+// height are positive the output is exactly that size; when both are zero the
+// chart's own size is used.
+func renderChart(chart *asposecells.Chart, imageType asposecells.ImageType, opts *ChartExportOptions, width, height int) ([]byte, error) {
+	imgOpts, err := asposecells.NewImageOrPrintOptions()
+	if err != nil {
+		return nil, fmt.Errorf("create image options: %w", err)
+	}
+	if err := imgOpts.SetImageType(imageType); err != nil {
+		return nil, fmt.Errorf("set image type: %w", err)
+	}
+	if width > 0 && height > 0 {
+		// keepAspectRatio=false: the caller asked for exact pixels, so the
+		// output must be exactly width x height rather than a letterboxed fit.
+		if err := imgOpts.SetDesiredSize(int32(width), int32(height), false); err != nil {
+			return nil, fmt.Errorf("set dimensions: %w", err)
+		}
+	}
+	if imageType == asposecells.ImageType_Jpeg && opts.Quality > 0 {
+		if err := imgOpts.SetQuality(int32(opts.Quality)); err != nil {
+			return nil, fmt.Errorf("set quality: %w", err)
+		}
+	}
+	data, err := chart.ToImage_ImageOrPrintOptions(imgOpts)
+	if err != nil {
+		return nil, fmt.Errorf("render chart: %w", err)
+	}
+	return data, nil
+}
+
+// renderChartToPDF produces a real PDF containing the chart: the chart is
+// rendered to a PNG, embedded into a fresh one-sheet workbook on a sheet sized
+// to the image, and that workbook is converted with the PDF save option. The
+// result opens in any PDF reader.
+//
+// The chart appears as a raster image on the page; this is the toolkit's only
+// chart-to-PDF route, because the engine exposes no vector chart-to-PDF call.
+func renderChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions, width, height int) ([]byte, error) {
+	image, err := renderChart(chart, asposecells.ImageType_Png, opts, width, height)
+	if err != nil {
+		return nil, err
+	}
+	pxWidth, pxHeight, err := pngSize(image)
+	if err != nil {
+		return nil, err
+	}
+	workbook, err := chartImageWorkbook(image, pxWidth, pxHeight)
+	if err != nil {
+		return nil, err
+	}
+	defer workbook.Dispose()
+
+	sheetBytes, err := cells.WorkbookToByteData(workbook)
+	if err != nil {
+		return nil, fmt.Errorf("serialize chart page: %w", err)
+	}
+	out, err := pdf.New(pdf.WithOnePagePerSheet(true)).Apply(sheetBytes)
+	if err != nil {
+		return nil, fmt.Errorf("convert chart page to PDF: %w", err)
+	}
+	return out, nil
+}
+
+// chartImageWorkbook builds a single-sheet workbook holding image on a sheet
+// whose print area is exactly the image's cell span, so the PDF page covers the
+// chart and nothing else. The caller owns the returned workbook.
+func chartImageWorkbook(image []byte, pxWidth, pxHeight int) (*asposecells.Workbook, error) {
+	workbook, err := asposecells.NewWorkbook()
+	if err != nil {
+		return nil, fmt.Errorf("create chart page workbook: %w", err)
+	}
+	worksheet, err := cells.SheetByIndex(workbook, 0)
+	if err != nil {
+		_ = workbook.Dispose()
+		return nil, err
+	}
+	rows := ceilDiv(pxHeight, defaultRowHeightPx)
+	columns := ceilDiv(pxWidth, defaultColumnWidthPx)
+	if err := cells.AddPictureAt(worksheet, 0, 0, rows-1, columns-1, image); err != nil {
+		_ = workbook.Dispose()
+		return nil, err
+	}
+	pageSetup, err := worksheet.GetPageSetup()
+	if err != nil {
+		_ = workbook.Dispose()
+		return nil, fmt.Errorf("get page setup: %w", err)
+	}
+	area := cells.Area{
+		Start: cells.CellRef{Row: 0, Col: 0},
+		End:   cells.CellRef{Row: rows - 1, Col: columns - 1},
+	}
+	if err := pageSetup.SetPrintArea(area.String()); err != nil {
+		_ = workbook.Dispose()
+		return nil, fmt.Errorf("set print area: %w", err)
+	}
+	if err := pageSetup.SetFitToPages(1, 1); err != nil {
+		_ = workbook.Dispose()
+		return nil, fmt.Errorf("fit chart page: %w", err)
+	}
+	return workbook, nil
+}
+
+// pngSize reads the pixel dimensions from a PNG's IHDR chunk, which is always
+// the first chunk: 8 signature bytes, 4 length bytes, 4 type bytes, then the
+// 4-byte big-endian width and height.
+func pngSize(data []byte) (width, height int, err error) {
+	const headerLen = 24
+	if len(data) < headerLen {
+		return 0, 0, fmt.Errorf("rendered image is %d bytes, too short to be a PNG: %w",
+			len(data), toolkiterrors.ErrPictureAddFailed)
+	}
+	if string(data[12:16]) != "IHDR" {
+		return 0, 0, fmt.Errorf("rendered image has no PNG IHDR header: %w", toolkiterrors.ErrPictureAddFailed)
+	}
+	width = int(binary.BigEndian.Uint32(data[16:20]))
+	height = int(binary.BigEndian.Uint32(data[20:24]))
+	if width <= 0 || height <= 0 {
+		return 0, 0, fmt.Errorf("rendered image reports size %dx%d: %w",
+			width, height, toolkiterrors.ErrPictureAddFailed)
+	}
+	return width, height, nil
+}
+
+// ceilDiv divides a by b, rounding up, and never returns less than 1.
+func ceilDiv(a, b int) int {
+	if a <= b {
+		return 1
+	}
+	return (a + b - 1) / b
 }

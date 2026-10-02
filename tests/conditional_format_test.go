@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -56,12 +57,12 @@ func buildConditionalFormatFixture() ([]byte, error) {
 
 // conditionalFormatReadback is one conditional formatting collection as read back.
 type conditionalFormatReadback struct {
-	count         int
-	condCount     int
-	condType      int32
-	operator      int32
-	formula1      string
-	formula2      string
+	count     int
+	condCount int
+	condType  int32
+	operator  int32
+	formula1  string
+	formula2  string
 }
 
 func readConditionalFormat(t *testing.T, data []byte) conditionalFormatReadback {
@@ -218,8 +219,11 @@ func TestConditionalFormatCellValueRule(t *testing.T) {
 	if got.operator != 2 { // GreaterThan
 		t.Errorf("operator: got %d, want 2 (GreaterThan)", got.operator)
 	}
-	if got.formula1 != "90" {
-		t.Errorf("formula1: got %q, want %q", got.formula1, "90")
+	// Raw engine form: the engine prefixes every formula with "=", so a rule set
+	// as "90" reads back as "=90". The toolkit's query layer strips the prefix;
+	// this read-back bypasses it and so asserts the engine's own form.
+	if got.formula1 != "=90" {
+		t.Errorf("formula1: got %q, want %q", got.formula1, "=90")
 	}
 }
 
@@ -322,6 +326,45 @@ func TestConditionalFormatQuery(t *testing.T) {
 	}
 	if info.Conditions[0].Type != "dataBar" {
 		t.Errorf("Condition type: got %q, want %q", info.Conditions[0].Type, "dataBar")
+	}
+}
+
+// TestConditionalFormatFormulaQuery pins the query layer's formula contract: the
+// engine stores and returns every formula "=" -prefixed, and ConditionInfo strips
+// that one prefix so a formula reads back as it was set.
+func TestConditionalFormatFormulaQuery(t *testing.T) {
+	fixture := conditionalFormatFixture(t)
+	out, err := editor.EditSpreadsheet(
+		datasource.BytesSource(fixture),
+		editor.AddConditionalFormatting(conditionalFormatSheetIndex, "A2:A5",
+			editor.WithCellValueRule(editor.OperatorTypeBetween, "90", "100"),
+		),
+	)
+	if err != nil {
+		t.Fatalf("add cell value rule: %v", err)
+	}
+	// The engine's string read-back is intermittently corrupt, so the assertions
+	// run inside retryStable: a garbled read is retried, not reported.
+	err = retryStable(5, func() error {
+		info, err := query.ConditionalFormattingInfoAt(datasource.BytesSource(out), 0,
+			query.WithSheetIndex(conditionalFormatSheetIndex))
+		if err != nil {
+			return fmt.Errorf("ConditionalFormattingInfoAt: %w", err)
+		}
+		if len(info.Conditions) != 1 {
+			return fmt.Errorf("Conditions length: got %d, want 1", len(info.Conditions))
+		}
+		cond := info.Conditions[0]
+		if cond.Formula1 != "90" {
+			return fmt.Errorf("Formula1: got %q, want %q", cond.Formula1, "90")
+		}
+		if cond.Formula2 != "100" {
+			return fmt.Errorf("Formula2: got %q, want %q", cond.Formula2, "100")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
 	}
 }
 

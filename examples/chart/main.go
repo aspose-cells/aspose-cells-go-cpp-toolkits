@@ -319,7 +319,7 @@ func main() {
 	// override specific fields. This is useful when you want the template's
 	// overall style but need to adjust one or two settings.
 	customTemplate := editor.ProfessionalColumn
-	customTemplate.Style = 15                        // Override the style
+	customTemplate.Style = 15                             // Override the style
 	customTemplate.LegendPosition = editor.ChartLegendTop // Move legend to top
 	withCustomTemplate, err := editor.EditSpreadsheet(
 		datasource.BytesSource(seeded),

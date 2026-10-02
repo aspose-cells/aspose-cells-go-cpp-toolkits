@@ -1455,7 +1455,7 @@ func TestChartStylePresetPartial(t *testing.T) {
 				editor.WithChartStyle(12),
 			),
 			editor.InChart(0, editor.WithChartPreset(editor.ChartStylePreset{
-				ShowLegend: true,
+				ShowLegend:     true,
 				LegendPosition: editor.ChartLegendTop,
 			})),
 		),
@@ -1559,38 +1559,38 @@ func TestChartStylePresetFull(t *testing.T) {
 // (ProfessionalColumn, MinimalPie, etc.) apply their settings correctly.
 func TestChartTemplates(t *testing.T) {
 	tests := []struct {
-		name     string
-		template editor.ChartStylePreset
-		wantType asposecells.ChartType
-		wantStyle int32
+		name       string
+		template   editor.ChartStylePreset
+		wantType   asposecells.ChartType
+		wantStyle  int32
 		wantLegend bool
 	}{
 		{
-			name:      "ProfessionalColumn",
-			template:  editor.ProfessionalColumn,
-			wantType:  asposecells.ChartType_Column,
-			wantStyle: 7,
+			name:       "ProfessionalColumn",
+			template:   editor.ProfessionalColumn,
+			wantType:   asposecells.ChartType_Column,
+			wantStyle:  7,
 			wantLegend: true,
 		},
 		{
-			name:      "MinimalPie",
-			template:  editor.MinimalPie,
-			wantType:  asposecells.ChartType_Pie,
-			wantStyle: 3,
+			name:       "MinimalPie",
+			template:   editor.MinimalPie,
+			wantType:   asposecells.ChartType_Pie,
+			wantStyle:  3,
 			wantLegend: false,
 		},
 		{
-			name:      "PresentationBar",
-			template:  editor.PresentationBar,
-			wantType:  asposecells.ChartType_Bar,
-			wantStyle: 10,
+			name:       "PresentationBar",
+			template:   editor.PresentationBar,
+			wantType:   asposecells.ChartType_Bar,
+			wantStyle:  10,
 			wantLegend: true,
 		},
 		{
-			name:      "DashboardLine",
-			template:  editor.DashboardLine,
-			wantType:  asposecells.ChartType_LineWithDataMarkers,
-			wantStyle: 12,
+			name:       "DashboardLine",
+			template:   editor.DashboardLine,
+			wantType:   asposecells.ChartType_LineWithDataMarkers,
+			wantStyle:  12,
 			wantLegend: true,
 		},
 	}
@@ -1665,9 +1665,9 @@ func TestChartTemplateCustomization(t *testing.T) {
 // validate inputs and provide helpful error messages.
 func TestChartValidationHelpers(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		validate func() error
-		wantErr bool
+		wantErr  bool
 	}{
 		{
 			name: "valid data range",

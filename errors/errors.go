@@ -99,6 +99,18 @@ var (
 	// not one the engine recognizes.
 	ErrInvalidChartPosition = errors.New("invalid chart legend position")
 
+	// ErrInvalidChartSize is returned when a chart export requests an unusable
+	// pixel size: a negative width or height, or exactly one of the two set
+	// while the other is left at zero. The engine's SetDesiredSize requires
+	// both, so a half-specified size cannot be honored and is rejected rather
+	// than silently guessed.
+	ErrInvalidChartSize = errors.New("invalid chart export size")
+
+	// ErrPictureAddFailed is returned when an image cannot be embedded into a
+	// worksheet, e.g. the engine rejects the data as an undecodable image or
+	// hands back no picture collection.
+	ErrPictureAddFailed = errors.New("picture could not be added")
+
 	// ErrValidationNotFound is returned when a data validation is referenced by
 	// an index that is out of range for the target worksheet.
 	ErrValidationNotFound = errors.New("validation not found")

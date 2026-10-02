@@ -81,7 +81,9 @@ Converts a spreadsheet file from `inputPath` to `outputPath`, inferring the outp
 
 ## Chart Export
 
-The `converter` package provides functions to export charts from a workbook to various image formats.
+The `converter` package exports a single chart from a workbook to an image or
+PDF, addressed by its worksheet index and its index within that worksheet's
+chart collection (both zero-based).
 
 ### ChartExportFormat
 
@@ -92,7 +94,7 @@ const (
     ChartExportFormatPNG  ChartExportFormat = "png"   // PNG image
     ChartExportFormatJPEG ChartExportFormat = "jpeg"  // JPEG image
     ChartExportFormatSVG  ChartExportFormat = "svg"   // SVG vector image
-    ChartExportFormatPDF  ChartExportFormat = "pdf"   // PDF (EMF vector format)
+    ChartExportFormatPDF  ChartExportFormat = "pdf"   // PDF document
 )
 ```
 
@@ -101,11 +103,21 @@ const (
 ```go
 type ChartExportOptions struct {
     Format  ChartExportFormat  // Output format (PNG, JPEG, SVG, or PDF)
-    Width   int                // Desired width in pixels (0 = use chart default)
-    Height  int                // Desired height in pixels (0 = use chart default)
-    Quality int                // JPEG quality 1-100 (only applies to JPEG format)
+    Width   int                // Exact output width in pixels, or 0
+    Height  int                // Exact output height in pixels, or 0
+    Quality int                // JPEG quality 1-100; 0 leaves the engine default
 }
 ```
+
+**Sizing.** `Width` and `Height` are either **both** a positive pixel count, or
+**both** zero. Both zero uses the chart's own size. The output is exactly the
+requested size — it is not letterboxed to preserve aspect ratio. Setting only
+one of the two returns `ErrInvalidChartSize`, because the engine cannot size an
+image from a single dimension, and guessing the other would silently produce a
+size the caller did not ask for. A negative value is the same error.
+
+**Quality.** Applies to JPEG only. Zero leaves the engine default; any value
+outside 1-100 returns `ErrInvalidValue` rather than being silently clamped.
 
 ### ExportChartToSink
 
@@ -189,15 +201,37 @@ err := converter.ExportChartToFile(
 )
 ```
 
-Example — export as SVG with custom dimensions:
+Example — export as SVG:
 
 ```go
 err := converter.ExportChartToFile(
     datasource.FilePathSource("workbook.xlsx"),
     "chart.svg",
     0, 0,
+    &converter.ChartExportOptions{Format: converter.ChartExportFormatSVG},
+)
+```
+
+Example — export as PDF:
+
+```go
+err := converter.ExportChartToFile(
+    datasource.FilePathSource("workbook.xlsx"),
+    "chart.pdf",
+    0, 0,
+    &converter.ChartExportOptions{Format: converter.ChartExportFormatPDF},
+)
+```
+
+Example — export at an exact pixel size (both dimensions required):
+
+```go
+err := converter.ExportChartToFile(
+    datasource.FilePathSource("workbook.xlsx"),
+    "chart-1200x800.png",
+    0, 0,
     &converter.ChartExportOptions{
-        Format: converter.ChartExportFormatSVG,
+        Format: converter.ChartExportFormatPNG,
         Width:  1200,
         Height: 800,
     },
@@ -206,10 +240,17 @@ err := converter.ExportChartToFile(
 
 ### Supported Formats
 
-  - **PNG**: Lossless raster image format, ideal for web display and high-quality prints
-  - **JPEG**: Compressed raster image format with adjustable quality, smaller file sizes
-  - **SVG**: Scalable vector graphics, resolution-independent, ideal for web and print
-  - **PDF**: Vector format (implemented as EMF), suitable for high-quality printing
+  - **PNG**: Lossless raster image, rendered directly by the engine. The output
+    is exactly `Width` × `Height` when a size is given.
+  - **JPEG**: Compressed raster image with adjustable quality, rendered directly
+    by the engine.
+  - **SVG**: Scalable vector graphics, resolution-independent, rendered directly
+    by the engine.
+  - **PDF**: A real PDF document that opens in any reader. The chart is rendered
+    to a PNG, embedded in a one-sheet workbook sized to the image, and that
+    workbook is saved through the PDF save option. The PDF therefore holds a
+    **raster image** of the chart on a chart-sized page, not vector artwork —
+    the engine exposes no vector chart-to-PDF call.
 
 ### Errors
 
@@ -217,6 +258,8 @@ err := converter.ExportChartToFile(
 |-----------|----------|
 | nil `datasource.DataSource` | `ErrDataSourceNil` |
 | nil `datasource.DataSink` | `ErrDataSinkNil` |
-| Sheet index out of range | Wrapped engine error |
+| Sheet index out of range | `ErrInvalidSheetID` |
 | Chart index out of range | `ErrChartNotFound` |
 | Unsupported format | `ErrUnsupportedFormat` |
+| Only one of `Width` / `Height` set, or a negative size | `ErrInvalidChartSize` |
+| JPEG `Quality` outside 1-100 | `ErrInvalidValue` |

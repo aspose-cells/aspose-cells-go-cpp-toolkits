@@ -207,7 +207,11 @@ func readConditionInfo(cond *asposecells.FormatCondition, index int) (ConditionI
 	}
 	info.Operator = operatorTypeName(int32(op))
 
-	// Formulas
+	// Formulas. The engine stores every formula "=" -prefixed and hands it back
+	// that way, so one prefix is stripped here and a formula always reads back
+	// bare (see cells.StripFormulaPrefix). A colorScale, dataBar, or iconSet
+	// condition carries no formula, and an empty string is unaffected by the
+	// strip.
 	info.Formula1, err = cond.GetFormula1()
 	if err != nil {
 		return ConditionInfo{}, err
@@ -216,6 +220,8 @@ func readConditionInfo(cond *asposecells.FormatCondition, index int) (ConditionI
 	if err != nil {
 		return ConditionInfo{}, err
 	}
+	info.Formula1 = cells.StripFormulaPrefix(info.Formula1)
+	info.Formula2 = cells.StripFormulaPrefix(info.Formula2)
 
 	return info, nil
 }
