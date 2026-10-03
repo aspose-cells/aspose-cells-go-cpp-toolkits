@@ -5,6 +5,7 @@ package ods
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -15,8 +16,8 @@ import (
 // was never set (so the native default is kept), while a non-nil pointer
 // means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	generatorType     *asposecells.OdsGeneratorType
-	odfStrictVersion  *asposecells.OpenDocumentFormatVersionType
+	generatorType     *string
+	odfStrictVersion  *string
 	ignorePivotTables *bool
 	saveoptions.CommonConfig
 }
@@ -41,12 +42,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	}
 
 	if c.generatorType != nil {
-		if err := opts.SetGeneratorType(*c.generatorType); err != nil {
+		value, err := enums.OdsGeneratorType(*c.generatorType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetGeneratorType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.odfStrictVersion != nil {
-		if err := opts.SetOdfStrictVersion(*c.odfStrictVersion); err != nil {
+		value, err := enums.OpenDocumentFormatVersionType(*c.odfStrictVersion)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetOdfStrictVersion(value); err != nil {
 			return nil, err
 		}
 	}
@@ -130,12 +139,16 @@ func New(opts ...Option) saveoptions.SaveOption {
 	return cfg
 }
 
-func WithGeneratorType(value asposecells.OdsGeneratorType) Option {
+// WithGeneratorType sets the generator type: "libreOffice" or "openOffice".
+func WithGeneratorType(value string) Option {
 	return func(c *Config) {
 		c.generatorType = &value
 	}
 }
-func WithOdfStrictVersion(value asposecells.OpenDocumentFormatVersionType) Option {
+
+// WithOdfStrictVersion sets the ODF strict version: "none", "odf11",
+// "odf12", "odf13", or "odf14".
+func WithOdfStrictVersion(value string) Option {
 	return func(c *Config) {
 		c.odfStrictVersion = &value
 	}

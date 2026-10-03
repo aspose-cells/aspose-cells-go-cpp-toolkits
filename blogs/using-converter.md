@@ -283,7 +283,7 @@ Functional options appear when you need fine control — note every call below i
 // PDF: one page per worksheet + a compliance level
 pdf.New(
 	pdf.WithOnePagePerSheet(true),
-	pdf.WithCompliance(asposecells.PdfCompliance_Pdf15),
+	pdf.WithCompliance("pdf15"),
 	pdf.WithProducer("my-report-app"),
 )
 
@@ -295,10 +295,11 @@ html.New(
 )
 
 // CSV: custom separator and encoding
-// (note: the separator is a byte, and the encoding is an EncodingType, not a string)
+// (the separator is a byte, and the encoding is a name — matched case- and
+// punctuation-insensitively, so "UTF-8", "utf8" and "UTF8" are one name)
 csv.New(
 	csv.WithSeparator(';'),
-	csv.WithEncoding(asposecells.EncodingType_UTF8),
+	csv.WithEncoding("UTF-8"),
 )
 
 // Image: pick the type (the only switch the image package currently exposes)

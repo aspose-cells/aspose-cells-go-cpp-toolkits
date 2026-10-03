@@ -5,9 +5,9 @@ package image
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
-	"strings"
 )
 
 // Config holds the native-typed option values for Image save options.
@@ -45,7 +45,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := imageOrPrintOptions.SetImageType(toImageType(c.imageType)); err != nil {
+		imageType, err := resolveImageType(c.imageType)
+		if err != nil {
+			return nil, err
+		}
+		if err := imageOrPrintOptions.SetImageType(imageType); err != nil {
 			return nil, err
 		}
 	}
@@ -223,28 +227,25 @@ func WithEncryptDocumentProperties(value bool) Option {
 	}
 }
 
-var imageTypeRegistry = make(map[string]asposecells.ImageType)
-
-func init() {
-	imageTypeRegistry["png"] = asposecells.ImageType_Png
-	imageTypeRegistry["emf"] = asposecells.ImageType_Emf
-	imageTypeRegistry["wmf"] = asposecells.ImageType_Wmf
-	imageTypeRegistry["pict"] = asposecells.ImageType_Pict
-	imageTypeRegistry["jpg"] = asposecells.ImageType_Jpeg
-	imageTypeRegistry["jpeg"] = asposecells.ImageType_Jpeg
-	imageTypeRegistry["bmp"] = asposecells.ImageType_Bmp
-	imageTypeRegistry["gif"] = asposecells.ImageType_Gif
-	imageTypeRegistry["tif"] = asposecells.ImageType_Tiff
-	imageTypeRegistry["tiff"] = asposecells.ImageType_Tiff
-	imageTypeRegistry["svg"] = asposecells.ImageType_Svg
-	imageTypeRegistry["svm"] = asposecells.ImageType_Svm
-	imageTypeRegistry["gltf"] = asposecells.ImageType_Gltf
-	imageTypeRegistry["webp"] = asposecells.ImageType_WebP
+// imageTypeAliases maps the short file-extension spellings a caller is likely to
+// type onto the engine's member names: the engine calls the JPEG member "Jpeg"
+// and the TIFF member "Tiff", but "jpg" and "tif" name the same two formats and
+// are what people actually write. The long spellings resolve without an alias.
+var imageTypeAliases = map[string]string{
+	"jpg": "jpeg",
+	"tif": "tiff",
 }
-func toImageType(imageType string) asposecells.ImageType {
-	value := strings.ToLower(imageType)
-	if val, ok := imageTypeRegistry[value]; ok {
-		return val
+
+// resolveImageType resolves a requested output format name to the engine enum.
+//
+// An unknown name is an error rather than a fallback to the engine's
+// ImageType_Unknown. That member is a sentinel for "no format recognized", not a
+// format, so falling back to it would turn a mistyped option into a file written
+// in whatever format the engine picks — the failure would surface far from its
+// cause, if at all.
+func resolveImageType(imageType string) (asposecells.ImageType, error) {
+	if canonical, ok := imageTypeAliases[enums.Normalize(imageType)]; ok {
+		imageType = canonical
 	}
-	return asposecells.ImageType_Unknown
+	return enums.ImageType(imageType)
 }

@@ -5,6 +5,7 @@ package ooxml
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -23,7 +24,7 @@ type Config struct {
 	updateZoom            *bool
 	enableZip64           *bool
 	embedOoxmlAsOleObject *bool
-	compressionType       *asposecells.OoxmlCompressionType
+	compressionType       *string
 	saveoptions.CommonConfig
 }
 
@@ -91,7 +92,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.compressionType != nil {
-		if err := opts.SetCompressionType(*c.compressionType); err != nil {
+		value, err := enums.OoxmlCompressionType(*c.compressionType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetCompressionType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -221,7 +226,9 @@ func WithEmbedOoxmlAsOleObject(value bool) Option {
 	}
 }
 
-func WithCompressionType(value asposecells.OoxmlCompressionType) Option {
+// WithCompressionType sets the compression type: "level1", "level2",
+// "level3", "level4", "level5", "level6", "level7", "level8", or "level9".
+func WithCompressionType(value string) Option {
 	return func(c *Config) {
 		c.compressionType = &value
 	}

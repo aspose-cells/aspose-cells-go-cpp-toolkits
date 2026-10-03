@@ -5,6 +5,7 @@ package xlsb
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -15,7 +16,7 @@ import (
 // was never set (so the native default is kept), while a non-nil pointer
 // means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	compressionType        *asposecells.OoxmlCompressionType
+	compressionType        *string
 	exportAllColumnIndexes *bool
 	saveoptions.CommonConfig
 }
@@ -39,7 +40,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	}
 
 	if c.compressionType != nil {
-		if err := opts.SetCompressionType(*c.compressionType); err != nil {
+		value, err := enums.OoxmlCompressionType(*c.compressionType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetCompressionType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -124,7 +129,9 @@ func New(opts ...Option) saveoptions.SaveOption {
 	return cfg
 }
 
-func WithCompressionType(value asposecells.OoxmlCompressionType) Option {
+// WithCompressionType sets the compression type: "level1", "level2",
+// "level3", "level4", "level5", "level6", "level7", "level8", or "level9".
+func WithCompressionType(value string) Option {
 	return func(c *Config) {
 		c.compressionType = &value
 	}

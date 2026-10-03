@@ -4,7 +4,9 @@ package pdf
 
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	color "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/color"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"time"
@@ -18,17 +20,17 @@ import (
 type Config struct {
 	embedStandardWindowsFonts         *bool
 	bookmark                          *asposecells.PdfBookmarkEntry
-	compliance                        *asposecells.PdfCompliance
+	compliance                        *string
 	securityOptions                   *asposecells.PdfSecurityOptions
 	calculateFormula                  *bool
-	pdfCompression                    *asposecells.PdfCompressionCore
+	pdfCompression                    *string
 	createdTime                       *time.Time
 	producer                          *string
-	optimizationType                  *asposecells.PdfOptimizationType
-	customPropertiesExport            *asposecells.PdfCustomPropertiesExport
+	optimizationType                  *string
+	customPropertiesExport            *string
 	exportDocumentStructure           *bool
 	displayDocTitle                   *bool
-	fontEncoding                      *asposecells.PdfFontEncoding
+	fontEncoding                      *string
 	watermark                         *asposecells.RenderingWatermark
 	embedAttachments                  *bool
 	defaultFont                       *string
@@ -41,14 +43,14 @@ type Config struct {
 	outputBlankPageWhenNothingToPrint *bool
 	pageIndex                         *int32
 	pageCount                         *int32
-	printingPageType                  *asposecells.PrintingPageType
-	gridlineType                      *asposecells.GridlineType
-	gridlineColor                     *asposecells.Color
-	textCrossType                     *asposecells.TextCrossType
-	defaultEditLanguage               *asposecells.DefaultEditLanguage
+	printingPageType                  *string
+	gridlineType                      *string
+	gridlineColor                     interface{}
+	textCrossType                     *string
+	defaultEditLanguage               *string
 	sheetSet                          *asposecells.SheetSet
 	drawObjectEventHandler            *asposecells.DrawObjectEventHandler
-	emfRenderSetting                  *asposecells.EmfRenderSetting
+	emfRenderSetting                  *string
 	customRenderSettings              *asposecells.CustomRenderSettings
 	saveoptions.CommonConfig
 }
@@ -82,7 +84,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.compliance != nil {
-		if err := opts.SetCompliance(*c.compliance); err != nil {
+		value, err := enums.PdfCompliance(*c.compliance)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetCompliance(value); err != nil {
 			return nil, err
 		}
 	}
@@ -97,7 +103,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.pdfCompression != nil {
-		if err := opts.SetPdfCompression(*c.pdfCompression); err != nil {
+		value, err := enums.PdfCompressionCore(*c.pdfCompression)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetPdfCompression(value); err != nil {
 			return nil, err
 		}
 	}
@@ -112,12 +122,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.optimizationType != nil {
-		if err := opts.SetOptimizationType(*c.optimizationType); err != nil {
+		value, err := enums.PdfOptimizationType(*c.optimizationType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetOptimizationType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.customPropertiesExport != nil {
-		if err := opts.SetCustomPropertiesExport(*c.customPropertiesExport); err != nil {
+		value, err := enums.PdfCustomPropertiesExport(*c.customPropertiesExport)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetCustomPropertiesExport(value); err != nil {
 			return nil, err
 		}
 	}
@@ -132,7 +150,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.fontEncoding != nil {
-		if err := opts.SetFontEncoding(*c.fontEncoding); err != nil {
+		value, err := enums.PdfFontEncoding(*c.fontEncoding)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetFontEncoding(value); err != nil {
 			return nil, err
 		}
 	}
@@ -197,27 +219,54 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.printingPageType != nil {
-		if err := opts.SetPrintingPageType(*c.printingPageType); err != nil {
+		value, err := enums.PrintingPageType(*c.printingPageType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetPrintingPageType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.gridlineType != nil {
-		if err := opts.SetGridlineType(*c.gridlineType); err != nil {
+		value, err := enums.GridlineType(*c.gridlineType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetGridlineType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.gridlineColor != nil {
-		if err := opts.SetGridlineColor(c.gridlineColor); err != nil {
+		gridlineColor, owned, err := color.Resolve(c.gridlineColor)
+		if err != nil {
+			return nil, err
+		}
+		if owned {
+			// The engine's Color carries no finalizer, so a Color the toolkit
+			// creates is the toolkit's to release; one the caller passed is not.
+			// This runs after Apply returns - that is, after the save - because
+			// the engine may read the pointer up until then.
+			defer asposecells.DeleteColor(gridlineColor)
+		}
+		if err := opts.SetGridlineColor(gridlineColor); err != nil {
 			return nil, err
 		}
 	}
 	if c.textCrossType != nil {
-		if err := opts.SetTextCrossType(*c.textCrossType); err != nil {
+		value, err := enums.TextCrossType(*c.textCrossType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetTextCrossType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.defaultEditLanguage != nil {
-		if err := opts.SetDefaultEditLanguage(*c.defaultEditLanguage); err != nil {
+		value, err := enums.DefaultEditLanguage(*c.defaultEditLanguage)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetDefaultEditLanguage(value); err != nil {
 			return nil, err
 		}
 	}
@@ -232,7 +281,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.emfRenderSetting != nil {
-		if err := opts.SetEmfRenderSetting(*c.emfRenderSetting); err != nil {
+		value, err := enums.EmfRenderSetting(*c.emfRenderSetting)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEmfRenderSetting(value); err != nil {
 			return nil, err
 		}
 	}
@@ -322,28 +375,50 @@ func WithEmbedStandardWindowsFonts(value bool) Option {
 	}
 }
 
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithBookmark(value *asposecells.PdfBookmarkEntry) Option {
 	return func(c *Config) {
 		c.bookmark = value
 	}
 }
-func WithCompliance(value asposecells.PdfCompliance) Option {
+*/
+
+// WithCompliance sets the compliance: "pdf14", "pdf15", "pdf16", "pdf17",
+// "pdfA1a", "pdfA1b", "pdfA2a", "pdfA2b", "pdfA2u", "pdfA3a", "pdfA3b", or
+// "pdfA3u".
+func WithCompliance(value string) Option {
 	return func(c *Config) {
 		c.compliance = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithSecurityOptions(value *asposecells.PdfSecurityOptions) Option {
 	return func(c *Config) {
 		c.securityOptions = value
 	}
 }
+*/
+
 func WithCalculateFormula(value bool) Option {
 	return func(c *Config) {
 		c.calculateFormula = &value
 	}
 }
 
-func WithPdfCompression(value asposecells.PdfCompressionCore) Option {
+// WithPdfCompression sets the PDF compression: "flate", "lzw", "none", or
+// "rle".
+func WithPdfCompression(value string) Option {
 	return func(c *Config) {
 		c.pdfCompression = &value
 	}
@@ -359,12 +434,17 @@ func WithProducer(value string) Option {
 	}
 }
 
-func WithOptimizationType(value asposecells.PdfOptimizationType) Option {
+// WithOptimizationType sets the optimization type: "minimumSize" or
+// "standard".
+func WithOptimizationType(value string) Option {
 	return func(c *Config) {
 		c.optimizationType = &value
 	}
 }
-func WithCustomPropertiesExport(value asposecells.PdfCustomPropertiesExport) Option {
+
+// WithCustomPropertiesExport sets the custom properties export: "none" or
+// "standard".
+func WithCustomPropertiesExport(value string) Option {
 	return func(c *Config) {
 		c.customPropertiesExport = &value
 	}
@@ -381,16 +461,26 @@ func WithDisplayDocTitle(value bool) Option {
 	}
 }
 
-func WithFontEncoding(value asposecells.PdfFontEncoding) Option {
+// WithFontEncoding sets the font encoding: "ansiPrefer" or "identity".
+func WithFontEncoding(value string) Option {
 	return func(c *Config) {
 		c.fontEncoding = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithWatermark(value *asposecells.RenderingWatermark) Option {
 	return func(c *Config) {
 		c.watermark = value
 	}
 }
+*/
+
 func WithEmbedAttachments(value bool) Option {
 	return func(c *Config) {
 		c.embedAttachments = &value
@@ -457,51 +547,95 @@ func WithPageCount(value int32) Option {
 	}
 }
 
-func WithPrintingPageType(value asposecells.PrintingPageType) Option {
+// WithPrintingPageType sets the printing page type: "default",
+// "ignoreBlank", or "ignoreStyle".
+func WithPrintingPageType(value string) Option {
 	return func(c *Config) {
 		c.printingPageType = &value
 	}
 }
-func WithGridlineType(value asposecells.GridlineType) Option {
+
+// WithGridlineType sets the gridline type: "dotted" or "hair".
+func WithGridlineType(value string) Option {
 	return func(c *Config) {
 		c.gridlineType = &value
 	}
 }
-func WithGridlineColor(value *asposecells.Color) Option {
+
+// WithGridlineColor sets the gridline color. Accepted forms are a Go
+// color.Color (color.RGBA, color.NRGBA, color.Gray, color.Black, ...), a hex
+// string ("#RRGGBB" / "#RRGGBBAA", with or without the "#"), a color name
+// ("red", "Light Sea Green", matched case- and punctuation-insensitively), and
+// an ARGB int. Anything else is ErrInvalidColor.
+func WithGridlineColor(value interface{}) Option {
 	return func(c *Config) {
 		c.gridlineColor = value
 	}
 }
-func WithTextCrossType(value asposecells.TextCrossType) Option {
+
+// WithTextCrossType sets the text cross type: "crossKeep", "crossOverride",
+// "default", or "strictInCell".
+func WithTextCrossType(value string) Option {
 	return func(c *Config) {
 		c.textCrossType = &value
 	}
 }
-func WithDefaultEditLanguage(value asposecells.DefaultEditLanguage) Option {
+
+// WithDefaultEditLanguage sets the default edit language: "auto", "cjk", or
+// "english".
+func WithDefaultEditLanguage(value string) Option {
 	return func(c *Config) {
 		c.defaultEditLanguage = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithSheetSet(value *asposecells.SheetSet) Option {
 	return func(c *Config) {
 		c.sheetSet = value
 	}
 }
+*/
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithDrawObjectEventHandler(value *asposecells.DrawObjectEventHandler) Option {
 	return func(c *Config) {
 		c.drawObjectEventHandler = value
 	}
 }
-func WithEmfRenderSetting(value asposecells.EmfRenderSetting) Option {
+*/
+
+// WithEmfRenderSetting sets the EMF render setting: "emfOnly" or
+// "emfPlusPrefer".
+func WithEmfRenderSetting(value string) Option {
 	return func(c *Config) {
 		c.emfRenderSetting = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithCustomRenderSettings(value *asposecells.CustomRenderSettings) Option {
 	return func(c *Config) {
 		c.customRenderSettings = value
 	}
 }
+*/
+
 func WithClearData(value bool) Option {
 	return func(c *Config) {
 		c.ClearData = &value

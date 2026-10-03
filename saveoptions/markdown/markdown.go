@@ -5,6 +5,7 @@ package markdown
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -15,17 +16,17 @@ import (
 // was never set (so the native default is kept), while a non-nil pointer
 // means the caller explicitly requested the value, including zero/false.
 type Config struct {
-	encoding                   *asposecells.EncodingType
-	formatStrategy             *asposecells.CellValueFormatStrategy
+	encoding                   *string
+	formatStrategy             *string
 	lineSeparator              *string
-	tableHeaderType            *asposecells.MarkdownTableHeaderType
+	tableHeaderType            *string
 	sheetSet                   *asposecells.SheetSet
 	exportImagesAsBase64       *bool
 	calculateFormula           *bool
 	exportHyperlinkAsReference *bool
 	alignColumnPadding         *byte
 	splitTablesByBlankRow      *bool
-	officeMathOutputType       *asposecells.HtmlOfficeMathOutputType
+	officeMathOutputType       *string
 	saveoptions.CommonConfig
 }
 
@@ -47,12 +48,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		return nil, err
 	}
 	if c.encoding != nil {
-		if err := opts.SetEncoding(*c.encoding); err != nil {
+		value, err := enums.EncodingType(*c.encoding)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEncoding(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.formatStrategy != nil {
-		if err := opts.SetFormatStrategy(*c.formatStrategy); err != nil {
+		value, err := enums.CellValueFormatStrategy(*c.formatStrategy)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetFormatStrategy(value); err != nil {
 			return nil, err
 		}
 	}
@@ -62,7 +71,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.tableHeaderType != nil {
-		if err := opts.SetTableHeaderType(*c.tableHeaderType); err != nil {
+		value, err := enums.MarkdownTableHeaderType(*c.tableHeaderType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetTableHeaderType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -97,7 +110,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.officeMathOutputType != nil {
-		if err := opts.SetOfficeMathOutputType(*c.officeMathOutputType); err != nil {
+		value, err := enums.HtmlOfficeMathOutputType(*c.officeMathOutputType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetOfficeMathOutputType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -176,12 +193,16 @@ func New(opts ...Option) saveoptions.SaveOption {
 	return cfg
 }
 
-func WithEncoding(value asposecells.EncodingType) Option {
+// WithEncoding sets the encoding: "ascii", "default", "unicode", or "utf8".
+func WithEncoding(value string) Option {
 	return func(c *Config) {
 		c.encoding = &value
 	}
 }
-func WithFormatStrategy(value asposecells.CellValueFormatStrategy) Option {
+
+// WithFormatStrategy sets the format strategy: "cellStyle", "displayString",
+// "displayStyle", or "none".
+func WithFormatStrategy(value string) Option {
 	return func(c *Config) {
 		c.formatStrategy = &value
 	}
@@ -192,16 +213,27 @@ func WithLineSeparator(value string) Option {
 	}
 }
 
-func WithTableHeaderType(value asposecells.MarkdownTableHeaderType) Option {
+// WithTableHeaderType sets the table header type: "columnHeader", "empty",
+// or "firstRow".
+func WithTableHeaderType(value string) Option {
 	return func(c *Config) {
 		c.tableHeaderType = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithSheetSet(value *asposecells.SheetSet) Option {
 	return func(c *Config) {
 		c.sheetSet = value
 	}
 }
+*/
+
 func WithExportImagesAsBase64(value bool) Option {
 	return func(c *Config) {
 		c.exportImagesAsBase64 = &value
@@ -232,7 +264,9 @@ func WithSplitTablesByBlankRow(value bool) Option {
 	}
 }
 
-func WithOfficeMathOutputType(value asposecells.HtmlOfficeMathOutputType) Option {
+// WithOfficeMathOutputType sets the office math output type: "image" or
+// "mathML".
+func WithOfficeMathOutputType(value string) Option {
 	return func(c *Config) {
 		c.officeMathOutputType = &value
 	}

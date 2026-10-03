@@ -10,7 +10,6 @@ package cells
 import (
 	"fmt"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
-	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"io"
@@ -49,7 +48,7 @@ func WorkbookToByteData(workbook *asposecells.Workbook) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	saveFormat, err := formats.FileFormatToSaveFormat(fileFormat)
+	saveFormat, err := engine.FileFormatToSaveFormat(fileFormat)
 	if err != nil {
 		return nil, err
 	}

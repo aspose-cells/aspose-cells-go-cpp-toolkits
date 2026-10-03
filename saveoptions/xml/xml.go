@@ -154,11 +154,20 @@ func WithSheetIndexes(value []int32) Option {
 		c.sheetIndexes = value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithExportArea(value *asposecells.CellArea) Option {
 	return func(c *Config) {
 		c.exportArea = value
 	}
 }
+*/
+
 func WithHasHeaderRow(value bool) Option {
 	return func(c *Config) {
 		c.hasHeaderRow = &value

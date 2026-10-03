@@ -53,7 +53,8 @@ func WithChartTitleFont(fontName string, fontSize int, bold bool) ChartAction {
 // color.
 //
 // Parameters:
-//   - color: The color as a hex string (e.g., "#FF0000" for red) or color name.
+//   - color: The color as a hex string (e.g., "#FF0000" for red), a color
+//     name, a Go color.Color, or an ARGB int. See WithFontColor.
 //
 // Returns:
 //   - ChartAction: A function that sets the title color.
@@ -127,7 +128,8 @@ func WithChartLegendFont(fontName string, fontSize int, bold bool) ChartAction {
 //
 // Parameters:
 //   - seriesIndex: The zero-based index of the series.
-//   - color: The color as a hex string or color name.
+//   - color: The color as a hex string, a color name, a Go color.Color, or
+//     an ARGB int. See WithFontColor.
 //
 // Returns:
 //   - ChartAction: A function that sets the series color.

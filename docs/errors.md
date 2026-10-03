@@ -310,6 +310,25 @@ var ErrInvalidIconSetType = errors.New("invalid icon set type")
 
 Returned when an icon set type name is not one the engine recognizes.
 
+### ErrInvalidEnumValue
+
+```go
+var ErrInvalidEnumValue = errors.New("invalid enum value")
+```
+
+Returned when a save option is given the name of an engine enum member that does not exist — for example `csv.WithEncoding("utf-9")` or `pdf.WithCompliance("pdfA9z")`. Option names are matched case- and punctuation-insensitively (`"UTF-8"`, `"utf8"` and `"utf-8"` are one name), so only a genuine miss reaches this error, and the message quotes both the name and the option it belongs to.
+
+It is an error rather than a fallback for the same reason as `ErrInvalidFontUnderline`: the engine enumerates its own members, so a name it does not recognize is a request for something that is not there. Substituting another value silently is how a typo becomes a wrong document — `saveoptions/image` used to answer an unknown format with the engine's `ImageType_Unknown` sentinel and produce a file in some format the caller never asked for.
+
+The check runs before the workbook is opened, so a bad name fails without producing any output.
+
+```go
+out, err := csv.New(csv.WithEncoding("UTF-8")).Apply(src)
+if errors.Is(err, toolkiterrors.ErrInvalidEnumValue) {
+    // the encoding name matched no engine member; out is nil
+}
+```
+
 ## Error classification examples
 
 ### Distinguishing failure types

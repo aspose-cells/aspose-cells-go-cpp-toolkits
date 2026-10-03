@@ -1,12 +1,12 @@
 package editor
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	color "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/color"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -30,50 +30,21 @@ func resolveWorksheet(wb *asposecells.Workbook, id interface{}) (*asposecells.Wo
 	}
 }
 
-// resolveColor turns a caller-supplied color into an engine Color. Accepted
-// forms are a hex string ("#RRGGBB" / "#RRGGBBAA", with or without the "#"), a
-// color name ("red", "Light Sea Green"), an ARGB int, and an engine *Color.
+// resolveColor turns a caller-supplied color into an engine Color. It is the
+// editor's name for the toolkit's one color vocabulary — a Go color.Color, a hex
+// string ("#RRGGBB" / "#RRGGBBAA", with or without the "#"), a color name
+// ("red", "Light Sea Green"), an ARGB int, or an engine *Color — so that
+// editor.WithFontColor and, say, pdf.WithGridlineColor accept the same things.
 //
-// A name is looked up in namedColorConstructors and never handed to the
-// engine's Color_FromName, which throws an uncaught C++ exception — and so
-// terminates the process — for a name it does not recognize. Any name outside
-// the table is reported as ErrInvalidColor.
+// The engine Color a name or a hex string produces is owned by the toolkit and
+// is not released here: the engine's Color carries no finalizer, and the action
+// closures hand the Color straight to an engine setter that copies the value
+// out, so the handle stays alive (and leaked) as it always has. Color.Resolve
+// reports the ownership it is discarding so a caller that can prove the copy
+// happened — the save options, which delete after their save — can release it.
 func resolveColor(value interface{}) (*asposecells.Color, error) {
-	switch v := value.(type) {
-	case string:
-		// Only treat 6/8-digit hex strings (RGB/RGBA) as colors, otherwise a
-		// color name made of hex chars (e.g. "face") would be misread.
-		h := strings.TrimPrefix(v, "#")
-		if len(h) == 6 || len(h) == 8 {
-			if _, err := hex.DecodeString(h); err == nil {
-				c, err := asposecells.Color_FromHex(h)
-				if err != nil {
-					return nil, fmt.Errorf("color %q: %w", v, err)
-				}
-				return c, nil
-			}
-		}
-		key := normalizeEnumName(v)
-		ctor, ok := namedColorConstructors[key]
-		if !ok {
-			return nil, fmt.Errorf("color name %q is not a recognized color: %w", v, toolkiterrors.ErrInvalidColor)
-		}
-		c, err := ctor()
-		if err != nil {
-			return nil, fmt.Errorf("color %q: %w", v, err)
-		}
-		return c, nil
-	case int:
-		c, err := asposecells.Color_FromArgb(int32(v))
-		if err != nil {
-			return nil, fmt.Errorf("color %d: %w", v, err)
-		}
-		return c, nil
-	case *asposecells.Color:
-		return v, nil
-	default:
-		return nil, fmt.Errorf("invalid color value %v: %w", value, toolkiterrors.ErrInvalidColor)
-	}
+	c, _, err := color.Resolve(value)
+	return c, err
 }
 
 // normalizeEnumName reduces an enum name to its lookup key: lower case with

@@ -5,6 +5,7 @@ package ebook
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -23,7 +24,7 @@ type Config struct {
 	addGenericFont                   *bool
 	worksheetScalable                *bool
 	isExportComments                 *bool
-	exportCommentsType               *asposecells.PrintCommentsType
+	exportCommentsType               *string
 	disableDownlevelRevealedComments *bool
 	isExpImageToTempDir              *bool
 	imageScalable                    *bool
@@ -34,10 +35,10 @@ type Config struct {
 	exportPrintAreaOnly              *bool
 	exportArea                       *asposecells.CellArea
 	parseHtmlTagInCell               *bool
-	htmlCrossStringType              *asposecells.HtmlCrossType
-	hiddenColDisplayType             *asposecells.HtmlHiddenColDisplayType
-	hiddenRowDisplayType             *asposecells.HtmlHiddenRowDisplayType
-	encoding                         *asposecells.EncodingType
+	htmlCrossStringType              *string
+	hiddenColDisplayType             *string
+	hiddenRowDisplayType             *string
+	encoding                         *string
 	saveAsSingleFile                 *bool
 	showAllSheets                    *bool
 	exportPageHeaders                *bool
@@ -49,7 +50,7 @@ type Config struct {
 	isFullPathLink                   *bool
 	exportWorksheetCSSSeparately     *bool
 	exportSimilarBorderStyle         *bool
-	mergeEmptyTdType                 *asposecells.MergeEmptyTdType
+	mergeEmptyTdType                 *string
 	exportCellCoordinate             *bool
 	exportExtraHeadings              *bool
 	exportRowColumnHeadings          *bool
@@ -62,8 +63,8 @@ type Config struct {
 	exportWorksheetProperties        *bool
 	exportWorkbookProperties         *bool
 	exportFrameScriptsAndProperties  *bool
-	exportDataOptions                *asposecells.HtmlExportDataOptions
-	linkTargetType                   *asposecells.HtmlLinkTargetType
+	exportDataOptions                *string
+	linkTargetType                   *string
 	isIECompatible                   *bool
 	formatDataIgnoreColumnWidth      *bool
 	calculateFormula                 *bool
@@ -73,16 +74,16 @@ type Config struct {
 	hideOverflowWrappedText          *bool
 	isBorderCollapsed                *bool
 	encodeEntityAsCode               *bool
-	officeMathOutputMode             *asposecells.HtmlOfficeMathOutputType
+	officeMathOutputMode             *string
 	cellNameAttribute                *string
 	disableCss                       *bool
 	enableCssCustomProperties        *bool
-	htmlVersion                      *asposecells.HtmlVersion
+	htmlVersion                      *string
 	sheetSet                         *asposecells.SheetSet
-	layoutMode                       *asposecells.HtmlLayoutMode
-	embeddedFontType                 *asposecells.HtmlEmbeddedFontType
+	layoutMode                       *string
+	embeddedFontType                 *string
 	exportNamedRangeAnchors          *bool
-	dataBarRenderMode                *asposecells.DataBarRenderMode
+	dataBarRenderMode                *string
 	saveoptions.CommonConfig
 }
 
@@ -145,7 +146,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.exportCommentsType != nil {
-		if err := opts.SetExportCommentsType(*c.exportCommentsType); err != nil {
+		value, err := enums.PrintCommentsType(*c.exportCommentsType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetExportCommentsType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -200,22 +205,38 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.htmlCrossStringType != nil {
-		if err := opts.SetHtmlCrossStringType(*c.htmlCrossStringType); err != nil {
+		value, err := enums.HtmlCrossType(*c.htmlCrossStringType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetHtmlCrossStringType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.hiddenColDisplayType != nil {
-		if err := opts.SetHiddenColDisplayType(*c.hiddenColDisplayType); err != nil {
+		value, err := enums.HtmlHiddenColDisplayType(*c.hiddenColDisplayType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetHiddenColDisplayType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.hiddenRowDisplayType != nil {
-		if err := opts.SetHiddenRowDisplayType(*c.hiddenRowDisplayType); err != nil {
+		value, err := enums.HtmlHiddenRowDisplayType(*c.hiddenRowDisplayType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetHiddenRowDisplayType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.encoding != nil {
-		if err := opts.SetEncoding(*c.encoding); err != nil {
+		value, err := enums.EncodingType(*c.encoding)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEncoding(value); err != nil {
 			return nil, err
 		}
 	}
@@ -275,7 +296,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.mergeEmptyTdType != nil {
-		if err := opts.SetMergeEmptyTdType(*c.mergeEmptyTdType); err != nil {
+		value, err := enums.MergeEmptyTdType(*c.mergeEmptyTdType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetMergeEmptyTdType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -340,12 +365,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.exportDataOptions != nil {
-		if err := opts.SetExportDataOptions(*c.exportDataOptions); err != nil {
+		value, err := enums.HtmlExportDataOptions(*c.exportDataOptions)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetExportDataOptions(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.linkTargetType != nil {
-		if err := opts.SetLinkTargetType(*c.linkTargetType); err != nil {
+		value, err := enums.HtmlLinkTargetType(*c.linkTargetType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetLinkTargetType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -395,7 +428,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.officeMathOutputMode != nil {
-		if err := opts.SetOfficeMathOutputMode(*c.officeMathOutputMode); err != nil {
+		value, err := enums.HtmlOfficeMathOutputType(*c.officeMathOutputMode)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetOfficeMathOutputMode(value); err != nil {
 			return nil, err
 		}
 	}
@@ -415,7 +452,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.htmlVersion != nil {
-		if err := opts.SetHtmlVersion(*c.htmlVersion); err != nil {
+		value, err := enums.HtmlVersion(*c.htmlVersion)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetHtmlVersion(value); err != nil {
 			return nil, err
 		}
 	}
@@ -425,12 +466,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.layoutMode != nil {
-		if err := opts.SetLayoutMode(*c.layoutMode); err != nil {
+		value, err := enums.HtmlLayoutMode(*c.layoutMode)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetLayoutMode(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.embeddedFontType != nil {
-		if err := opts.SetEmbeddedFontType(*c.embeddedFontType); err != nil {
+		value, err := enums.HtmlEmbeddedFontType(*c.embeddedFontType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEmbeddedFontType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -440,7 +489,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.dataBarRenderMode != nil {
-		if err := opts.SetDataBarRenderMode(*c.dataBarRenderMode); err != nil {
+		value, err := enums.DataBarRenderMode(*c.dataBarRenderMode)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetDataBarRenderMode(value); err != nil {
 			return nil, err
 		}
 	}
@@ -567,7 +620,9 @@ func WithIsExportComments(value bool) Option {
 	}
 }
 
-func WithExportCommentsType(value asposecells.PrintCommentsType) Option {
+// WithExportCommentsType sets the export comments type: "printInPlace",
+// "printNoComments", "printSheetEnd", or "printWithThreadedComments".
+func WithExportCommentsType(value string) Option {
 	return func(c *Config) {
 		c.exportCommentsType = &value
 	}
@@ -620,33 +675,51 @@ func WithExportPrintAreaOnly(value bool) Option {
 	}
 }
 
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithExportArea(value *asposecells.CellArea) Option {
 	return func(c *Config) {
 		c.exportArea = value
 	}
 }
+*/
+
 func WithParseHtmlTagInCell(value bool) Option {
 	return func(c *Config) {
 		c.parseHtmlTagInCell = &value
 	}
 }
 
-func WithHtmlCrossStringType(value asposecells.HtmlCrossType) Option {
+// WithHtmlCrossStringType sets the HTML cross string type: "cross",
+// "crossHideRight", "default", "fitToCell", or "msExport".
+func WithHtmlCrossStringType(value string) Option {
 	return func(c *Config) {
 		c.htmlCrossStringType = &value
 	}
 }
-func WithHiddenColDisplayType(value asposecells.HtmlHiddenColDisplayType) Option {
+
+// WithHiddenColDisplayType sets the hidden col display type: "hidden" or
+// "remove".
+func WithHiddenColDisplayType(value string) Option {
 	return func(c *Config) {
 		c.hiddenColDisplayType = &value
 	}
 }
-func WithHiddenRowDisplayType(value asposecells.HtmlHiddenRowDisplayType) Option {
+
+// WithHiddenRowDisplayType sets the hidden row display type: "hidden" or
+// "remove".
+func WithHiddenRowDisplayType(value string) Option {
 	return func(c *Config) {
 		c.hiddenRowDisplayType = &value
 	}
 }
-func WithEncoding(value asposecells.EncodingType) Option {
+
+// WithEncoding sets the encoding: "ascii", "default", "unicode", or "utf8".
+func WithEncoding(value string) Option {
 	return func(c *Config) {
 		c.encoding = &value
 	}
@@ -717,7 +790,9 @@ func WithExportSimilarBorderStyle(value bool) Option {
 	}
 }
 
-func WithMergeEmptyTdType(value asposecells.MergeEmptyTdType) Option {
+// WithMergeEmptyTdType sets the merge empty TD type: "default",
+// "mergeForcely", or "none".
+func WithMergeEmptyTdType(value string) Option {
 	return func(c *Config) {
 		c.mergeEmptyTdType = &value
 	}
@@ -794,12 +869,16 @@ func WithExportFrameScriptsAndProperties(value bool) Option {
 	}
 }
 
-func WithExportDataOptions(value asposecells.HtmlExportDataOptions) Option {
+// WithExportDataOptions sets the export data options: "all" or "table".
+func WithExportDataOptions(value string) Option {
 	return func(c *Config) {
 		c.exportDataOptions = &value
 	}
 }
-func WithLinkTargetType(value asposecells.HtmlLinkTargetType) Option {
+
+// WithLinkTargetType sets the link target type: "blank", "parent", "self",
+// or "top".
+func WithLinkTargetType(value string) Option {
 	return func(c *Config) {
 		c.linkTargetType = &value
 	}
@@ -858,7 +937,9 @@ func WithEncodeEntityAsCode(value bool) Option {
 	}
 }
 
-func WithOfficeMathOutputMode(value asposecells.HtmlOfficeMathOutputType) Option {
+// WithOfficeMathOutputMode sets the office math output mode: "image" or
+// "mathML".
+func WithOfficeMathOutputMode(value string) Option {
 	return func(c *Config) {
 		c.officeMathOutputMode = &value
 	}
@@ -881,22 +962,35 @@ func WithEnableCssCustomProperties(value bool) Option {
 	}
 }
 
-func WithHtmlVersion(value asposecells.HtmlVersion) Option {
+// WithHtmlVersion sets the HTML version: "default", "html5", or "xHtml".
+func WithHtmlVersion(value string) Option {
 	return func(c *Config) {
 		c.htmlVersion = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithSheetSet(value *asposecells.SheetSet) Option {
 	return func(c *Config) {
 		c.sheetSet = value
 	}
 }
-func WithLayoutMode(value asposecells.HtmlLayoutMode) Option {
+*/
+
+// WithLayoutMode sets the layout mode: "normal" or "print".
+func WithLayoutMode(value string) Option {
 	return func(c *Config) {
 		c.layoutMode = &value
 	}
 }
-func WithEmbeddedFontType(value asposecells.HtmlEmbeddedFontType) Option {
+
+// WithEmbeddedFontType sets the embedded font type: "none" or "woff".
+func WithEmbeddedFontType(value string) Option {
 	return func(c *Config) {
 		c.embeddedFontType = &value
 	}
@@ -907,7 +1001,9 @@ func WithExportNamedRangeAnchors(value bool) Option {
 	}
 }
 
-func WithDataBarRenderMode(value asposecells.DataBarRenderMode) Option {
+// WithDataBarRenderMode sets the data bar render mode: "backgroundColor" or
+// "image".
+func WithDataBarRenderMode(value string) Option {
 	return func(c *Config) {
 		c.dataBarRenderMode = &value
 	}

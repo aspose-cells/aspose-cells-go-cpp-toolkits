@@ -125,12 +125,11 @@ func WithFontIsStrikeout(value bool) StyleAction {
 }
 
 // WithFontColor creates a StyleAction that sets the color of the font.
-// This function uses a flexible parameter type to support multiple color representations.
 //
-// Parameters:
-//   - color: An interface{} value representing the desired font color.
-//     Supported types are resolved internally by the resolveColor helper
-//     (e.g., hex strings like "#FF0000", or native Aspose.Color objects).
+// The color may be given as a Go color.Color (color.RGBA, color.NRGBA,
+// color.Gray, color.Black, ...), a hex string ("#RRGGBB" / "#RRGGBBAA", with or
+// without the "#"), a color name ("red", "Light Sea Green", matched case- and
+// punctuation-insensitively), or an ARGB int. Anything else is ErrInvalidColor.
 //
 // Returns:
 //   - StyleAction: A function that modifies the font color of the target style.
@@ -176,10 +175,8 @@ func WithFontUnderline(value interface{}) StyleAction {
 // Under the hood, this function automatically sets the fill pattern to Solid
 // (BackgroundType_Solid) and applies the provided color as the foreground color.
 //
-// Parameters:
-//   - color: An interface{} value representing the desired background color.
-//     Supported types are resolved internally by the resolveColor helper
-//     (e.g., hex strings like "#FFFF00", "red", or native Aspose.Color objects).
+// The color may be given in the same forms as WithFontColor: a Go color.Color, a
+// hex string, a color name, or an ARGB int.
 //
 // Returns:
 //   - StyleAction: A function that modifies the background fill of the target style.

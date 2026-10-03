@@ -1,4 +1,4 @@
-package editor
+package color
 
 import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 
@@ -12,7 +12,7 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 // it — the name has to be validated before the engine ever sees it.
 //
 // The keys are the engine's own color constructors, normalized the way
-// normalizeEnumName does (lower case, alphanumerics only), so the accepted
+// color.Resolve does (lower case, alphanumerics only), so the accepted
 // vocabulary is exactly the engine's and the RGB values are the engine's own
 // rather than a hand-copied table.
 var namedColorConstructors = map[string]func() (*asposecells.Color, error){

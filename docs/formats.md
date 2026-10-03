@@ -1,8 +1,8 @@
 # formats
 
-Package formats maps file extensions and Aspose.Cells format types to `saveoptions.SaveOption` factories.
+Package formats maps file extensions to `saveoptions.SaveOption` factories.
 
-Implementations register themselves by extension so callers can resolve an output format from a filename or from a `FileFormatType`. The registry is concurrency-safe: `Register`, `Unregister`, `Get`, and `List` may be called from multiple goroutines, and `List` returns a sorted, stable snapshot.
+Implementations register themselves by extension so callers can resolve an output format from a filename. The registry is concurrency-safe: `Register`, `Unregister`, `Get`, and `List` may be called from multiple goroutines, and `List` returns a sorted, stable snapshot.
 
 ## Overview
 
@@ -63,16 +63,6 @@ func Unregister(ext string)
 ```
 
 Removes a previously registered extension. It is safe for concurrent use and is a no-op if the extension is not registered.
-
-### FileFormatToSaveFormat
-
-```go
-func FileFormatToSaveFormat(formatType asposecells.FileFormatType) (asposecells.SaveFormat, error)
-```
-
-Maps an engine input format to the `SaveFormat` that writes the same format back. It is what the toolkit's round-trip saves use, so an edit of a `.xls` comes back as `.xls` rather than as an engine default.
-
-A format with no matching output — one the toolkit does not support saving, or an unrecognized value — returns `ErrUnsupportedFormat` rather than `SaveFormat_Auto`. Auto leaves the choice to the engine, which does not produce the format the caller asked for, so a silent Auto would mean a document loaded in one format and saved in another with no error.
 
 ## Using formats with converter
 

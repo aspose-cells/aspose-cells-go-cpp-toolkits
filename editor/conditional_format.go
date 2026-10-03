@@ -216,10 +216,16 @@ func DeleteConditionalFormatting(index int) WorksheetAction {
 // fill to cells based on their values.
 //
 // Parameters:
+//
 //   - minColor: The color for the minimum value (e.g. "#F8696B" for red).
+//
 //   - maxColor: The color for the maximum value (e.g. "#63BE7B" for green).
+//
 //   - midColor: Optional middle color for a 3-color scale (e.g. "#FFFFFF" for white).
 //     Pass nil or empty string to use a 2-color scale.
+//
+//     Each color takes the forms WithFontColor documents: a hex string, a
+//     color name, a Go color.Color, or an ARGB int.
 //
 // Returns:
 //   - ConditionalFormatAction: A function that adds a color scale rule.
@@ -285,7 +291,8 @@ func WithColorScale(minColor, maxColor interface{}, midColor interface{}) Condit
 // to the cell's value.
 //
 // Parameters:
-//   - color: The color of the data bar (e.g. "#63BE7B" for green).
+//   - color: The color of the data bar (e.g. "#63BE7B" for green), as a hex
+//     string, a color name, a Go color.Color, or an ARGB int.
 //
 // Returns:
 //   - ConditionalFormatAction: A function that adds a data bar rule.

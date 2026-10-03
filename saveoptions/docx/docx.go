@@ -4,7 +4,9 @@ package docx
 
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	color "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/color"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -18,7 +20,7 @@ type Config struct {
 	saveAsEditableShapes              *bool
 	embedXlsxAsChartDataSource        *bool
 	asFlatOpc                         *bool
-	saveElementType                   *asposecells.SaveElementType
+	saveElementType                   *string
 	asNormalView                      *bool
 	defaultFont                       *string
 	checkWorkbookDefaultFont          *bool
@@ -30,14 +32,14 @@ type Config struct {
 	outputBlankPageWhenNothingToPrint *bool
 	pageIndex                         *int32
 	pageCount                         *int32
-	printingPageType                  *asposecells.PrintingPageType
-	gridlineType                      *asposecells.GridlineType
-	gridlineColor                     *asposecells.Color
-	textCrossType                     *asposecells.TextCrossType
-	defaultEditLanguage               *asposecells.DefaultEditLanguage
+	printingPageType                  *string
+	gridlineType                      *string
+	gridlineColor                     interface{}
+	textCrossType                     *string
+	defaultEditLanguage               *string
 	sheetSet                          *asposecells.SheetSet
 	drawObjectEventHandler            *asposecells.DrawObjectEventHandler
-	emfRenderSetting                  *asposecells.EmfRenderSetting
+	emfRenderSetting                  *string
 	customRenderSettings              *asposecells.CustomRenderSettings
 	saveoptions.CommonConfig
 }
@@ -76,7 +78,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.saveElementType != nil {
-		if err := opts.SetSaveElementType(*c.saveElementType); err != nil {
+		value, err := enums.SaveElementType(*c.saveElementType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetSaveElementType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -136,27 +142,54 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.printingPageType != nil {
-		if err := opts.SetPrintingPageType(*c.printingPageType); err != nil {
+		value, err := enums.PrintingPageType(*c.printingPageType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetPrintingPageType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.gridlineType != nil {
-		if err := opts.SetGridlineType(*c.gridlineType); err != nil {
+		value, err := enums.GridlineType(*c.gridlineType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetGridlineType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.gridlineColor != nil {
-		if err := opts.SetGridlineColor(c.gridlineColor); err != nil {
+		gridlineColor, owned, err := color.Resolve(c.gridlineColor)
+		if err != nil {
+			return nil, err
+		}
+		if owned {
+			// The engine's Color carries no finalizer, so a Color the toolkit
+			// creates is the toolkit's to release; one the caller passed is not.
+			// This runs after Apply returns - that is, after the save - because
+			// the engine may read the pointer up until then.
+			defer asposecells.DeleteColor(gridlineColor)
+		}
+		if err := opts.SetGridlineColor(gridlineColor); err != nil {
 			return nil, err
 		}
 	}
 	if c.textCrossType != nil {
-		if err := opts.SetTextCrossType(*c.textCrossType); err != nil {
+		value, err := enums.TextCrossType(*c.textCrossType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetTextCrossType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.defaultEditLanguage != nil {
-		if err := opts.SetDefaultEditLanguage(*c.defaultEditLanguage); err != nil {
+		value, err := enums.DefaultEditLanguage(*c.defaultEditLanguage)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetDefaultEditLanguage(value); err != nil {
 			return nil, err
 		}
 	}
@@ -171,7 +204,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.emfRenderSetting != nil {
-		if err := opts.SetEmfRenderSetting(*c.emfRenderSetting); err != nil {
+		value, err := enums.EmfRenderSetting(*c.emfRenderSetting)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEmfRenderSetting(value); err != nil {
 			return nil, err
 		}
 	}
@@ -273,7 +310,8 @@ func WithAsFlatOpc(value bool) Option {
 	}
 }
 
-func WithSaveElementType(value asposecells.SaveElementType) Option {
+// WithSaveElementType sets the save element type: "all" or "chart".
+func WithSaveElementType(value string) Option {
 	return func(c *Config) {
 		c.saveElementType = &value
 	}
@@ -344,51 +382,95 @@ func WithPageCount(value int32) Option {
 	}
 }
 
-func WithPrintingPageType(value asposecells.PrintingPageType) Option {
+// WithPrintingPageType sets the printing page type: "default",
+// "ignoreBlank", or "ignoreStyle".
+func WithPrintingPageType(value string) Option {
 	return func(c *Config) {
 		c.printingPageType = &value
 	}
 }
-func WithGridlineType(value asposecells.GridlineType) Option {
+
+// WithGridlineType sets the gridline type: "dotted" or "hair".
+func WithGridlineType(value string) Option {
 	return func(c *Config) {
 		c.gridlineType = &value
 	}
 }
-func WithGridlineColor(value *asposecells.Color) Option {
+
+// WithGridlineColor sets the gridline color. Accepted forms are a Go
+// color.Color (color.RGBA, color.NRGBA, color.Gray, color.Black, ...), a hex
+// string ("#RRGGBB" / "#RRGGBBAA", with or without the "#"), a color name
+// ("red", "Light Sea Green", matched case- and punctuation-insensitively), and
+// an ARGB int. Anything else is ErrInvalidColor.
+func WithGridlineColor(value interface{}) Option {
 	return func(c *Config) {
 		c.gridlineColor = value
 	}
 }
-func WithTextCrossType(value asposecells.TextCrossType) Option {
+
+// WithTextCrossType sets the text cross type: "crossKeep", "crossOverride",
+// "default", or "strictInCell".
+func WithTextCrossType(value string) Option {
 	return func(c *Config) {
 		c.textCrossType = &value
 	}
 }
-func WithDefaultEditLanguage(value asposecells.DefaultEditLanguage) Option {
+
+// WithDefaultEditLanguage sets the default edit language: "auto", "cjk", or
+// "english".
+func WithDefaultEditLanguage(value string) Option {
 	return func(c *Config) {
 		c.defaultEditLanguage = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithSheetSet(value *asposecells.SheetSet) Option {
 	return func(c *Config) {
 		c.sheetSet = value
 	}
 }
+*/
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithDrawObjectEventHandler(value *asposecells.DrawObjectEventHandler) Option {
 	return func(c *Config) {
 		c.drawObjectEventHandler = value
 	}
 }
-func WithEmfRenderSetting(value asposecells.EmfRenderSetting) Option {
+*/
+
+// WithEmfRenderSetting sets the EMF render setting: "emfOnly" or
+// "emfPlusPrefer".
+func WithEmfRenderSetting(value string) Option {
 	return func(c *Config) {
 		c.emfRenderSetting = &value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithCustomRenderSettings(value *asposecells.CustomRenderSettings) Option {
 	return func(c *Config) {
 		c.customRenderSettings = value
 	}
 }
+*/
+
 func WithClearData(value bool) Option {
 	return func(c *Config) {
 		c.ClearData = &value

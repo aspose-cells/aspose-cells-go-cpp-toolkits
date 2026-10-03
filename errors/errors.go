@@ -177,4 +177,13 @@ var (
 	// ErrXMLMapAmbiguous is returned when an XML export names no XML map and the
 	// workbook defines more than one, so there is no single obvious choice.
 	ErrXMLMapAmbiguous = errors.New("xml map is ambiguous")
+
+	// ErrInvalidEnumValue is returned when an option is given the name of an
+	// engine enum member that does not exist. Option names are matched
+	// case- and punctuation-insensitively, so only a genuine miss reaches this
+	// error. It is an error rather than a fallback to the engine's default
+	// because the engine enumerates its own members: a name it does not
+	// recognize is a request for something that is not there, and substituting
+	// another value silently is how a typo becomes a wrong document.
+	ErrInvalidEnumValue = errors.New("invalid enum value")
 )

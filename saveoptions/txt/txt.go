@@ -5,6 +5,7 @@ package txt
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -19,9 +20,9 @@ type Config struct {
 	format                       string
 	separator                    *byte
 	separatorString              *string
-	encoding                     *asposecells.EncodingType
-	quoteType                    *asposecells.TxtValueQuoteType
-	formatStrategy               *asposecells.CellValueFormatStrategy
+	encoding                     *string
+	quoteType                    *string
+	formatStrategy               *string
 	trimLeadingBlankRowAndColumn *bool
 	trimTailingBlankCells        *bool
 	keepSeparatorsForBlankRow    *bool
@@ -68,17 +69,29 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.encoding != nil {
-		if err := opts.SetEncoding(*c.encoding); err != nil {
+		value, err := enums.EncodingType(*c.encoding)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetEncoding(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.quoteType != nil {
-		if err := opts.SetQuoteType(*c.quoteType); err != nil {
+		value, err := enums.TxtValueQuoteType(*c.quoteType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetQuoteType(value); err != nil {
 			return nil, err
 		}
 	}
 	if c.formatStrategy != nil {
-		if err := opts.SetFormatStrategy(*c.formatStrategy); err != nil {
+		value, err := enums.CellValueFormatStrategy(*c.formatStrategy)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetFormatStrategy(value); err != nil {
 			return nil, err
 		}
 	}
@@ -214,17 +227,24 @@ func WithSeparatorString(value string) Option {
 	}
 }
 
-func WithEncoding(value asposecells.EncodingType) Option {
+// WithEncoding sets the encoding: "ascii", "default", "unicode", or "utf8".
+func WithEncoding(value string) Option {
 	return func(c *Config) {
 		c.encoding = &value
 	}
 }
-func WithQuoteType(value asposecells.TxtValueQuoteType) Option {
+
+// WithQuoteType sets the quote type: "always", "minimum", "never", or
+// "normal".
+func WithQuoteType(value string) Option {
 	return func(c *Config) {
 		c.quoteType = &value
 	}
 }
-func WithFormatStrategy(value asposecells.CellValueFormatStrategy) Option {
+
+// WithFormatStrategy sets the format strategy: "cellStyle", "displayString",
+// "displayStyle", or "none".
+func WithFormatStrategy(value string) Option {
 	return func(c *Config) {
 		c.formatStrategy = &value
 	}
@@ -247,11 +267,19 @@ func WithKeepSeparatorsForBlankRow(value bool) Option {
 	}
 }
 
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithExportArea(value *asposecells.CellArea) Option {
 	return func(c *Config) {
 		c.exportArea = value
 	}
 }
+*/
+
 func WithExportQuotePrefix(value bool) Option {
 	return func(c *Config) {
 		c.exportQuotePrefix = &value

@@ -5,6 +5,8 @@ package json
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
+	refs "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/refs"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -16,11 +18,11 @@ import (
 // means the caller explicitly requested the value, including zero/false.
 type Config struct {
 	exportStylePool          *bool
-	exportHyperlinkType      *asposecells.JsonExportHyperlinkType
+	exportHyperlinkType      *string
 	skipEmptyRows            *bool
 	sheetIndexes             []int32
 	schemas                  []string
-	exportArea               *asposecells.CellArea
+	exportArea               *string
 	hasHeaderRow             *bool
 	exportAsString           *bool
 	indent                   *string
@@ -54,7 +56,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.exportHyperlinkType != nil {
-		if err := opts.SetExportHyperlinkType(*c.exportHyperlinkType); err != nil {
+		value, err := enums.JsonExportHyperlinkType(*c.exportHyperlinkType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetExportHyperlinkType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -74,7 +80,20 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.exportArea != nil {
-		if err := opts.SetExportArea(c.exportArea); err != nil {
+		area, err := refs.ParseAreaWithinGrid(*c.exportArea)
+		if err != nil {
+			return nil, err
+		}
+		cellArea, err := asposecells.CellArea_CreateCellArea_Int_Int_Int_Int(
+			int32(area.Start.Row), int32(area.Start.Col), int32(area.End.Row), int32(area.End.Col),
+		)
+		if err != nil {
+			return nil, err
+		}
+		// The binding gives CellArea a finalizer, so this one joins the save
+		// options object above in being released by the garbage collector rather
+		// than freed here.
+		if err := opts.SetExportArea(cellArea); err != nil {
 			return nil, err
 		}
 	}
@@ -195,7 +214,9 @@ func WithExportStylePool(value bool) Option {
 	}
 }
 
-func WithExportHyperlinkType(value asposecells.JsonExportHyperlinkType) Option {
+// WithExportHyperlinkType sets the export hyperlink type: "address",
+// "displayString", or "htmlString".
+func WithExportHyperlinkType(value string) Option {
 	return func(c *Config) {
 		c.exportHyperlinkType = &value
 	}
@@ -216,9 +237,15 @@ func WithSchemas(value []string) Option {
 		c.schemas = value
 	}
 }
-func WithExportArea(value *asposecells.CellArea) Option {
+
+// WithExportArea limits the export to an Excel-style area such as "A1:C3", or
+// a single cell such as "B2". The area must lie inside the worksheet grid: an
+// area outside it, one spelled backwards ("C3:A1"), or one that is not an area
+// at all is reported as ErrInvalidRange / ErrInvalidCellRef, because the engine
+// accepts an off-grid area and then exports nothing at all.
+func WithExportArea(value string) Option {
 	return func(c *Config) {
-		c.exportArea = value
+		c.exportArea = &value
 	}
 }
 func WithHasHeaderRow(value bool) Option {

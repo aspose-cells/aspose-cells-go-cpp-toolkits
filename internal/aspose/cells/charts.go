@@ -9,16 +9,6 @@ import (
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
-// Grid limits of an Excel worksheet. The engine never rejects a reference
-// outside these bounds — measured: a chart added over "XFE1:XFE9" (column past
-// XFD) or over 14-letter columns returns no error and simply produces a chart
-// with no data points. Callers validate against these limits so the failure is
-// an error instead of a silently empty chart.
-const (
-	MaxGridRows = 1048576
-	MaxGridCols = 16384
-)
-
 // chartTypeByName maps a normalized chart type name to the engine enum. Names
 // are normalized by normalizeChartEnumName, so the several spellings a caller
 // might use ("Column3D", "column_3d", "column3d") all resolve to the same entry.

@@ -497,7 +497,18 @@ type StyleAction func(style *asposecells.Style) error
 
 StyleAction represents an operation that modifies a style object. These actions are used in conjunction with style-targeting containers like InDefaultStyle or SetStyle. They encapsulate formatting changes such as font adjustments, color modifications, and alignment settings.
 
-Style actions are strict about names. `WithFontColor` / `WithBackgroundColor` reject an unrecognized color name with `ErrInvalidColor` (rather than handing it to the engine's `Color_FromName`, which throws an uncaught C++ exception and **terminates the process**), and `WithFontUnderline` / `WithHorizontalAlignment` / `WithVerticalAlignment` reject an unrecognized style or alignment name with `ErrInvalidFontUnderline` / `ErrInvalidTextAlignment`. None of them fall back to a default: a one-letter typo used to silently reformat the cell, and now reports instead. Names are matched case- and punctuation-insensitively, so `"Light Sea Green"` and `"lightseagreen"` are the same color. Colors also accept `"#RRGGBB"` / `"#RRGGBBAA"` (with or without the `#`) and an ARGB `int`.
+Style actions are strict about names. `WithFontColor` / `WithBackgroundColor` reject an unrecognized color name with `ErrInvalidColor` (rather than handing it to the engine's `Color_FromName`, which throws an uncaught C++ exception and **terminates the process**), and `WithFontUnderline` / `WithHorizontalAlignment` / `WithVerticalAlignment` reject an unrecognized style or alignment name with `ErrInvalidFontUnderline` / `ErrInvalidTextAlignment`. None of them fall back to a default: a one-letter typo used to silently reformat the cell, and now reports instead. Names are matched case- and punctuation-insensitively, so `"Light Sea Green"` and `"lightseagreen"` are the same color.
+
+Color arguments — `WithFontColor`, `WithBackgroundColor`, `WithChartTitleColor`, `WithChartSeriesColor`, `WithDataBar`, `WithColorScale` — share one vocabulary across the whole toolkit, the same one the save options' `WithGridlineColor` takes:
+
+| Form | Example |
+| --- | --- |
+| Go `color.Color` | `color.NRGBA{R: 0xFF, A: 0x80}` (half-transparent red) |
+| hex string | `"#FF0000"`, `"#FF000080"` (8-digit is `RRGGBBAA`), with or without the `#` |
+| color name | `"red"`, `"Light Sea Green"` |
+| ARGB `int` | `0xFFFF0000` |
+
+A Go `color.Color` reports alpha-premultiplied channels, so the alpha is divided back out on the way in: `color.NRGBA{R: 0xFF, A: 0x80}` sets a **full-strength** red at half alpha, not a half-strength one. Anything the toolkit cannot turn into a color is `ErrInvalidColor`.
 
 ### WorkbookAction
 

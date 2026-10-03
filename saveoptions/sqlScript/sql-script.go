@@ -5,6 +5,7 @@ package sqlscript
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -20,7 +21,7 @@ type Config struct {
 	checkAllDataForColumnType *bool
 	addBlankLineBetweenRows   *bool
 	separator                 *byte
-	operatorType              *asposecells.SqlScriptOperatorType
+	operatorType              *string
 	primaryKey                *int32
 	createTable               *bool
 	idName                    *string
@@ -77,7 +78,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 		}
 	}
 	if c.operatorType != nil {
-		if err := opts.SetOperatorType(*c.operatorType); err != nil {
+		value, err := enums.SqlScriptOperatorType(*c.operatorType)
+		if err != nil {
+			return nil, err
+		}
+		if err := opts.SetOperatorType(value); err != nil {
 			return nil, err
 		}
 	}
@@ -208,11 +213,19 @@ func WithCheckIfTableExists(value bool) Option {
 	}
 }
 
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithColumnTypeMap(value *asposecells.SqlScriptColumnTypeMap) Option {
 	return func(c *Config) {
 		c.columnTypeMap = value
 	}
 }
+*/
+
 func WithCheckAllDataForColumnType(value bool) Option {
 	return func(c *Config) {
 		c.checkAllDataForColumnType = &value
@@ -231,7 +244,8 @@ func WithSeparator(value byte) Option {
 	}
 }
 
-func WithOperatorType(value asposecells.SqlScriptOperatorType) Option {
+// WithOperatorType sets the operator type: "delete", "insert", or "update".
+func WithOperatorType(value string) Option {
 	return func(c *Config) {
 		c.operatorType = &value
 	}
@@ -277,11 +291,20 @@ func WithSheetIndexes(value []int32) Option {
 		c.sheetIndexes = value
 	}
 }
+
+// Disabled: this option names an engine type, which the toolkit's public API
+// must not do — a caller who set it would be tied to the binding
+// (docs/design.md §11). Restore it by taking the toolkit-native value instead,
+// the way json.WithExportArea takes an "A1:C3" string. The original
+// declaration follows verbatim.
+/*
 func WithExportArea(value *asposecells.CellArea) Option {
 	return func(c *Config) {
 		c.exportArea = value
 	}
 }
+*/
+
 func WithHasHeaderRow(value bool) Option {
 	return func(c *Config) {
 		c.hasHeaderRow = &value

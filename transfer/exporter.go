@@ -194,11 +194,26 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 			return err
 		}
 	}
-	cellArea, err := asposecells.CellArea_CreateCellArea_Int_Int_Int_Int(startRow, startColumn, endRow, endColumn)
-	if err != nil {
-		return err
+	optArgs := []jsonsaveoptions.Option{jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex})}
+	if cfg.endCell != "" || (endRow >= startRow && endColumn >= startColumn) {
+		// The JSON export option takes an Excel-style area rather than an engine
+		// CellArea, so the corners resolved above are rendered back into "A1:C3".
+		// The area is omitted only for a used range that does not exist: an empty
+		// worksheet reports -1 for its last used row and column, which is no end
+		// cell at all rather than an end before the start. Leaving the area unset
+		// lets the engine export the empty sheet, and the caller gets the empty
+		// JSON array written below.
+		//
+		// An explicit end cell always becomes an area, so a range the caller named
+		// backwards is rejected by the option instead of silently exporting
+		// nothing.
+		exportArea := cells.Area{
+			Start: cells.CellRef{Row: int(startRow), Col: int(startColumn)},
+			End:   cells.CellRef{Row: int(endRow), Col: int(endColumn)},
+		}.String()
+		optArgs = append(optArgs, jsonsaveoptions.WithExportArea(exportArea))
 	}
-	opt := jsonsaveoptions.New(jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex}), jsonsaveoptions.WithExportArea(cellArea))
+	opt := jsonsaveoptions.New(optArgs...)
 	out, err := opt.Apply(data)
 	if err != nil {
 		return err

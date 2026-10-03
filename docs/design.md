@@ -192,7 +192,7 @@ func WithSeparator(s string) Option       // ImportCSV
 
 ### 9.3 editor 增强
 
-- `EditSpreadsheetToSink(source, sink, actions...)`:内部 `GetWorkbookWithDataSource → actions → WorkbookToByteData → sink.Write`,顺带去重 engine.go 原内联的 `GetFileFormat → FileFormatToSaveFormat → Save_SaveFormat` 段;`EditSpreadsheet` 降为薄包装(`*BytesSink`),返回字节语义零变化。
+- `EditSpreadsheetToSink(source, sink, actions...)`:内部 `GetWorkbookWithDataSource → actions → WorkbookToByteData → sink.Write`,顺带去重 engine.go 原内联的 `GetFileFormat → FileFormatToSaveFormat → Save_SaveFormat` 段(该映射已收进 `internal/aspose/engine`,见 §11.4);`EditSpreadsheet` 降为薄包装(`*BytesSink`),返回字节语义零变化。
 - `SetFormula(row, col, formula)`(WorksheetAction)+ `CalculateAll()`(WorkbookAction):绑定 `Cell.SetFormula_String` / `Workbook.CalculateFormula`。
 - **日期写入修复**:`SetCellValue`/`SetValue` 写 `time.Time` 后补设日期数字格式(`yyyy-mm-dd` 或 `yyyy-mm-dd hh:mm:ss`)。根因:绑定的 `PutValue_Object(NewObject_Date)` 只写数值序列号、不设日期格式(探针:`string="45293"`、`type=2/IsNumeric`、`ObjectType_Number`),导致该格被 Excel 与 query 当作普通数字。补设格式后保存再加载返回 `type=4/IsDateTime`、`ObjectType_Date`、`GetStringValue="2024-01-02"`。
 
@@ -237,3 +237,61 @@ func WithSeparator(s string) Option       // ImportCSV
 修完后同一测试二进制、同一负载:全套件 200 次运行 **0 次访问违例**(基线 12/200)。作为对照,`GOGC=off` 下基线同样 0 次崩溃——即 GC 是必要条件,这一点是定位第 2 个缺陷的关键实验。
 
 残留的失败是另一回事:引擎在加载/读回时以小概率把**字符串读成垃圾字节**(同一机制此前已记录于 §8.6 的工作表名损坏),表现为断言失败而非崩溃,与句柄生命周期无关。
+
+## 11. 绑定类型不外泄(`internal/aspose`):枚举、颜色与非枚举类型收口
+
+### 11.1 问题
+
+`saveoptions` 的 16 个格式包里有 75 个 `With*` 选项直接以 `asposecells.*` 枚举作参数(`csv.WithEncoding(asposecells.EncodingType)` 这类),`Config` 字段也存 `*asposecells.EncodingType`。这违反 §2「不镜像底层对象模型」和 §10.2「调用方自己拥有的对象不解除武装」所服务的那条线:调用方为了配置一次保存,必须先 `import` 绑定,于是引擎升级就成了他们的破坏性变更。另有一处反向错误:`saveoptions/image` 已经是字符串,但 `toImageType` 对无法识别的格式**静默返回 `ImageType_Unknown`**——拼错格式会得到一个"引擎顺手挑的格式"的文件,错误离原因很远,甚至根本不暴露。
+
+### 11.2 规则
+
+- **公开签名只出现工具链自己的类型**。枚举一律换成 `string` 名字,内部再解析成引擎枚举。
+- **词汇表就是引擎的**。名字取常量后缀的 lower camel case(`EncodingType_UTF8` → `"utf8"`,`EmfRenderSetting_EmfPlusPrefer` → `"emfPlusPrefer"`),文档引用这套正规拼写。
+- **匹配规则跟随 `editor`**:大小写与标点不敏感,`"UTF-8"` / `"utf8"` / `"utf-8"` 是同一个名字。工具链内只有一条匹配规则,不引入第二条。
+- **不认识的 name 一律报错**(新哨兵 `errors.ErrInvalidEnumValue`),不回落默认值——这是 §2 原则 6 的直接推论。`ImageType_Unknown` 是"没有识别出格式"的哨兵而不是一种格式,因此**不进表**;它不进表,才是拼错格式能被报出来的前提。
+- **解析发生在 `Apply` 里,不在 `Option` 闭包里**。`Option` 是 `func(*Config)`,没有返回错误的通道;`Apply` 是第一个能报错的点。解析先于打开工作簿,所以坏名字不会产出任何字节。
+- **新包必须是叶子**。表不能放在 `saveoptions` 里:`saveoptions → internal/aspose/cells → formats → saveoptions` 已经是环,所以名字表落在只依赖 `errors` 与绑定的 `internal/aspose/enums`。
+
+### 11.3 覆盖与验证
+
+`internal/aspose/enums` 为 35 个枚举、125 个成员各存一张「规范化名字 → 引擎值」表,配一个同名解析函数。`tests/enums_test.go` 把这 125 个成员逐一对着引擎常量钉住,并检查大小写/标点不敏感规则;另有两条端到端测试:8 个非法名字必须在 save option 处失败且不产出字节,合法名字必须真的到达引擎并改变输出(CVS 文本、`%PDF-` 头、JPEG 的 `FF D8`)——断言落在渲染结果上,因为「选项被静默忽略」正是这次重构可能引入的失败形态。
+
+写这条测试时抓到一个真实缺陷:表的键起初用的是正规 camelCase 拼写,而查表走的是规范化后的小写形式,于是所有多词名字(`"displayString"`、`"crossHideRight"`、`"pdfA1b"`)都解析不出来。键必须是规范化形式。
+
+### 11.4 非枚举泄漏
+
+有 8 个**不是枚举**的绑定类型同样出现在 `saveoptions` 的公开签名中,字符串表达不了它们,各自需要先有一个工具链自己的类型:
+
+| 绑定类型 | 需要的东西 | 现状 |
+| --- | --- | --- |
+| `CellArea` | A1 区间字符串 | `json.WithExportArea` 已收口;其余 6 处停用 |
+| `SheetSet` | 工作表名列表 | 停用,待补 |
+| `PdfSecurityOptions` | 工具链自己的选项结构体 | 停用,待补 |
+| `PdfBookmarkEntry` | 同上 | 停用,待补 |
+| `RenderingWatermark` | 同上 | 停用,待补 |
+| `SqlScriptColumnTypeMap` | 同上 | 停用,待补 |
+| `CustomRenderSettings` | 回调类型,建议不纳入 | 停用 |
+| `DrawObjectEventHandler` | 同上 | 停用 |
+
+**「停用」= 整段注释掉,原文保留。** 这 28 个 `With*` 全库无调用方,收口形状又尚未确定,所以它们的声明被包进块注释,上面留一段说明:为什么不能这样暴露、恢复时该换成工具链自己的值。`Config` 字段与 `Apply` 里的接线原样保留,所以恢复只需删掉注释包裹、把参数类型换掉。(`editor` 的 6 个动作类型仍以 `*asposecells.*` 作参数——那是 §11.5 末尾说的同一类既有行为,收口要单独一轮。)
+
+**`CellArea` 是第一个收口的**,形状就是 A1 区间字符串:
+
+- `json.WithExportArea` 现在收 `"A1:C3"`(`"B2"` 视为单格),`Apply` 里解析成引擎的 `CellArea`;`transfer.ExportRangeToJson` 把解析好的四角渲染回 `"A1:C3"` 再交给它,签名里不再有绑定类型。
+- 解析落在新叶子包 `internal/aspose/refs`。不能放 `internal/aspose/cells`:save option 导它就会成环(`saveoptions → internal/aspose/cells → formats → saveoptions`)。`cells` 现在把这份地址词汇表(re-export 给 `query` 的 `CellRef`/`Area`)重新导出,`ParseArea` 等仍是同一份实现。
+- `refs.ParseAreaWithinGrid` 补上了原先缺的**网格边界校验**。`ParseCellRef` 是纯语法解析:任意行号、任意长度的列字母都收,而 14 个字母的列会溢出成负数。引擎两样都不查——越界的区间它照收,然后**匹配不到任何东西**——所以不校验的 `"XFE1"` 是个静默的空结果,不是错误。这正是 §2 原则 6「能报错就报错,不静默降级」。
+
+**`formats.FileFormatToSaveFormat` 一并转为内部。** 它两侧都是引擎枚举,公开出去就是把 `formats` 的调用方绑到绑定上;实际调用方只有 `internal/aspose/cells.WorkbookToByteData` 一处,所以整张表移到 `internal/aspose/engine`(与 `OpenWorkbook`/`CloseWorkbook` 同层,都是保存路径上的引擎管道)。`formats` 因此**不再 import 绑定**,只剩扩展名注册表。
+
+### 11.5 颜色(`internal/aspose/color`)
+
+`Color` 不是枚举,收口方式却一样:公开签名收 `interface{}`,工具链内部转成引擎的 `Color`。`color.Resolve` 是这件事唯一的发生地,`editor`(`WithFontColor` / `WithBackgroundColor`,以及图表与条件格式的颜色入口)与 5 个 save option 的 `WithGridlineColor` 共用它——全库只有一条颜色规则,所以「怎么写一个颜色」在任何入口都是同一个答案。
+
+- **表必须自己带,不能问引擎**。颜色名走工具链自带的 140 项构造器表(`editor/color_names.go` 迁到 `internal/aspose/color/color_names.go`),绝不交给引擎的 `Color_FromName`:它对不认识的名字**抛出未捕获的 C++ 异常**,穿过 cgo 直接杀进程,Go 侧接不住。
+- **Go 颜色要「去预乘」**。`color.Color` 只提供 alpha 预乘后的通道,而文档颜色是直乘 alpha,`Resolve` 因此把 alpha 除回去:`color.NRGBA{R:0xFF, A:0x80}` 必须是「全强度红、半透明」,不是「半强度红、半透明」。除回去的结果可能超出通道范围——`color.RGBA{R:0xFF, A:0x80}` 在预乘语义下不合法,却正是「半透明红」的通俗写法——超出时夹到满值,而不是回绕成一个无关的颜色。
+- **十六进制按文档的 `RRGGBBAA` 读**。引擎的 `Color_FromHex` 把 8 位串读成 `AARRGGBB`(Java/Android 顺序),而工具链文档承诺的是 `RRGGBBAA`(CSS 顺序)。这个不一致意味着 `"#33669980"` 在引擎里是「33/255 不透明的青」,不是「80/255 不透明的青」——`editor` 的 `WithFontColor` 一直带着这个缺陷。现在把 alpha 移到前面再交给引擎,文档与实现一致。
+- **所有权是 `Resolve` 的第二个返回值**。引擎的 `Color` **没有 finalizer**(`Color_FromArgb` / `Color_FromHex` 只分配),所以工具链建的色只能靠显式 `DeleteColor` 释放,而调用方交进来的 `*asposecells.Color` 绝不能由工具链释放——释放它就是让调用方握着一个已死对象。save option 在 `Apply` 里 `defer DeleteColor`,即保存之后才释放,而不是 `SetGridlineColor` 返回后就释放:引擎是当场复制值还是留到保存时再读,绑定的文档没有交代,放进 `Apply` 的 defer 对两种情形都成立。
+- **`editor` 的色仍不释放**。动作闭包把 `Color` 直接交给引擎 setter,而 `defer` 会在 setter 之后立刻执行——那时往往离保存还很远,而引擎是否还持有那个指针无从确认,所以这里只能维持既有行为(即每次设置颜色泄漏一个引擎色对象)。要收口需要先有「引擎确实复制了值」的证据。
+
+`tests/color_test.go` 把这张词汇表钉住:每种写法的 ARGB 精确值(包括预乘回来的半透明与越界夹取)、`Resolve` 的所有权标志、非法输入必须是 `ErrInvalidColor`,以及 5 个 gridline 颜色入口各自能存出文件、连着存两次不炸——后两条断言故意弱(页面网格线的颜色读不回来),但它们覆盖的是一次段错误就会带走整个测试二进制的那段代码:双重释放或释放后用。
