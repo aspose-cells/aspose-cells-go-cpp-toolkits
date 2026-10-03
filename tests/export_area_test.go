@@ -96,6 +96,40 @@ func TestExportRangeToJsonHonoursArea(t *testing.T) {
 	}
 }
 
+// TestExportRangeToJsonStartPastUsedRange checks that a start cell beyond the
+// worksheet's data yields nothing rather than the whole sheet. The end cell is
+// implicit (the last used cell) in this case, so the resolved end falls before
+// the start: an implementation that read that as "no area to set" would fall
+// back to exporting the entire used range, answering a range request with data
+// from outside it.
+func TestExportRangeToJsonStartPastUsedRange(t *testing.T) {
+	if err := retryStable(5, func() error {
+		seed := datasource.BytesSource(newNamedWorkbookBytes(t, "Data"))
+		csv := datasource.BytesSource([]byte("id,name\n1,Alpha\n2,Beta\n"))
+
+		var imported datasource.BytesSink
+		if err := transfer.ImportCSV(seed, csv, &imported,
+			transfer.WithSheet("Data"), transfer.WithBeginCell(0, 0),
+			transfer.WithConvertNumeric(true), transfer.WithSeparator(","),
+		); err != nil {
+			return fmt.Errorf("ImportCSV: %w", err)
+		}
+
+		var out datasource.BytesSink
+		if err := transfer.ExportRangeToJson(datasource.BytesSource(imported.Bytes()), &out,
+			transfer.WithSheet("Data"), transfer.WithStartCell("Z100"),
+		); err != nil {
+			return fmt.Errorf("ExportRangeToJson: %w", err)
+		}
+		if got := strings.TrimSpace(string(out.Bytes())); got != "[]" {
+			return fmt.Errorf("start past the used range exported %s, want []", got)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestExportRangeToJsonRejectsBackwardsArea checks that a range the caller named
 // the wrong way round is reported rather than exported as nothing.
 func TestExportRangeToJsonRejectsBackwardsArea(t *testing.T) {

@@ -79,7 +79,7 @@ Loads a workbook from source, retrying on fresh loads when the engine corrupts s
 - `error`: An error if all attempts fail
 
 **Notes**:
-- In evaluation mode, `NewWorkbook_Stream` occasionally returns a workbook whose in-memory state (a worksheet name or a cell value) is garbage (~2% of loads, non-deterministic, and not present in the bytes).
+- In evaluation mode, `NewWorkbook_Stream` occasionally returns a workbook whose in-memory state (a worksheet name or a cell value) is garbage (~2% of loads for a sheet name, non-deterministic, and not present in the bytes). The cell-value case is far more frequent on a tiny workbook — with only a couple of non-empty cells, a read-back was measured bad ~1 in 3 loads — so `LoadStable` is worth calling whenever the verification reads back cell values, not just names.
 - `LoadStable` reopens the source and retries up to `attempts` times, calling `verify` on each load.
 - Every rejected workbook is disposed to prevent native handle leaks.
 
@@ -272,7 +272,7 @@ Renders the reference with absolute markers, e.g., `(Row: 2, Col: 1)` -> `"$B$3"
 
 ### Evaluation mode worksheet name corruption
 
-**Problem**: In evaluation mode, `NewWorkbook_Stream` occasionally returns a workbook whose in-memory state (a worksheet name or a cell value) is garbage (~2% of loads, non-deterministic).
+**Problem**: In evaluation mode, `NewWorkbook_Stream` occasionally returns a workbook whose in-memory state (a worksheet name or a cell value) is garbage (~2% of loads for a name, non-deterministic; on a tiny workbook a cell-value read-back was measured bad ~1 in 3 loads).
 
 **Symptoms**:
 - A worksheet name may contain null bytes or non-printable characters

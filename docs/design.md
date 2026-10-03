@@ -173,7 +173,7 @@ func WithSeparator(s string) Option       // ImportCSV
 3. **单输出 Sink 的 `name` 约定**:统一传 `""`,由 Sink 忽略;避免调用方误传。
 4. **保持字节式处理**:引擎 `Apply`/`SaveToStream` 输出整块 `[]byte`,本次不改内存模型。
 5. **eval 模式还会追加 "Evaluation Warning" sheet**:评估版保存的工作簿可能额外多出一个名为 "Evaluation Warning" 的 sheet,导致"输出文件数 == sheet 数"类断言不稳定。行为测试改为主张「每个显式命名 sheet 产出独立输出」,不依赖精确总数;正式授权版无此噪声。
-6. **加载期工作表名不可靠(eval 模式)**:引擎在 `NewWorkbook_Stream` 加载时以约 2%/次 的概率把**任意**工作表的名称改写成垃圾字节——不限于默认首表,也不存在于字节流中(探针证实:同一份字节第一次加载名称正常,第二次加载首表名可变成 `"\x00@\x12\x00"`)。后果:按名查找(`WithSheet` 默认 `"Sheet1"`)可能返回 `ErrWorksheetNotFound`;`Split` 可能以坏名产出输出文件,或对含空字节等非法文件名的坏名直接报错。对策:`WithSheet` 文档与 README 注明"请用显式命名 sheet";凡依赖名称存活的断言(行为测试)基于显式命名 sheet 构造,并用 `retryStable` 重试——每次重试重新生成输入并重新加载,直至引擎给出干净名称;真实缺陷每次重试都失败,不会被掩盖。**同一机制也可能把随机单元格的值读成垃圾字节**(同一份字节可干净加载、也可返回指针垃圾),因此"加载后读值"的测试同样套 `retryStable`,`query.WithSheetIndex` 对自动化免疫。
+6. **加载期工作表名不可靠(eval 模式)**:引擎在 `NewWorkbook_Stream` 加载时以约 2%/次 的概率把**任意**工作表的名称改写成垃圾字节——不限于默认首表,也不存在于字节流中(探针证实:同一份字节第一次加载名称正常,第二次加载首表名可变成 `"\x00@\x12\x00"`)。后果:按名查找(`WithSheet` 默认 `"Sheet1"`)可能返回 `ErrWorksheetNotFound`;`Split` 可能以坏名产出输出文件,或对含空字节等非法文件名的坏名直接报错。对策:`WithSheet` 文档与 README 注明"请用显式命名 sheet";凡依赖名称存活的断言(行为测试)基于显式命名 sheet 构造,并用 `retryStable` 重试——每次重试重新生成输入并重新加载,直至引擎给出干净名称;真实缺陷每次重试都失败,不会被掩盖。**同一机制也可能把随机单元格的值读成垃圾字节**(同一份字节可干净加载、也可返回指针垃圾),因此"加载后读值"的测试同样套 `retryStable`,`query.WithSheetIndex` 对自动化免疫。小工作簿尤其危险:非空格只有两三个时,读回目标被命中的概率大得多,实测 30 次里 10 次、11 次里 5 次返回垃圾(约 1/3),与命名损坏的 ~2% 不是一个量级。
 
 ## 9. 读取层(query)与 editor 增强(ISSUE-CELLSGO-294)
 
@@ -185,7 +185,7 @@ func WithSeparator(s string) Option       // ImportCSV
 
 - 数据模型:`CellValue` + `CellKind`(`KindEmpty`/`KindText`/`KindInt`/`KindFloat`/`KindBool`/`KindDateTime`/`KindError`);访问器返回 `(value, ok)`,类型不匹配时 ok=false。
 - 类型判别:`Cell.GetType()` 走 `CellValueType` 位枚举;数值格经 `Style.IsDateTime()` 识别日期格式(日期以序列号存储);公式格返回**计算后**值。
-- 地址类型:`CellRef`(0-based)/`Area`,纯 Go 解析(`ParseCellRef`/`ParseArea`),定义在 `internal/aspose/cells`,query 以类型别名复用,供 `ReadMergedCells` 与内部助手共用。
+- 地址类型:`CellRef`(0-based)/`Area`,纯 Go 解析(`ParseCellRef`/`ParseArea`/`ParseAreaWithinGrid`),定义在 `internal/aspose/refs`(叶子包,供只能依赖叶子的 saveoptions 复用),`internal/aspose/cells` 整体转出,query 再以类型别名复用,供 `ReadMergedCells` 与内部助手共用。
 - Option:`WithSheet`(按名)/`WithSheetIndex`(按索引,对 eval 名损坏免疫)/`WithTrimSpace`。**默认索引 0**(默认首表名恰是 eval 损坏最常命中的对象)。
 - 内部收敛:`internal/aspose/cells` 新增 `GetCell`/`UsedRange`/`MergedAreas`(`Cells.GetMergedAreas` → `Area`)/`SheetNames`/`SheetByIndex`。
 - 错误:新增 `ErrInvalidCellRef`/`ErrInvalidRange`;复用 `ErrDataSourceNil`/`ErrWorksheetNotFound`/`ErrInvalidSheetID`;统一 `%w` + `errors.Is`。

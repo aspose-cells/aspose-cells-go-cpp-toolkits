@@ -151,7 +151,7 @@ opt := formats.Get("custom")
 
 ## Relationship with saveoptions
 
-- **saveoptions**: Defines the `SaveOption` interface and format-specific option types (e.g., `pdf.SaveOption`, `csv.SaveOption`)
+- **saveoptions**: Defines the `SaveOption` interface and the per-format option subpackages that implement it (e.g., `csv.New(...)`, `pdf.New(...)`), each with its own `Option` functions and `Config`
 - **formats**: Provides a registry that maps extensions to factory functions that create those option types
 
 The `formats` package doesn't define formats itself; it only maps extensions to factories that create `saveoptions.SaveOption` implementations.

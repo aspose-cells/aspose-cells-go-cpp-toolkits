@@ -194,25 +194,24 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 			return err
 		}
 	}
-	optArgs := []jsonsaveoptions.Option{jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex})}
-	if cfg.endCell != "" || (endRow >= startRow && endColumn >= startColumn) {
-		// The JSON export option takes an Excel-style area rather than an engine
-		// CellArea, so the corners resolved above are rendered back into "A1:C3".
-		// The area is omitted only for a used range that does not exist: an empty
-		// worksheet reports -1 for its last used row and column, which is no end
-		// cell at all rather than an end before the start. Leaving the area unset
-		// lets the engine export the empty sheet, and the caller gets the empty
-		// JSON array written below.
-		//
-		// An explicit end cell always becomes an area, so a range the caller named
-		// backwards is rejected by the option instead of silently exporting
-		// nothing.
-		exportArea := cells.Area{
-			Start: cells.CellRef{Row: int(startRow), Col: int(startColumn)},
-			End:   cells.CellRef{Row: int(endRow), Col: int(endColumn)},
-		}.String()
-		optArgs = append(optArgs, jsonsaveoptions.WithExportArea(exportArea))
+	if cfg.endCell == "" && (endRow < startRow || endColumn < startColumn) {
+		// No end cell was named, and the worksheet's last used cell falls short of
+		// the start cell: the requested region holds nothing. An empty worksheet
+		// reports -1 for both, and a start past the used range leaves it just as
+		// empty. Say so directly — asking the engine to export the whole used area
+		// instead would answer a range request with data from outside it.
+		return sink.Write("", []byte("[]"))
 	}
+	optArgs := []jsonsaveoptions.Option{jsonsaveoptions.WithSheetIndexes([]int32{sheetIndex})}
+	// The JSON export option takes an Excel-style area rather than an engine
+	// CellArea, so the corners resolved above are rendered back into "A1:C3". An
+	// explicit end cell always becomes an area, so a range the caller named
+	// backwards is rejected by the option instead of silently exporting nothing.
+	exportArea := cells.Area{
+		Start: cells.CellRef{Row: int(startRow), Col: int(startColumn)},
+		End:   cells.CellRef{Row: int(endRow), Col: int(endColumn)},
+	}.String()
+	optArgs = append(optArgs, jsonsaveoptions.WithExportArea(exportArea))
 	opt := jsonsaveoptions.New(optArgs...)
 	out, err := opt.Apply(data)
 	if err != nil {

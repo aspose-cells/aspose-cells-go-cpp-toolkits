@@ -41,15 +41,25 @@ if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
 To verify that the license was applied successfully, check the return value:
 
 ```go
+import (
+    "errors"
+    "log"
+
+    "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/core"
+    toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+)
+
 err := core.SetLicense("path/to/license.lic")
 if err != nil {
-    if errors.Is(err, core.ErrLicenseInvalid) {
+    if errors.Is(err, toolkiterrors.ErrLicenseInvalid) {
         log.Println("Warning: Using evaluation version")
     } else {
         log.Fatalf("Failed to set license: %v", err)
     }
 }
 ```
+
+`SetLicense` is `core`'s only exported symbol; the sentinel it wraps lives in the `errors` package, which the docs elsewhere import as `toolkiterrors`.
 
 ## Evaluation vs Licensed mode
 
