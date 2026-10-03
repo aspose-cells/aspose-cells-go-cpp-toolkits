@@ -213,3 +213,27 @@ func WithSeparator(s string) Option       // ImportCSV
 - **单元格批注**:`editor.SetCellComment(row, col, text)` / `editor.ClearComments()`(WorksheetAction),读侧 `query.ReadCellComment(source, ref, opts...) (string, error)`(无批注 → 空串)。**关键坑**:绑定的 `Cell.GetComment()` 对无批注格返回非 nil 悬垂句柄,调用 `GetNote()` 直接崩溃(探针验证);因此读侧**绝不**用 `Cell.GetComment()`,而是迭代 `CommentCollection`(`Get_Int(i)` + `GetRow()/GetColumn()` 匹配),`CommentCollection.Get_Int_Int` 对缺批注格返回 `IsNull()==true` 可安全判别。
 - **工作簿加密**:`editor.Encrypt(password)`(WorkbookAction)设置 `Settings.SetPassword` + `Workbook.SetEncryptionOptions(StrongCryptographicProvider, 128)`,保存后文件需密码才能打开。读回需加载期密码,工具包共享加载器目前未暴露(文档注明以底层 `LoadOptions` 读取)。测试在绑定层以 `LoadOptions.SetPassword` 验证:无密码加载失败、有密码加载后 `IsEncrypted()==true` 且值存活。
 - **测试预算**:沿用 eval 100 次加载上限纪律——新增测试共用一次缓存的 build(`sync.Once`),并把 `TestQueryReadCellTypes` 从逐格 6 次 `ReadCell` 改为单次 `ReadWorksheet` 取网格(典型加载 6→1),为新测试腾出预算。
+
+## 10. 引擎访问收口(`internal/aspose/engine`):串行锁 + 句柄解除武装
+
+### 10.1 两个独立缺陷
+
+原生引擎有两处会让进程直接崩溃,二者机制不同,修法也不同:
+
+1. **引擎不是线程安全的**。两个 goroutine 同时进入会卡死或崩溃——探针:4 个 goroutine 并发加载,每次运行都挂起;加载与"finalizer 释放对象"重叠,保存路径内访问违例(15 次全套件运行中 4 次)。
+2. **绑定的 finalizer 是破坏性的,不只是浪费**。`Delete_Worksheet` 真的析构 worksheet,`Delete_Cell` 真的析构 cell。工具链丢弃的包装器一旦不可达,下一次 GC 就会销毁引擎仍然持有指针的对象,其后的调用就走在已释放的对象上。探针:在"创建-丢弃句柄"循环中,`Delete_Worksheet`、`Delete_Cell`、`Delete_Charts` 三类各自在 20000 次迭代内让引擎出错;把同样的句柄解除武装,探针从 5 次中 1 次通过变成 5 次全部通过。
+
+这两点合起来解释了此前的现象:锁只解决了第 1 点(全套件崩溃率约 27% → 6%),第 2 点**锁无法触及**——finalizer 走的是 Go 的 finalizer goroutine,不会去拿引擎锁。
+
+### 10.2 规则
+
+- **进入引擎即持锁**。所有可能到达引擎的公开入口点用 `engine.WithEngine(fn)` 或 `engine.LockEngine()` / `defer engine.UnlockEngine()` 包住全程。锁**按 goroutine 可重入**:工具链的 API 是组合式的(`manipulator.Merge` 先做引擎工作,再把结果交给 `saveoptions` 的 `Apply`,后者自己也会拿锁;`Split` 对每张表如此;`Convert` 本身就是一次 `Apply` 调用),普通互斥锁会在第一次嵌套调用时死锁。
+- **引擎拥有的句柄在取得的那一刻解除武装**,写法是 `engine.Derive(receiver.GetX())`。`engine.OpenWorkbook` / `NewWorkbook` / `OpenWorkbookFile` / `OpenWorkbookWithOptions` 已内建解除武装。派生句柄(工作簿的 worksheet / cells / cell / style / chart / series / collection)一律经由 `Derive`,GC 因此永远不会通过 finalizer 进引擎。
+- **工作簿由工具链拥有**:用 `engine.CloseWorkbook` 释放,**每本只调一次**。`DeleteWorkbook` 释放后会把句柄内部的指针置 nil,第二次调用会带着 nil 指针进入引擎的分配器;破坏是静默的,很晚才以一次无关调用中的访问违例显现。宁可泄漏一本工作簿,也不要猜第二次释放。
+- **调用方自己拥有的对象不解除武装**:保存选项、加载选项、`NewObject_*` 值对象不属于任何工作簿,finalizer 是它们唯一的释放途径,解除武装等于泄漏它们。(例外:`internal/aspose/cells/xmlmap.go` 的 `XmlLoadOptions` 在交给引擎后即解除武装,因为那份所有权已经转移。)
+
+### 10.3 验证
+
+修完后同一测试二进制、同一负载:全套件 200 次运行 **0 次访问违例**(基线 12/200)。作为对照,`GOGC=off` 下基线同样 0 次崩溃——即 GC 是必要条件,这一点是定位第 2 个缺陷的关键实验。
+
+残留的失败是另一回事:引擎在加载/读回时以小概率把**字符串读成垃圾字节**(同一机制此前已记录于 §8.6 的工作表名损坏),表现为断言失败而非崩溃,与句柄生命周期无关。

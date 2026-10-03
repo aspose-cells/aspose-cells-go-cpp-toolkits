@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // TestFormulaWriteCalculateRead writes a formula, recalculates, saves, reloads,
@@ -31,23 +31,24 @@ func TestFormulaWriteCalculateRead(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("EditSpreadsheet: %w", err)
 		}
-		wb, err := asposecells.NewWorkbook_Stream(out)
+		wb, err := engine.OpenWorkbook(out)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		cs, err := ws.GetCells()
+		cs, err := engine.Derive(ws.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := cs.Get_Int_Int(0, 2)
+		cell, err := engine.Derive(cs.Get_Int_Int(0, 2))
 		if err != nil {
 			return err
 		}
@@ -158,23 +159,24 @@ func TestEditSpreadsheetToSink(t *testing.T) {
 // callers can re-load under retryStable, since evaluation mode can corrupt a
 // random cell at load time.
 func readCellString(data []byte, row, col int) (string, error) {
-	wb, err := asposecells.NewWorkbook_Stream(data)
+	wb, err := engine.OpenWorkbook(data)
 	if err != nil {
 		return "", err
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return "", err
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		return "", err
 	}
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return "", err
 	}
-	cell, err := cs.Get_Int_Int(int32(row), int32(col))
+	cell, err := engine.Derive(cs.Get_Int_Int(int32(row), int32(col)))
 	if err != nil {
 		return "", err
 	}

@@ -39,6 +39,9 @@ echo "=== 6. Run examples ==="
 echo "Running chart example..."
 "$script_dir/run.sh" chart
 
+echo "Running chart-export example..."
+"$script_dir/run.sh" chart-export
+
 echo "Running convert example..."
 "$script_dir/run.sh" convert
 
@@ -53,5 +56,8 @@ echo "Running query example..."
 
 echo "Running transfer example..."
 "$script_dir/run.sh" transfer
+
+echo "Running validation-cf example..."
+"$script_dir/run.sh" validation-cf
 
 echo "=== All tests and examples completed ==="

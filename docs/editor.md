@@ -497,6 +497,8 @@ type StyleAction func(style *asposecells.Style) error
 
 StyleAction represents an operation that modifies a style object. These actions are used in conjunction with style-targeting containers like InDefaultStyle or SetStyle. They encapsulate formatting changes such as font adjustments, color modifications, and alignment settings.
 
+Style actions are strict about names. `WithFontColor` / `WithBackgroundColor` reject an unrecognized color name with `ErrInvalidColor` (rather than handing it to the engine's `Color_FromName`, which throws an uncaught C++ exception and **terminates the process**), and `WithFontUnderline` / `WithHorizontalAlignment` / `WithVerticalAlignment` reject an unrecognized style or alignment name with `ErrInvalidFontUnderline` / `ErrInvalidTextAlignment`. None of them fall back to a default: a one-letter typo used to silently reformat the cell, and now reports instead. Names are matched case- and punctuation-insensitively, so `"Light Sea Green"` and `"lightseagreen"` are the same color. Colors also accept `"#RRGGBB"` / `"#RRGGBBAA"` (with or without the `#`) and an ARGB `int`.
+
 ### WorkbookAction
 
 ```go
@@ -522,6 +524,7 @@ type ChartStylePreset struct {
     Style          int
     Title          string
     ShowLegend     bool
+    ApplyLegend    bool
     LegendPosition ChartLegendPosition
     DataRange      string
     ByColumn       bool
@@ -546,6 +549,13 @@ a preset combines them.
 A preset can be partial: zero-value fields are skipped when applied, so a preset
 can specify only the settings it cares about and leave the rest unchanged. This
 makes presets useful for both complete chart templates and targeted style bundles.
+
+`ShowLegend` is the one field that cannot be skipped by its zero value alone: a
+`bool` cannot distinguish "hide the legend" from "leave it alone", so a preset
+that never mentions the legend would otherwise hide it. `ApplyLegend` resolves
+that — with it set, `ShowLegend: false` means *hide*. Leave `ApplyLegend` false
+when `ShowLegend` is true (that case is applied on its own) and set it only to
+hide. A preset that sets neither touches no legend.
 
 ### WithChartPreset
 
@@ -762,12 +772,16 @@ The following validation types are available:
 Comparison operators for numeric, date, time, and text length validations:
 
 - `OperatorTypeBetween` - Value between two bounds
+- `OperatorTypeNotBetween` - Value outside two bounds
 - `OperatorTypeEqual` - Value equals
 - `OperatorTypeNotEqual` - Value not equals
 - `OperatorTypeLessThan` - Value less than
 - `OperatorTypeLessOrEqual` - Value less than or equal
 - `OperatorTypeGreaterThan` - Value greater than
 - `OperatorTypeGreaterOrEqual` - Value greater than or equal
+- `OperatorTypeNone` - No operator (the default; for validation types that take none, and for conditional-formatting rule types other than cell-value comparisons)
+
+These names are mapped to the engine's own `OperatorType` enum, whose ordinals are not in the order the names suggest (`None` is 6, and the two "not" operators follow it). An unrecognized name is reported rather than silently written as `None`, which for a cell-value or expression rule would quietly change what the rule matches.
 
 ### Validation Actions
 

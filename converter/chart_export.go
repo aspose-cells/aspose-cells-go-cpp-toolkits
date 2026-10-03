@@ -3,6 +3,7 @@ package converter
 import (
 	"encoding/binary"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
@@ -142,6 +143,8 @@ func ExportChartToFile(src datasource.DataSource, outputPath string, sheetIndex,
 // points route through it, so the workbook load, the sheet lookup, the chart
 // lookup, and the format dispatch exist exactly once.
 func exportChart(src datasource.DataSource, sheetIndex, chartIndex int, opts *ChartExportOptions) ([]byte, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	if opts == nil {
 		opts = &ChartExportOptions{Format: ChartExportFormatPNG}
 	}
@@ -157,7 +160,7 @@ func exportChart(src datasource.DataSource, sheetIndex, chartIndex int, opts *Ch
 	if err != nil {
 		return nil, err
 	}
-	defer workbook.Dispose()
+	defer engine.CloseWorkbook(workbook)
 
 	switch opts.Format {
 	case ChartExportFormatPNG:
@@ -188,12 +191,12 @@ func resolveChart(src datasource.DataSource, sheetIndex, chartIndex int) (*aspos
 	}
 	worksheet, err := cells.SheetByIndex(workbook, sheetIndex)
 	if err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, nil, err
 	}
 	chart, err := cells.Chart(worksheet, chartIndex)
 	if err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, nil, err
 	}
 	return chart, workbook, nil
@@ -274,7 +277,7 @@ func renderChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions, width,
 	if err != nil {
 		return nil, err
 	}
-	defer workbook.Dispose()
+	defer engine.CloseWorkbook(workbook)
 
 	sheetBytes, err := cells.WorkbookToByteData(workbook)
 	if err != nil {
@@ -291,24 +294,24 @@ func renderChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions, width,
 // whose print area is exactly the image's cell span, so the PDF page covers the
 // chart and nothing else. The caller owns the returned workbook.
 func chartImageWorkbook(image []byte, pxWidth, pxHeight int) (*asposecells.Workbook, error) {
-	workbook, err := asposecells.NewWorkbook()
+	workbook, err := engine.NewWorkbook()
 	if err != nil {
 		return nil, fmt.Errorf("create chart page workbook: %w", err)
 	}
 	worksheet, err := cells.SheetByIndex(workbook, 0)
 	if err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, err
 	}
 	rows := ceilDiv(pxHeight, defaultRowHeightPx)
 	columns := ceilDiv(pxWidth, defaultColumnWidthPx)
 	if err := cells.AddPictureAt(worksheet, 0, 0, rows-1, columns-1, image); err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, err
 	}
 	pageSetup, err := worksheet.GetPageSetup()
 	if err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, fmt.Errorf("get page setup: %w", err)
 	}
 	area := cells.Area{
@@ -316,11 +319,11 @@ func chartImageWorkbook(image []byte, pxWidth, pxHeight int) (*asposecells.Workb
 		End:   cells.CellRef{Row: rows - 1, Col: columns - 1},
 	}
 	if err := pageSetup.SetPrintArea(area.String()); err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, fmt.Errorf("set print area: %w", err)
 	}
 	if err := pageSetup.SetFitToPages(1, 1); err != nil {
-		_ = workbook.Dispose()
+		engine.CloseWorkbook(workbook)
 		return nil, fmt.Errorf("fit chart page: %w", err)
 	}
 	return workbook, nil

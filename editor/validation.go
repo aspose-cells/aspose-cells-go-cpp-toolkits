@@ -5,6 +5,7 @@ import (
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -34,7 +35,9 @@ type OperatorType string
 
 // The curated operator types. Each names a comparison operator.
 const (
+	OperatorTypeNone           OperatorType = "none"
 	OperatorTypeBetween        OperatorType = "between"
+	OperatorTypeNotBetween     OperatorType = "notBetween"
 	OperatorTypeEqual          OperatorType = "equal"
 	OperatorTypeNotEqual       OperatorType = "notEqual"
 	OperatorTypeLessThan       OperatorType = "lessThan"
@@ -111,11 +114,11 @@ func AddDataValidation(cellRange string, actions ...DataValidationAction) Worksh
 //	)
 func InValidation(index int, actions ...DataValidationAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		validations, err := worksheet.GetValidations()
+		validations, err := engine.Derive(worksheet.GetValidations())
 		if err != nil {
 			return err
 		}
-		validation, err := cells.GetValidation(validations, index)
+		validation, err := engine.Derive(cells.GetValidation(validations, index))
 		if err != nil {
 			return err
 		}
@@ -138,7 +141,7 @@ func InValidation(index int, actions ...DataValidationAction) WorksheetAction {
 //   - WorksheetAction: A function that deletes the validation.
 func DeleteValidation(index int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		validations, err := worksheet.GetValidations()
+		validations, err := engine.Derive(worksheet.GetValidations())
 		if err != nil {
 			return err
 		}
@@ -155,7 +158,7 @@ func DeleteValidation(index int) WorksheetAction {
 		if err != nil {
 			return err
 		}
-		areas, err := v.GetAreas()
+		areas, err := engine.Derive(v.GetAreas())
 		if err != nil {
 			return err
 		}

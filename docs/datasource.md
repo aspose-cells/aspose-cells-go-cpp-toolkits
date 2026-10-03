@@ -60,6 +60,18 @@ type DataSink interface {
 
 The `DataSink` interface defines a writable output. The `name` parameter is used by multi-output operations (for example `manipulator.Split` writing one file or archive entry per worksheet); single-output sinks ignore it.
 
+Because that `name` comes from the document being processed — `manipulator.Split` passes the source's worksheet name — it is untrusted. `FolderSink` and `ZipSink` validate it with `SafeOutputName` before writing; a custom multi-output sink should call it too.
+
+### SafeOutputName
+
+```go
+func SafeOutputName(name string) error
+```
+
+`SafeOutputName` reports whether `name` is a plain file name that a sink can safely write under, returning `ErrUnsafeSinkName` for anything that would escape the sink's destination: an empty name, a path separator (`/` or `\`, either flavor regardless of host OS), a volume or drive prefix, a `:` (a drive-relative path on Windows, and an NTFS alternate data stream), or a `.` / `..` directory reference.
+
+The spreadsheet file format already forbids these characters in a worksheet name, but the check is repeated here rather than taken on the engine's word: the engine's validation is not a security boundary the toolkit controls, and a miss is an arbitrary file write — or, for the archive sink, a zip-slip entry that escapes wherever the archive is later extracted.
+
 ### FilePathSink
 
 ```go
@@ -95,7 +107,7 @@ func (b *BytesSink) Bytes() []byte
 type FolderSink string
 ```
 
-`FolderSink` writes each `Write` call to a file named `name` inside the given folder, creating the folder if needed. It backs `manipulator.Split`'s per-worksheet file output.
+`FolderSink` writes each `Write` call to a file named `name` inside the given folder, creating the folder if needed. It backs `manipulator.Split`'s per-worksheet file output. A `name` that is not a plain file name is rejected with `ErrUnsafeSinkName` (see `SafeOutputName`).
 
 ### ZipSink
 
@@ -103,4 +115,4 @@ type FolderSink string
 func NewZipSink(zw *zip.Writer) *ZipSink
 ```
 
-`NewZipSink` wraps a `zip.Writer` as a `DataSink`. Each `Write` call creates an entry named `name` in the archive. The caller closes the `zip.Writer` after the operation to finalize the archive. It backs `manipulator.Split`'s per-worksheet archive output.
+`NewZipSink` wraps a `zip.Writer` as a `DataSink`. Each `Write` call creates an entry named `name` in the archive. The caller closes the `zip.Writer` after the operation to finalize the archive. It backs `manipulator.Split`'s per-worksheet archive output. A `name` that is not a plain file name is rejected with `ErrUnsafeSinkName`, so the archive cannot carry a zip-slip entry built from a worksheet name (see `SafeOutputName`).

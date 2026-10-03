@@ -30,6 +30,9 @@ Write-Host "=== 6. Run examples ===" -ForegroundColor Cyan
 Write-Host "Running chart example..." -ForegroundColor Yellow
 & .\examples\run.ps1 chart
 
+Write-Host "Running chart-export example..." -ForegroundColor Yellow
+& .\examples\run.ps1 chart-export
+
 Write-Host "Running convert example..." -ForegroundColor Yellow
 & .\examples\run.ps1 convert
 
@@ -44,5 +47,8 @@ Write-Host "Running query example..." -ForegroundColor Yellow
 
 Write-Host "Running transfer example..." -ForegroundColor Yellow
 & .\examples\run.ps1 transfer
+
+Write-Host "Running validation-cf example..." -ForegroundColor Yellow
+& .\examples\run.ps1 validation-cf
 
 Write-Host "=== All tests and examples completed ===" -ForegroundColor Green

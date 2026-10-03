@@ -19,7 +19,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	examples "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/examples/common"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/query"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // Row is the header shape of BookText.xlsx (Item / Category / Note); the
@@ -86,16 +85,12 @@ func main() {
 	// The named range and comment live on an explicitly added "Data" sheet,
 	// whose name is set after load and so is never corrupted by evaluation
 	// mode; the reads below target it by index.
-	wb, err := asposecells.NewWorkbook()
-	if err != nil {
-		log.Fatal(err)
-	}
-	seed, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
+	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
 		log.Fatal(err)
 	}
 	table, err := editor.EditSpreadsheet(
-		datasource.BytesSource(seed),
+		seed,
 		editor.WithAddWorksheet("Data"),
 		editor.InWorksheet("Data",
 			editor.SetCellValue(0, 0, "Product"),

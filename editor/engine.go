@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 )
 
 // EditSpreadsheet is the core entry point for the spreadsheet editing DSL.
@@ -73,6 +74,8 @@ func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([
 //     found, invalid format, or an action-specific error). If successful, this
 //     is nil.
 func EditSpreadsheetToSink(source datasource.DataSource, sink datasource.DataSink, actions ...WorkbookAction) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	if source == nil {
 		return toolkiterrors.ErrDataSourceNil
 	}
@@ -83,6 +86,7 @@ func EditSpreadsheetToSink(source datasource.DataSource, sink datasource.DataSin
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	for _, action := range actions {
 		if err := action(workbook); err != nil {
 			return err

@@ -22,7 +22,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/manipulator"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/html"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/ooxml"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 func main() {
@@ -40,16 +39,12 @@ func main() {
 
 	// seed builds a workbook whose second sheet is named after the given label.
 	seed := func(name, value string) []byte {
-		wb, err := asposecells.NewWorkbook()
-		if err != nil {
-			log.Fatal(err)
-		}
-		empty, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
+		empty, err := datasource.NewEmptyWorkbook()
 		if err != nil {
 			log.Fatal(err)
 		}
 		bytes, err := editor.EditSpreadsheet(
-			datasource.BytesSource(empty),
+			empty,
 			editor.InWorksheet(0, editor.SetCellValue(0, 0, name)),
 			editor.WithAddWorksheet(name),
 			editor.InWorksheet(name, editor.SetCellValue(0, 0, value)),

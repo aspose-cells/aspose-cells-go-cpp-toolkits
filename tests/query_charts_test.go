@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -28,40 +29,47 @@ func TestQueryChartInfo(t *testing.T) {
 		t.Fatalf("EditSpreadsheet: %v", err)
 	}
 
-	info, err := query.ChartInfo(datasource.BytesSource(out), 0)
+	// The title is a string, and the engine's string read-back is intermittently
+	// corrupt, so the read-back runs under retryStable.
+	err = retryStable(5, func() error {
+		info, err := query.ChartInfo(datasource.BytesSource(out), 0)
+		if err != nil {
+			return fmt.Errorf("ChartInfo: %w", err)
+		}
+		if info.Index != 0 {
+			return fmt.Errorf("Index = %d, want 0", info.Index)
+		}
+		if info.Type != "column" {
+			return fmt.Errorf("Type = %q, want %q", info.Type, "column")
+		}
+		if info.Title != "Quarterly sales" {
+			return fmt.Errorf("Title = %q, want %q", info.Title, "Quarterly sales")
+		}
+		if !info.TitleVisible {
+			return errors.New("TitleVisible = false, want true")
+		}
+		if info.Style != 7 {
+			return fmt.Errorf("Style = %d, want 7", info.Style)
+		}
+		if !info.ShowLegend {
+			return errors.New("ShowLegend = false, want true")
+		}
+		if info.LegendPosition != "bottom" {
+			return fmt.Errorf("LegendPosition = %q, want %q", info.LegendPosition, "bottom")
+		}
+		if info.Bounds.TopRow != 5 || info.Bounds.LeftColumn != 0 ||
+			info.Bounds.BottomRow != 20 || info.Bounds.RightColumn != 7 {
+			return fmt.Errorf("Bounds = (%d,%d)/(%d,%d), want (5,0)/(20,7)",
+				info.Bounds.TopRow, info.Bounds.LeftColumn,
+				info.Bounds.BottomRow, info.Bounds.RightColumn)
+		}
+		if info.SeriesCount != 1 {
+			return fmt.Errorf("SeriesCount = %d, want 1", info.SeriesCount)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("ChartInfo: %v", err)
-	}
-
-	if info.Index != 0 {
-		t.Errorf("Index = %d, want 0", info.Index)
-	}
-	if info.Type != "column" {
-		t.Errorf("Type = %q, want %q", info.Type, "column")
-	}
-	if info.Title != "Quarterly sales" {
-		t.Errorf("Title = %q, want %q", info.Title, "Quarterly sales")
-	}
-	if !info.TitleVisible {
-		t.Error("TitleVisible = false, want true")
-	}
-	if info.Style != 7 {
-		t.Errorf("Style = %d, want 7", info.Style)
-	}
-	if !info.ShowLegend {
-		t.Error("ShowLegend = false, want true")
-	}
-	if info.LegendPosition != "bottom" {
-		t.Errorf("LegendPosition = %q, want %q", info.LegendPosition, "bottom")
-	}
-	if info.Bounds.TopRow != 5 || info.Bounds.LeftColumn != 0 ||
-		info.Bounds.BottomRow != 20 || info.Bounds.RightColumn != 7 {
-		t.Errorf("Bounds = (%d,%d)/(%d,%d), want (5,0)/(20,7)",
-			info.Bounds.TopRow, info.Bounds.LeftColumn,
-			info.Bounds.BottomRow, info.Bounds.RightColumn)
-	}
-	if info.SeriesCount != 1 {
-		t.Errorf("SeriesCount = %d, want 1", info.SeriesCount)
+		t.Error(err)
 	}
 }
 

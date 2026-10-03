@@ -18,7 +18,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	examples "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/examples/common"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/query"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 func main() {
@@ -27,11 +26,7 @@ func main() {
 	}
 
 	// Seed an empty workbook so the example runs without a data file.
-	wb, err := asposecells.NewWorkbook()
-	if err != nil {
-		log.Fatal(err)
-	}
-	seed, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
+	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +37,7 @@ func main() {
 	// stored reference embeds the sheet name — so the range is defined on a
 	// sheet whose name is set by this call, not one read from the file.
 	edited, err := editor.EditSpreadsheet(
-		datasource.BytesSource(seed),
+		seed,
 		editor.WithAddWorksheet("Data"),
 		editor.WithActiveSheet("Data"),
 		editor.InWorksheet("Data",

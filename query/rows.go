@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"reflect"
 	"strings"
 	"time"
@@ -42,6 +43,8 @@ var timeType = reflect.TypeOf(time.Time{})
 //		query.WithSheetIndex(0),
 //	)
 func ReadRows[T any](source datasource.DataSource, opts ...Option) ([]T, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	var zero T
 	typ := reflect.TypeOf(zero)
 	if typ.Kind() != reflect.Struct {

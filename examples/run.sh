@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./examples/run.sh            # run every example in order
-#   ./examples/run.sh convert    # run a single example (chart|convert|edit|merge-split|query|transfer)
+#   ./examples/run.sh convert    # run a single example (see the case list below)
 #
 # Each example is a self-contained command; it reads its sample data from
 # examples/data and writes outputs to examples/<name>/out (absolute paths, so
@@ -21,18 +21,20 @@ run() {
 case "${1:-all}" in
   all)
     run chart
+    run chart-export
     run convert
     run edit
     run merge-split
     run query
     run transfer
+    run validation-cf
     ;;
-  chart | convert | edit | merge-split | query | transfer)
+  chart | chart-export | convert | edit | merge-split | query | transfer | validation-cf)
     run "$1"
     ;;
   *)
     echo "unknown example: $1" >&2
-    echo "usage: $0 [all|chart|convert|edit|merge-split|query|transfer]" >&2
+    echo "usage: $0 [all|chart|chart-export|convert|edit|merge-split|query|transfer|validation-cf]" >&2
     exit 1
     ;;
 esac

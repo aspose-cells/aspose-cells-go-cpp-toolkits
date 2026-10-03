@@ -76,8 +76,10 @@ jobs:
             return 1
           }
           run_example chart
+          run_example chart-export
           run_example convert
           run_example edit
           run_example merge-split
           run_example query
           run_example transfer
+          run_example validation-cf

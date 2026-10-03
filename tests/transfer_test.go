@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -210,5 +211,99 @@ func TestTransferImportXmlDataNilSink(t *testing.T) {
 	err := transfer.ImportXMLData(datasource.BytesSource(seedBytes), datasource.BytesSource([]byte{}), nil)
 	if !errors.Is(err, toolkiterrors.ErrDataSinkNil) {
 		t.Fatalf("ImportXMLData(..., nil) error = %v, want ErrDataSinkNil", err)
+	}
+}
+
+// rowsXML is a small XML document used to exercise the XML export. Loading it
+// gives the workbook an XML map the engine names after the root element, which
+// is what ExportSpreadsheetToXml needs and what a cell-by-cell .xlsx has none of.
+const rowsXML = `<?xml version="1.0" encoding="UTF-8"?>
+<Rows>
+  <Row><ID>1</ID><Name>Alpha</Name></Row>
+  <Row><ID>2</ID><Name>Beta</Name></Row>
+</Rows>`
+
+// recordingSink counts writes so a test can prove the export refused to write,
+// rather than merely that the bytes it wrote were empty — the original defect
+// was a successful-looking zero-byte write.
+type recordingSink struct {
+	writes int
+	data   []byte
+}
+
+func (s *recordingSink) Write(_ string, data []byte) error {
+	s.writes++
+	s.data = append(s.data, data...)
+	return nil
+}
+
+// TestTransferExportSpreadsheetToXml verifies an XML document round-trips: the
+// workbook's map is found without the caller naming it, and the element data
+// comes back out. Asserting only that the call succeeded would have passed on
+// the defect this guards, where a missing map produced an empty write.
+func TestTransferExportSpreadsheetToXml(t *testing.T) {
+	var out datasource.BytesSink
+	err := transfer.ExportSpreadsheetToXml(datasource.BytesSource([]byte(rowsXML)), &out)
+	if err != nil {
+		t.Fatalf("ExportSpreadsheetToXml error: %v", err)
+	}
+	got := string(out.Bytes())
+	if len(got) == 0 {
+		t.Fatal("ExportSpreadsheetToXml wrote no bytes for an XML source")
+	}
+	for _, want := range []string{"<Rows", "<ID>1</ID>", "<Name>Alpha</Name>", "<Name>Beta</Name>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("exported XML missing %q; got:\n%s", want, got)
+		}
+	}
+}
+
+// TestTransferExportSpreadsheetToXmlMissingMap verifies that naming an XML map
+// the workbook does not define is reported as ErrXMLMapNotFound, and that the
+// sink is left untouched. The engine answers such a request with empty output
+// and no error, so an unchecked export wrote a zero-byte file and reported
+// success.
+func TestTransferExportSpreadsheetToXmlMissingMap(t *testing.T) {
+	seed := newTestWorkbookBytes(t)
+	sink := &recordingSink{}
+	err := transfer.ExportSpreadsheetToXml(
+		datasource.BytesSource(seed), sink, transfer.WithXMLMap("InventoryMap"))
+	if !errors.Is(err, toolkiterrors.ErrXMLMapNotFound) {
+		t.Fatalf("ExportSpreadsheetToXml error = %v, want ErrXMLMapNotFound", err)
+	}
+	if sink.writes != 0 {
+		t.Errorf("sink received %d write(s) after a failed export; want 0", sink.writes)
+	}
+}
+
+// TestTransferExportSpreadsheetToXmlNoMapInSource verifies that an .xlsx with no
+// XML map at all is reported rather than exported as nothing.
+func TestTransferExportSpreadsheetToXmlNoMapInSource(t *testing.T) {
+	seed := newTestWorkbookBytes(t)
+	sink := &recordingSink{}
+	err := transfer.ExportSpreadsheetToXml(datasource.BytesSource(seed), sink)
+	if !errors.Is(err, toolkiterrors.ErrXMLMapNotFound) {
+		t.Fatalf("ExportSpreadsheetToXml error = %v, want ErrXMLMapNotFound", err)
+	}
+	if sink.writes != 0 {
+		t.Errorf("sink received %d write(s) after a failed export; want 0", sink.writes)
+	}
+}
+
+// TestTransferExportSpreadsheetToXmlWrongMapNameListsNames verifies the failure
+// names the maps that do exist. The engine derives a map's name from the XML
+// root element, so a caller cannot guess it and the error has to tell them.
+func TestTransferExportSpreadsheetToXmlWrongMapNameListsNames(t *testing.T) {
+	sink := &recordingSink{}
+	err := transfer.ExportSpreadsheetToXml(
+		datasource.BytesSource([]byte(rowsXML)), sink, transfer.WithXMLMap("InventoryMap"))
+	if !errors.Is(err, toolkiterrors.ErrXMLMapNotFound) {
+		t.Fatalf("ExportSpreadsheetToXml error = %v, want ErrXMLMapNotFound", err)
+	}
+	if !strings.Contains(err.Error(), "Rows_Map") {
+		t.Errorf("error should name the map the workbook does define; got: %v", err)
+	}
+	if sink.writes != 0 {
+		t.Errorf("sink received %d write(s) after a failed export; want 0", sink.writes)
 	}
 }

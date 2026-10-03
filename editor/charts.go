@@ -312,7 +312,9 @@ func WithChartCategoryData(dataRange string) ChartAction {
 // A preset can be partial: zero-value fields are skipped when applied, so a
 // preset can specify only the settings it cares about and leave the rest
 // unchanged. This makes presets useful for both complete chart templates and
-// targeted style bundles.
+// targeted style bundles. The one field that needs care is ShowLegend: false
+// means "leave the legend alone" unless ApplyLegend is also set, because a bool
+// cannot distinguish hiding a legend from not mentioning it.
 type ChartStylePreset struct {
 	// ChartType is the chart's type (e.g., ChartTypeColumn, ChartTypePie).
 	// Empty means the chart type is not changed.
@@ -326,11 +328,21 @@ type ChartStylePreset struct {
 	// may still show an automatic title derived from the series.
 	Title string
 
-	// ShowLegend controls whether the legend is visible.
+	// ShowLegend controls whether the legend is visible. Setting it to true
+	// shows the legend and needs no companion field.
+	//
+	// Setting it to false is ambiguous — a bool cannot tell "hide the legend"
+	// from "leave it alone" — so it is only applied when ApplyLegend is also
+	// true. A preset that sets neither leaves an existing legend undisturbed.
 	ShowLegend bool
 
+	// ApplyLegend makes ShowLegend authoritative in both directions: with it
+	// true, ShowLegend false hides the legend. Leave it false when ShowLegend
+	// is true (that case is applied on its own), and set it only to hide.
+	ApplyLegend bool
+
 	// LegendPosition is where the legend is docked. Empty means the legend
-	// position is not changed; it is only applied when ShowLegend is true.
+	// position is not changed; it is only applied when the legend is shown.
 	LegendPosition ChartLegendPosition
 
 	// DataRange is the chart's source data range in A1 notation (e.g., "A1:C5").
@@ -384,9 +396,10 @@ var (
 	// MinimalPie is a simple pie chart without a legend, relying on data
 	// labels. Suitable for presentations where space is limited.
 	MinimalPie = ChartStylePreset{
-		ChartType:  ChartTypePie,
-		Style:      3,
-		ShowLegend: false,
+		ChartType:   ChartTypePie,
+		Style:       3,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// PresentationBar is a bar chart optimized for presentations: clear title,
@@ -419,17 +432,19 @@ var (
 	// SimpleScatter is a scatter plot without a legend, suitable for showing
 	// correlations.
 	SimpleScatter = ChartStylePreset{
-		ChartType:  ChartTypeScatter,
-		Style:      8,
-		ShowLegend: false,
+		ChartType:   ChartTypeScatter,
+		Style:       8,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// FinancialCandlestick is a candlestick chart for financial data, showing
 	// open/high/low/close values. Style 20 provides good visibility.
 	FinancialCandlestick = ChartStylePreset{
-		ChartType:  ChartTypeStock,
-		Style:      20,
-		ShowLegend: false,
+		ChartType:   ChartTypeStock,
+		Style:       20,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// ComparisonColumn3D is a 3D column chart for comparing multiple series.
@@ -500,17 +515,19 @@ var (
 	// MarketShare is a pie chart for showing market distribution. No legend,
 	// relies on data labels for clarity.
 	MarketShare = ChartStylePreset{
-		ChartType:  ChartTypePie,
-		Style:      3,
-		ShowLegend: false,
+		ChartType:   ChartTypePie,
+		Style:       3,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// ScientificData is a scatter plot for scientific measurements. Clean,
 	// minimal style with markers.
 	ScientificData = ChartStylePreset{
-		ChartType:  ChartTypeScatter,
-		Style:      8,
-		ShowLegend: false,
+		ChartType:   ChartTypeScatter,
+		Style:       8,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// ProjectTimeline is a line chart for project milestones and timelines.
@@ -525,9 +542,10 @@ var (
 	// SurveyResults is a horizontal bar chart for survey responses. Easy to
 	// read category labels.
 	SurveyResults = ChartStylePreset{
-		ChartType:  ChartTypeBar,
-		Style:      9,
-		ShowLegend: false,
+		ChartType:   ChartTypeBar,
+		Style:       9,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 
 	// BudgetVariance is a column chart for budget vs actual comparisons.
@@ -542,9 +560,10 @@ var (
 	// KPIDashboard is a compact line chart for key performance indicators.
 	// Optimized for dashboard displays.
 	KPIDashboard = ChartStylePreset{
-		ChartType:  ChartTypeLine,
-		Style:      12,
-		ShowLegend: false,
+		ChartType:   ChartTypeLine,
+		Style:       12,
+		ShowLegend:  false,
+		ApplyLegend: true,
 	}
 )
 
@@ -630,9 +649,13 @@ func WithChartPreset(preset ChartStylePreset) ChartAction {
 			}
 		}
 
-		// Legend
-		if err := cells.SetChartLegend(chart, preset.ShowLegend); err != nil {
-			return err
+		// Legend. Applying it unconditionally would let a preset that only sets
+		// ChartType silently hide an existing legend, so ShowLegend false only
+		// takes effect when the caller says so through ApplyLegend.
+		if preset.ShowLegend || preset.ApplyLegend {
+			if err := cells.SetChartLegend(chart, preset.ShowLegend); err != nil {
+				return err
+			}
 		}
 		if preset.ShowLegend && preset.LegendPosition != "" {
 			if err := cells.SetChartLegendPosition(chart, string(preset.LegendPosition)); err != nil {

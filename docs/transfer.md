@@ -47,15 +47,20 @@ err := transfer.ExportRangeToJson(
 func ExportSpreadsheetToXml(source datasource.DataSource, sink datasource.DataSink, opts ...Option) error
 ```
 
-Exports the whole workbook as XML using the given XML map name (`WithXMLMap`), writing the result to sink.
+Exports the whole workbook as XML through one of the workbook's XML maps, writing the result to sink.
+
+The map is chosen with `WithXMLMap`. Omitting it uses the workbook's only map; a workbook with several returns `ErrXMLMapAmbiguous` rather than guessing, and naming a map the workbook does not define returns `ErrXMLMapNotFound` — the error lists the maps that do exist, because the engine derives the name from the source document and a caller cannot predict it.
+
+**The workbook has to have an XML map to export through.** The engine builds one from the XML document a workbook was loaded from, so this round-trips an XML document — the element data it read comes back out — and does not export a workbook authored cell by cell, whose cells no map is bound to. An XML source is loaded with XML-map semantics automatically, so no option is needed for the common case. The engine answers a request for a missing map with an empty result and no error; the toolkit reports it instead of writing an empty file.
 
 Example:
 
 ```go
+// Round-trip an XML document. The workbook's map comes from the document
+// itself, so it does not have to be named.
 err := transfer.ExportSpreadsheetToXml(
-    datasource.FilePathSource("out/seed.xlsx"),
-    datasource.FilePathSink("out/inventory.xml"),
-    transfer.WithXMLMap("InventoryMap"))
+    datasource.FilePathSource("examples/data/data.xml"),
+    datasource.FilePathSink("out/inventory.xml"))
 ```
 
 ## Import functions
@@ -157,7 +162,7 @@ Sets the bottom-right cell of an export range, e.g. "B3". When unset, the range 
 func WithXMLMap(name string) Option
 ```
 
-Sets the XML map name used by `ExportSpreadsheetToXml`, e.g. "InventoryMap". The XML map must exist in the source workbook.
+Sets the XML map name used by `ExportSpreadsheetToXml`. Optional: without it a workbook that defines exactly one map uses it. A name the source workbook does not define returns `ErrXMLMapNotFound`. See `ExportSpreadsheetToXml` for why the name usually should not be given explicitly.
 
 ### WithBeginCell
 

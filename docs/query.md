@@ -57,6 +57,12 @@ Reads a rectangular block bounded by `startCell` and `endCell`, e.g. `"A1"` and
 `start.Row+r`, column `start.Col+c`. A start cell below or to the right of the
 end cell returns `ErrInvalidRange`.
 
+A range naming more than 2,000,000 cells returns `ErrRangeTooLarge` before any
+memory is reserved. The check is not redundant with the grid bounds: a range like
+`"A1:ZZ1000000"` is entirely *valid* — every cell in it exists in the grid — and
+would otherwise have the toolkit allocate a few hundred megabytes and let the OS
+kill the process. Read a sheet that large in slices with `ReadRange`.
+
 ### ReadWorksheet
 
 ```go
@@ -64,7 +70,8 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 ```
 
 Reads the worksheet's full used range as a row-major grid. An empty worksheet
-yields an empty (length 0) slice.
+yields an empty (length 0) slice. A used range larger than 2,000,000 cells
+returns `ErrRangeTooLarge` rather than being allocated; see `ReadRange`.
 
 ### ReadMergedCells
 

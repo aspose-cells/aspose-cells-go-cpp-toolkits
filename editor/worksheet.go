@@ -7,6 +7,7 @@ import (
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -25,11 +26,11 @@ import (
 //     if the provided value type is unsupported.
 func SetCellValue(row, column int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := cells.Get_Int_Int(int32(row), int32(column))
+		cell, err := engine.Derive(cells.Get_Int_Int(int32(row), int32(column)))
 		if err != nil {
 			return err
 		}
@@ -58,7 +59,7 @@ func putValue(cell *asposecells.Cell, value interface{}) error {
 // back as a bare number. Applying a date format makes Excel render it as a date
 // and the query package's type detection recognize it as KindDateTime.
 func applyDateValueFormat(cell *asposecells.Cell, t time.Time) error {
-	style, err := cell.GetStyle()
+	style, err := engine.Derive(cell.GetStyle())
 	if err != nil {
 		return err
 	}
@@ -91,11 +92,11 @@ func dateNumberFormat(t time.Time) string {
 //   - WorksheetAction: A function that sets the cell's formula.
 func SetFormula(row, column int, formula string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := cells.Get_Int_Int(int32(row), int32(column))
+		cell, err := engine.Derive(cells.Get_Int_Int(int32(row), int32(column)))
 		if err != nil {
 			return err
 		}
@@ -118,7 +119,7 @@ func SetFormula(row, column int, formula string) WorksheetAction {
 //     Returns an error if the value type is unsupported.
 func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -134,7 +135,7 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 			return err
 		}
 		if t, ok := value.(time.Time); ok {
-			style, err := cells.GetStyle()
+			style, err := engine.Derive(cells.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -202,11 +203,11 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 //   - WorksheetAction: A function that updates the formatting of the specified range.
 func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cellsStyle, err := cells.GetStyle()
+		cellsStyle, err := engine.Derive(cells.GetStyle())
 		if err != nil {
 			return err
 		}
@@ -236,7 +237,7 @@ func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) 
 //   - WorksheetAction: A function that performs the cell merge operation.
 func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -256,7 +257,7 @@ func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) Workshe
 //   - WorksheetAction: A function that splits the merged cells back into individual cells.
 func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -275,7 +276,10 @@ func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that adds the specified rows.
 func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		if rows <= 0 {
+			return fmt.Errorf("insert rows: row count %d: %w", rows, toolkiterrors.ErrInvalidCount)
+		}
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -294,7 +298,10 @@ func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 //   - WorksheetAction: A function that adds the specified columns.
 func InsertColumns(beginColumn int, columns int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		if columns <= 0 {
+			return fmt.Errorf("insert columns: column count %d: %w", columns, toolkiterrors.ErrInvalidCount)
+		}
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -315,7 +322,7 @@ func InsertColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that empties the contents of the target range.
 func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -340,7 +347,7 @@ func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that resets the styles of the target range.
 func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -378,7 +385,7 @@ func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //		))
 func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -407,7 +414,7 @@ func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetA
 					if val == nil {
 						continue
 					}
-					cell, err = cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c))
+					cell, err = engine.Derive(cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c)))
 					if err != nil {
 						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
 					}
@@ -437,7 +444,7 @@ func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetA
 //   - WorksheetAction: A function that deletes the specified rows.
 func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -453,7 +460,7 @@ func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty rows.
 func DeleteBlankRows() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -471,31 +478,45 @@ func DeleteBlankRows() WorksheetAction {
 //   - columns: The number of columns in the range to delete.
 //   - shiftType: A string specifying the direction in which remaining cells should shift.
 //     Supported values are "up", "down", "left", and "right" (case-insensitive).
-//     If an unrecognized value is provided, it defaults to no shift (ShiftType_None).
+//     An empty string means no shift (ShiftType_None); any other unrecognized
+//     value is an error rather than a silent fallback to no shift, because the
+//     shift direction decides which cells the deletion consumes.
 //
 // Returns:
 //   - WorksheetAction: A function that deletes the specified cell range and applies the shift.
 func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		if rows <= 0 || columns <= 0 {
+			return fmt.Errorf("delete range: %dx%d cells: %w", rows, columns, toolkiterrors.ErrInvalidCount)
+		}
+		shift, err := resolveShiftType(shiftType)
 		if err != nil {
 			return err
 		}
-		shift := asposecells.ShiftType_None
-		shiftType = strings.ToLower(shiftType)
-		if shiftType == "up" {
-			shift = asposecells.ShiftType_Up
-		}
-		if shiftType == "down" {
-			shift = asposecells.ShiftType_Down
-		}
-		if shiftType == "left" {
-			shift = asposecells.ShiftType_Left
-		}
-		if shiftType == "right" {
-			shift = asposecells.ShiftType_Right
+		cells, err := engine.Derive(worksheet.GetCells())
+		if err != nil {
+			return err
 		}
 		return cells.DeleteRange(int32(beginRow), int32(beginColumn), int32(beginRow+rows-1), int32(beginColumn+columns-1), shift)
+	}
+}
+
+// resolveShiftType maps a case-insensitive shift direction name to the engine
+// enum. The empty string is the caller's way of asking for no shift.
+func resolveShiftType(name string) (asposecells.ShiftType, error) {
+	switch strings.ToLower(name) {
+	case "":
+		return asposecells.ShiftType_None, nil
+	case "up":
+		return asposecells.ShiftType_Up, nil
+	case "down":
+		return asposecells.ShiftType_Down, nil
+	case "left":
+		return asposecells.ShiftType_Left, nil
+	case "right":
+		return asposecells.ShiftType_Right, nil
+	default:
+		return asposecells.ShiftType_None, fmt.Errorf("shift type %q: %w", name, toolkiterrors.ErrInvalidShiftType)
 	}
 }
 
@@ -512,7 +533,7 @@ func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) Wor
 //   - WorksheetAction: A function that deletes the specified columns from the worksheet.
 func DeleteColumns(beginColumn int, columns int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -527,7 +548,7 @@ func DeleteColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty columns.
 func DeleteBlankColumns() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := worksheet.GetCells()
+		cells, err := engine.Derive(worksheet.GetCells())
 		if err != nil {
 			return err
 		}

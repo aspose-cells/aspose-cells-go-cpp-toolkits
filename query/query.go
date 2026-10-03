@@ -13,6 +13,7 @@ package query
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"strings"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -20,6 +21,35 @@ import (
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// maxQueryCells bounds how many cells a single read may materialize.
+//
+// A worksheet's grid is 1048576 x 16384 — over 17 billion cells — so a range
+// that is perfectly *valid* can still be one no process could hold: a caller
+// who writes "A1:ZZ1000000" by accident would otherwise have the toolkit
+// reserve memory for every cell it names and be killed by the OS, with no
+// error to report. The grid-bounds check that ParseCellRef and Area apply
+// cannot catch this, because the range is in-grid.
+//
+// A CellValue is about 80 bytes, so 2,000,000 cells is roughly 160 MB of
+// result — past the point where a single in-memory grid is the right shape for
+// the data, and comfortably above any realistic used range (a 100,000-row
+// sheet with 20 columns is exactly this size). A larger sheet should be read
+// in slices with ReadRange.
+const maxQueryCells = 2_000_000
+
+// checkReadSize reports ErrRangeTooLarge when a read of rows x cols cells
+// would exceed maxQueryCells. It runs before any memory is reserved.
+func checkReadSize(rows, cols int) error {
+	if rows <= 0 || cols <= 0 {
+		return nil
+	}
+	if int64(rows)*int64(cols) > maxQueryCells {
+		return fmt.Errorf("%w: %d rows x %d columns is %d cells, over the %d-cell read limit; read the sheet in slices instead",
+			toolkiterrors.ErrRangeTooLarge, rows, cols, int64(rows)*int64(cols), maxQueryCells)
+	}
+	return nil
+}
 
 // ReadCell reads a single cell identified by its Excel reference, e.g. "B3".
 //
@@ -30,6 +60,8 @@ import (
 //		text, _ := v.String()
 //	}
 func ReadCell(source datasource.DataSource, ref string, opts ...Option) (CellValue, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -43,6 +75,7 @@ func ReadCell(source datasource.DataSource, ref string, opts ...Option) (CellVal
 	if err != nil {
 		return CellValue{}, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return CellValue{}, err
@@ -63,6 +96,8 @@ func ReadCell(source datasource.DataSource, ref string, opts ...Option) (CellVal
 // cell at row start.Row+r, column start.Col+c. A start cell below or to the
 // right of the end cell returns ErrInvalidRange.
 func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...Option) ([][]CellValue, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -79,17 +114,21 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 	if start.Row > end.Row || start.Col > end.Col {
 		return nil, fmt.Errorf("invalid range %s:%s: %w", startCell, endCell, toolkiterrors.ErrInvalidRange)
 	}
+	if err := checkReadSize(end.Row-start.Row+1, end.Col-start.Col+1); err != nil {
+		return nil, fmt.Errorf("range %s:%s: %w", startCell, endCell, err)
+	}
 	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
 	}
 	rowCount := end.Row - start.Row + 1
 	colCount := end.Col - start.Col + 1
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +136,7 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 	for r := 0; r < rowCount; r++ {
 		grid[r] = make([]CellValue, colCount)
 		for c := 0; c < colCount; c++ {
-			cell, err := cs.Get_Int_Int(int32(start.Row+r), int32(start.Col+c))
+			cell, err := engine.Derive(cs.Get_Int_Int(int32(start.Row+r), int32(start.Col+c)))
 			if err != nil {
 				return nil, err
 			}
@@ -114,6 +153,8 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 // ReadWorksheet reads the worksheet's full used range as a row-major grid.
 // An empty worksheet yields an empty (length 0) slice.
 func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -123,6 +164,7 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
@@ -131,7 +173,10 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 	if err != nil {
 		return nil, err
 	}
-	cs, err := ws.GetCells()
+	if err := checkReadSize(int(rows), int(cols)); err != nil {
+		return nil, err
+	}
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +184,7 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 	for r := int32(0); r < rows; r++ {
 		grid[r] = make([]CellValue, cols)
 		for c := int32(0); c < cols; c++ {
-			cell, err := cs.Get_Int_Int(r, c)
+			cell, err := engine.Derive(cs.Get_Int_Int(r, c))
 			if err != nil {
 				return nil, err
 			}
@@ -156,6 +201,8 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 // ReadMergedCells returns the worksheet's merged cell regions, each reported
 // exactly once from its anchor.
 func ReadMergedCells(source datasource.DataSource, opts ...Option) ([]Area, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -165,6 +212,7 @@ func ReadMergedCells(source datasource.DataSource, opts ...Option) ([]Area, erro
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
@@ -174,6 +222,8 @@ func ReadMergedCells(source datasource.DataSource, opts ...Option) ([]Area, erro
 
 // SheetNames returns the names of the workbook's worksheets in order.
 func SheetNames(source datasource.DataSource, opts ...Option) ([]string, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -183,12 +233,15 @@ func SheetNames(source datasource.DataSource, opts ...Option) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	return cells.SheetNames(workbook)
 }
 
 // Dimensions returns the used range's dimensions (rows, cols). An empty
 // worksheet yields (0, 0).
 func Dimensions(source datasource.DataSource, opts ...Option) (rows, cols int, err error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -198,6 +251,7 @@ func Dimensions(source datasource.DataSource, opts ...Option) (rows, cols int, e
 	if err != nil {
 		return 0, 0, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return 0, 0, err

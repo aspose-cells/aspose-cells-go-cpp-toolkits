@@ -2,6 +2,7 @@ package editor
 
 import (
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -25,7 +26,7 @@ func WithChartTitleFont(fontName string, fontSize int, bold bool) ChartAction {
 		if err != nil {
 			return err
 		}
-		font, err := title.GetFont()
+		font, err := engine.Derive(title.GetFont())
 		if err != nil {
 			return err
 		}
@@ -66,7 +67,7 @@ func WithChartTitleColor(color interface{}) ChartAction {
 		if err != nil {
 			return err
 		}
-		font, err := title.GetFont()
+		font, err := engine.Derive(title.GetFont())
 		if err != nil {
 			return err
 		}
@@ -98,7 +99,7 @@ func WithChartLegendFont(fontName string, fontSize int, bold bool) ChartAction {
 		if err != nil {
 			return err
 		}
-		font, err := legend.GetFont()
+		font, err := engine.Derive(legend.GetFont())
 		if err != nil {
 			return err
 		}

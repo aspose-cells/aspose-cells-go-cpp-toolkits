@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"strings"
 	"sync"
 	"testing"
@@ -140,19 +141,20 @@ func looksLikeEngineString(s string) bool {
 func readChart(data []byte, sheetIndex, chartIndex int) (chartReadback, error) {
 	var out chartReadback
 
-	wb, err := asposecells.NewWorkbook_Stream(data)
+	wb, err := engine.OpenWorkbook(data)
 	if err != nil {
 		return out, fmt.Errorf("reload: %w", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return out, fmt.Errorf("GetWorksheets: %w", err)
 	}
-	ws, err := wss.Get_Int(int32(sheetIndex))
+	ws, err := engine.Derive(wss.Get_Int(int32(sheetIndex)))
 	if err != nil {
 		return out, fmt.Errorf("Get_Int(%d): %w", sheetIndex, err)
 	}
-	charts, err := ws.GetCharts()
+	charts, err := engine.Derive(ws.GetCharts())
 	if err != nil {
 		return out, fmt.Errorf("GetCharts: %w", err)
 	}
@@ -165,9 +167,9 @@ func readChart(data []byte, sheetIndex, chartIndex int) (chartReadback, error) {
 		return out, nil
 	}
 
-	chart, err := charts.Get_Int(int32(chartIndex))
+	chart, err := engine.Derive(charts.Get_Int(int32(chartIndex)))
 	if err != nil {
-		return out, fmt.Errorf("charts.Get_Int(%d): %w", chartIndex, err)
+		return engine.Derive(out, fmt.Errorf("charts.Get_Int(%d): %w", chartIndex, err))
 	}
 	out.found = true
 
@@ -189,7 +191,7 @@ func readChart(data []byte, sheetIndex, chartIndex int) (chartReadback, error) {
 
 	// The series collection is what distinguishes a chart that plots something
 	// from one the engine created empty because it did not understand the range.
-	ns, err := chart.GetNSeries()
+	ns, err := engine.Derive(chart.GetNSeries())
 	if err != nil {
 		return out, fmt.Errorf("GetNSeries: %w", err)
 	}
@@ -228,7 +230,7 @@ func readChart(data []byte, sheetIndex, chartIndex int) (chartReadback, error) {
 		return out, fmt.Errorf("corrupted category data read: %q", out.categoryData)
 	}
 
-	title, err := chart.GetTitle()
+	title, err := engine.Derive(chart.GetTitle())
 	if err != nil {
 		return out, fmt.Errorf("GetTitle: %w", err)
 	}
@@ -242,7 +244,7 @@ func readChart(data []byte, sheetIndex, chartIndex int) (chartReadback, error) {
 		return out, fmt.Errorf("title IsVisible: %w", err)
 	}
 
-	legend, err := chart.GetLegend()
+	legend, err := engine.Derive(chart.GetLegend())
 	if err != nil {
 		return out, fmt.Errorf("GetLegend: %w", err)
 	}
@@ -615,12 +617,11 @@ func TestChartDelete(t *testing.T) {
 	}
 }
 
-// chartErrorWorkbooks keeps every workbook handed out by chartTestWorksheet
-// reachable for the lifetime of the process. The binding attaches finalizers to
-// its handles, so a workbook that became unreachable could be collected -- and
-// the worksheet handle derived from it invalidated -- while a test was still
-// holding that handle. Each subtest needs its own fresh workbook because the
-// cases mutate the sheet, so they accumulate here rather than being reused.
+// chartErrorWorkbooks owns every workbook handed out by chartTestWorksheet,
+// so each one outlives the worksheet handle derived from it and is released
+// deliberately at the end of TestChartErrors. Each subtest needs its own fresh
+// workbook because the cases mutate the sheet, so they accumulate here rather
+// than being reused.
 var chartErrorWorkbooks []*asposecells.Workbook
 
 // chartTestWorksheet returns a fresh worksheet from an in-memory workbook.
@@ -629,16 +630,16 @@ var chartErrorWorkbooks []*asposecells.Workbook
 // without spending any of the evaluation copy's per-process load budget.
 func chartTestWorksheet(t *testing.T) *asposecells.Worksheet {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook: %v", err)
 	}
 	chartErrorWorkbooks = append(chartErrorWorkbooks, wb)
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("GetWorksheets: %v", err)
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		t.Fatalf("Get_Int(0): %v", err)
 	}
@@ -649,12 +650,12 @@ func chartTestWorksheet(t *testing.T) *asposecells.Worksheet {
 // a caller can tell an unknown chart type from an out-of-range index without
 // matching on message text.
 func TestChartErrors(t *testing.T) {
-	// Clear the accumulated workbooks when this test finishes, so they can be
-	// garbage collected. Each subtest appends a workbook to chartErrorWorkbooks
-	// to keep it alive during the test run (preventing finalizers from
-	// invalidating derived handles), but after the test completes they are no
-	// longer needed.
+	// Each subtest appends a workbook to chartErrorWorkbooks so it outlives the
+	// worksheet handle derived from it; release them all once the test is done.
 	t.Cleanup(func() {
+		for _, wb := range chartErrorWorkbooks {
+			engine.CloseWorkbook(wb)
+		}
 		chartErrorWorkbooks = nil
 	})
 
@@ -1121,11 +1122,11 @@ func TestChartLegendNotDockedIsInMemoryOnly(t *testing.T) {
 		editor.WithChartLegend(true))(ws); err != nil {
 		t.Fatalf("AddChart: %v", err)
 	}
-	charts, err := ws.GetCharts()
+	charts, err := engine.Derive(ws.GetCharts())
 	if err != nil {
 		t.Fatalf("GetCharts: %v", err)
 	}
-	chart, err := charts.Get_Int(0)
+	chart, err := engine.Derive(charts.Get_Int(0))
 	if err != nil {
 		t.Fatalf("Get_Int(0): %v", err)
 	}
@@ -1135,7 +1136,7 @@ func TestChartLegendNotDockedIsInMemoryOnly(t *testing.T) {
 	if err := editor.WithChartLegendPosition(editor.ChartLegendNotDocked)(chart); err != nil {
 		t.Fatalf("WithChartLegendPosition(notDocked): %v", err)
 	}
-	legend, err := chart.GetLegend()
+	legend, err := engine.Derive(chart.GetLegend())
 	if err != nil {
 		t.Fatalf("GetLegend: %v", err)
 	}

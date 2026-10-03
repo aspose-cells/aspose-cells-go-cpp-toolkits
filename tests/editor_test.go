@@ -1,12 +1,15 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"testing"
 	"time"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -15,10 +18,11 @@ import (
 // production code.
 func newTestWorkbookBytes(t *testing.T) []byte {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook error: %v", err)
 	}
+	defer engine.CloseWorkbook(wb)
 	data, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 	if err != nil {
 		t.Fatalf("Save_SaveFormat error: %v", err)
@@ -28,25 +32,28 @@ func newTestWorkbookBytes(t *testing.T) []byte {
 
 // newTestStyle builds a Style via the public engine API (workbook -> worksheet
 // -> cells -> GetStyle), the same path the editor.SetStyle action uses.
+//
+// The workbook is deliberately left open: the returned Style is a handle into
+// it, so releasing the workbook here would hand back a dangling style.
 func newTestStyle(t *testing.T) *asposecells.Style {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook error: %v", err)
 	}
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("GetWorksheets error: %v", err)
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		t.Fatalf("Get_Int error: %v", err)
 	}
-	cells, err := ws.GetCells()
+	cells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		t.Fatalf("GetCells error: %v", err)
 	}
-	style, err := cells.GetStyle()
+	style, err := engine.Derive(cells.GetStyle())
 	if err != nil {
 		t.Fatalf("GetStyle error: %v", err)
 	}
@@ -67,27 +74,37 @@ func TestEditorWithFontNameAndSize(t *testing.T) {
 // the public WithFontUnderline action and read back via Font.GetUnderline.
 func TestEditorFontUnderlineMappings(t *testing.T) {
 	cases := []struct {
-		name  string
-		input interface{}
-		want  asposecells.FontUnderlineType
+		name    string
+		input   interface{}
+		want    asposecells.FontUnderlineType
+		wantErr bool
 	}{
-		{"enum passthrough", asposecells.FontUnderlineType_Accounting, asposecells.FontUnderlineType_Accounting},
-		{"none", "none", asposecells.FontUnderlineType_None},
-		{"single", "single", asposecells.FontUnderlineType_Single},
-		{"double", "double", asposecells.FontUnderlineType_Double},
-		{"double case-insensitive", "DOUBLE", asposecells.FontUnderlineType_Double},
-		{"accounting", "accounting", asposecells.FontUnderlineType_Accounting},
-		{"wave", "wave", asposecells.FontUnderlineType_Wave},
-		{"words", "words", asposecells.FontUnderlineType_Words},
-		{"unknown falls back to none", "super-bold", asposecells.FontUnderlineType_None},
+		{"enum passthrough", asposecells.FontUnderlineType_Accounting, asposecells.FontUnderlineType_Accounting, false},
+		{"none", "none", asposecells.FontUnderlineType_None, false},
+		{"single", "single", asposecells.FontUnderlineType_Single, false},
+		{"double", "double", asposecells.FontUnderlineType_Double, false},
+		{"double case-insensitive", "DOUBLE", asposecells.FontUnderlineType_Double, false},
+		{"accounting", "accounting", asposecells.FontUnderlineType_Accounting, false},
+		{"wave", "wave", asposecells.FontUnderlineType_Wave, false},
+		{"words", "words", asposecells.FontUnderlineType_Words, false},
+		// An unrecognized style is reported rather than silently applied as
+		// None, which would drop the underline the caller asked for.
+		{"unknown style is an error", "super-bold", asposecells.FontUnderlineType_None, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			style := newTestStyle(t)
-			if err := editor.WithFontUnderline(tc.input)(style); err != nil {
+			err := editor.WithFontUnderline(tc.input)(style)
+			if tc.wantErr {
+				if !errors.Is(err, toolkiterrors.ErrInvalidFontUnderline) {
+					t.Fatalf("WithFontUnderline(%v) error = %v, want ErrInvalidFontUnderline", tc.input, err)
+				}
+				return
+			}
+			if err != nil {
 				t.Fatalf("WithFontUnderline(%v) error: %v", tc.input, err)
 			}
-			font, err := style.GetFont()
+			font, err := engine.Derive(style.GetFont())
 			if err != nil {
 				t.Fatalf("GetFont error: %v", err)
 			}
@@ -126,27 +143,37 @@ func TestEditorFontBooleanFlags(t *testing.T) {
 
 func TestEditorHorizontalAlignmentMappings(t *testing.T) {
 	cases := []struct {
-		name  string
-		input interface{}
-		want  asposecells.TextAlignmentType
+		name    string
+		input   interface{}
+		want    asposecells.TextAlignmentType
+		wantErr bool
 	}{
-		{"enum passthrough", asposecells.TextAlignmentType_Fill, asposecells.TextAlignmentType_Fill},
-		{"general", "general", asposecells.TextAlignmentType_General},
+		{"enum passthrough", asposecells.TextAlignmentType_Fill, asposecells.TextAlignmentType_Fill, false},
+		{"general", "general", asposecells.TextAlignmentType_General, false},
 		// Note: "top"/"bottom" are vertical alignments; applying them as
 		// horizontal alignments is ignored by the engine, so they are covered
 		// by TestEditorBackgroundColorAndVerticalAlignment instead.
-		{"center", "center", asposecells.TextAlignmentType_Center},
-		{"center case-insensitive", "CENTER", asposecells.TextAlignmentType_Center},
-		{"distributed", "distributed", asposecells.TextAlignmentType_Distributed},
-		{"justify", "justify", asposecells.TextAlignmentType_Justify},
-		{"left", "left", asposecells.TextAlignmentType_Left},
-		{"right", "right", asposecells.TextAlignmentType_Right},
-		{"unknown falls back to general", "diagonal", asposecells.TextAlignmentType_General},
+		{"center", "center", asposecells.TextAlignmentType_Center, false},
+		{"center case-insensitive", "CENTER", asposecells.TextAlignmentType_Center, false},
+		{"distributed", "distributed", asposecells.TextAlignmentType_Distributed, false},
+		{"justify", "justify", asposecells.TextAlignmentType_Justify, false},
+		{"left", "left", asposecells.TextAlignmentType_Left, false},
+		{"right", "right", asposecells.TextAlignmentType_Right, false},
+		// An unrecognized alignment is reported rather than silently applied as
+		// General, which would discard the alignment the caller asked for.
+		{"unknown alignment is an error", "diagonal", asposecells.TextAlignmentType_General, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			style := newTestStyle(t)
-			if err := editor.WithHorizontalAlignment(tc.input)(style); err != nil {
+			err := editor.WithHorizontalAlignment(tc.input)(style)
+			if tc.wantErr {
+				if !errors.Is(err, toolkiterrors.ErrInvalidTextAlignment) {
+					t.Fatalf("WithHorizontalAlignment(%v) error = %v, want ErrInvalidTextAlignment", tc.input, err)
+				}
+				return
+			}
+			if err != nil {
 				t.Fatalf("WithHorizontalAlignment(%v) error: %v", tc.input, err)
 			}
 			got, err := style.GetHorizontalAlignment()
@@ -166,7 +193,7 @@ func TestEditorFontColor(t *testing.T) {
 		if err := editor.WithFontColor("red")(style); err != nil {
 			t.Fatalf("WithFontColor(\"red\") error: %v", err)
 		}
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			t.Fatalf("GetFont error: %v", err)
 		}
@@ -194,6 +221,23 @@ func TestEditorFontColor(t *testing.T) {
 		style := newTestStyle(t)
 		if err := editor.WithFontColor(3.14)(style); err == nil {
 			t.Fatal("WithFontColor(3.14) should return an error for unsupported type")
+		}
+	})
+	// An unknown name must be an ordinary error, not a crash. It is resolved
+	// against the toolkit's own table of the engine's color constructors
+	// precisely because the engine's Color_FromName throws an uncaught C++
+	// exception that crosses cgo and kills the process.
+	t.Run("unknown color name returns error", func(t *testing.T) {
+		style := newTestStyle(t)
+		err := editor.WithFontColor("notacolor")(style)
+		if !errors.Is(err, toolkiterrors.ErrInvalidColor) {
+			t.Fatalf("WithFontColor(\"notacolor\") error = %v, want ErrInvalidColor", err)
+		}
+	})
+	t.Run("color name spelling is normalized", func(t *testing.T) {
+		style := newTestStyle(t)
+		if err := editor.WithFontColor("Light Sea Green")(style); err != nil {
+			t.Fatalf("WithFontColor(\"Light Sea Green\") error: %v", err)
 		}
 	})
 }
@@ -243,25 +287,26 @@ func TestSetCellValueRoundTrip(t *testing.T) {
 // TestSetCellValueRoundTrip. It returns an error so the caller can re-load
 // under retryStable.
 func verifyRoundTrip(out []byte) error {
-	wb, err := asposecells.NewWorkbook_Stream(out)
+	wb, err := engine.OpenWorkbook(out)
 	if err != nil {
 		return fmt.Errorf("NewWorkbook_Stream: %w", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return err
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		return err
 	}
-	cells, err := ws.GetCells()
+	cells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return err
 	}
 
 	get := func(row, col int32) (*asposecells.Cell, error) {
-		return cells.Get_Int_Int(row, col)
+		return engine.Derive(cells.Get_Int_Int(row, col))
 	}
 
 	cell, err := get(0, 0)
@@ -319,25 +364,26 @@ func TestEditorMergeUnmerge(t *testing.T) {
 	}
 
 	if err := retryStable(5, func() error {
-		wb, err := asposecells.NewWorkbook_Stream(out)
+		wb, err := engine.OpenWorkbook(out)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		cells, err := ws.GetCells()
+		cells, err := engine.Derive(ws.GetCells())
 		if err != nil {
 			return err
 		}
 
 		// Check merged areas
-		areas, err := cells.GetMergedAreas()
+		areas, err := engine.Derive(cells.GetMergedAreas())
 		if err != nil {
 			return err
 		}
@@ -382,25 +428,26 @@ func TestEditorMergeUnmerge(t *testing.T) {
 	}
 
 	if err := retryStable(5, func() error {
-		wb, err := asposecells.NewWorkbook_Stream(out2)
+		wb, err := engine.OpenWorkbook(out2)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		cells, err := ws.GetCells()
+		cells, err := engine.Derive(ws.GetCells())
 		if err != nil {
 			return err
 		}
 
 		// Check no merged areas
-		areas, err := cells.GetMergedAreas()
+		areas, err := engine.Derive(cells.GetMergedAreas())
 		if err != nil {
 			return err
 		}
@@ -429,19 +476,20 @@ func TestEditorClearComments(t *testing.T) {
 
 	// Verify comment exists
 	if err := retryStable(5, func() error {
-		wb, err := asposecells.NewWorkbook_Stream(out)
+		wb, err := engine.OpenWorkbook(out)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		comments, err := ws.GetComments()
+		comments, err := engine.Derive(ws.GetComments())
 		if err != nil {
 			return err
 		}
@@ -470,19 +518,20 @@ func TestEditorClearComments(t *testing.T) {
 
 	// Verify comment is cleared
 	if err := retryStable(5, func() error {
-		wb, err := asposecells.NewWorkbook_Stream(out2)
+		wb, err := engine.OpenWorkbook(out2)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		comments, err := ws.GetComments()
+		comments, err := engine.Derive(ws.GetComments())
 		if err != nil {
 			return err
 		}
@@ -502,21 +551,23 @@ func TestEditorClearComments(t *testing.T) {
 // TestEditorDeleteWorksheet verifies the WithDeleteWorksheet action works correctly.
 func TestEditorDeleteWorksheet(t *testing.T) {
 	// Create a workbook with multiple sheets
-	seed, err := asposecells.NewWorkbook()
+	seed, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook error: %v", err)
 	}
+	defer engine.CloseWorkbook(seed)
 	seedBytes, err := seed.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 	if err != nil {
 		t.Fatalf("Save error: %v", err)
 	}
 
 	// Add a second sheet
-	wb, err := asposecells.NewWorkbook_Stream(seedBytes)
+	wb, err := engine.OpenWorkbook(seedBytes)
 	if err != nil {
 		t.Fatalf("NewWorkbook_Stream error: %v", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("GetWorksheets error: %v", err)
 	}
@@ -539,11 +590,12 @@ func TestEditorDeleteWorksheet(t *testing.T) {
 	}
 
 	if err := retryStable(5, func() error {
-		wb, err := asposecells.NewWorkbook_Stream(out)
+		wb, err := engine.OpenWorkbook(out)
 		if err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
-		wss, err := wb.GetWorksheets()
+		defer engine.CloseWorkbook(wb)
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
@@ -632,19 +684,20 @@ func TestEditorSetCellValues(t *testing.T) {
 // verifySetCellValues loads a serialized workbook and verifies the values
 // written by TestEditorSetCellValues.
 func verifySetCellValues(out []byte, expected [][]interface{}) error {
-	wb, err := asposecells.NewWorkbook_Stream(out)
+	wb, err := engine.OpenWorkbook(out)
 	if err != nil {
 		return fmt.Errorf("NewWorkbook_Stream: %w", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return err
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		return err
 	}
-	cells, err := ws.GetCells()
+	cells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return err
 	}
@@ -670,7 +723,7 @@ func verifySetCellValues(out []byte, expected [][]interface{}) error {
 				continue
 			}
 
-			cell, err := cells.Get_Int_Int(int32(r), int32(c))
+			cell, err := engine.Derive(cells.Get_Int_Int(int32(r), int32(c)))
 			if err != nil {
 				return fmt.Errorf("Get_Int_Int(%d,%d): %w", r, c, err)
 			}

@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"sync"
 	"testing"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/query"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // conditionalFormatSheetIndex is the worksheet every conditional format test targets.
@@ -67,60 +67,72 @@ type conditionalFormatReadback struct {
 
 func readConditionalFormat(t *testing.T, data []byte) conditionalFormatReadback {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook_Stream(data)
+	got, err := readConditionalFormatErr(data)
 	if err != nil {
-		t.Fatalf("open workbook: %v", err)
+		t.Fatalf("read back conditional format: %v", err)
 	}
-	defer wb.Dispose()
-	wss, err := wb.GetWorksheets()
+	return got
+}
+
+// readConditionalFormatErr is readConditionalFormat with a returned error
+// instead of a t.Fatal. A test whose assertion depends on a string read-back
+// needs the error form: the engine corrupts those intermittently, so the read
+// has to be retryable, and t.Fatal cannot be called from inside a retry loop.
+func readConditionalFormatErr(data []byte) (conditionalFormatReadback, error) {
+	wb, err := engine.OpenWorkbook(data)
 	if err != nil {
-		t.Fatalf("get worksheets: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("open workbook: %w", err)
 	}
-	ws, err := wss.Get_Int(int32(conditionalFormatSheetIndex))
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
-		t.Fatalf("get worksheet: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get worksheets: %w", err)
 	}
-	formattings, err := ws.GetConditionalFormattings()
+	ws, err := engine.Derive(wss.Get_Int(int32(conditionalFormatSheetIndex)))
 	if err != nil {
-		t.Fatalf("get conditional formattings: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get worksheet: %w", err)
+	}
+	formattings, err := engine.Derive(ws.GetConditionalFormattings())
+	if err != nil {
+		return conditionalFormatReadback{}, fmt.Errorf("get conditional formattings: %w", err)
 	}
 	count, err := formattings.GetCount()
 	if err != nil {
-		t.Fatalf("get count: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get count: %w", err)
 	}
 	if count == 0 {
-		return conditionalFormatReadback{count: 0}
+		return conditionalFormatReadback{count: 0}, nil
 	}
 	collection, err := formattings.Get(0)
 	if err != nil {
-		t.Fatalf("get collection: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get collection: %w", err)
 	}
 	condCount, err := collection.GetCount()
 	if err != nil {
-		t.Fatalf("get condition count: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get condition count: %w", err)
 	}
 	if condCount == 0 {
-		return conditionalFormatReadback{count: int(count), condCount: 0}
+		return conditionalFormatReadback{count: int(count), condCount: 0}, nil
 	}
 	cond, err := collection.Get(0)
 	if err != nil {
-		t.Fatalf("get condition: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get condition: %w", err)
 	}
 	ct, err := cond.GetType()
 	if err != nil {
-		t.Fatalf("get type: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get type: %w", err)
 	}
 	op, err := cond.GetOperator()
 	if err != nil {
-		t.Fatalf("get operator: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get operator: %w", err)
 	}
 	f1, err := cond.GetFormula1()
 	if err != nil {
-		t.Fatalf("get formula1: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get formula1: %w", err)
 	}
 	f2, err := cond.GetFormula2()
 	if err != nil {
-		t.Fatalf("get formula2: %v", err)
+		return conditionalFormatReadback{}, fmt.Errorf("get formula2: %w", err)
 	}
 	return conditionalFormatReadback{
 		count:     int(count),
@@ -129,7 +141,7 @@ func readConditionalFormat(t *testing.T, data []byte) conditionalFormatReadback 
 		operator:  int32(op),
 		formula1:  f1,
 		formula2:  f2,
-	}
+	}, nil
 }
 
 func TestConditionalFormatColorScale(t *testing.T) {
@@ -209,21 +221,32 @@ func TestConditionalFormatCellValueRule(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add cell value rule: %v", err)
 	}
-	got := readConditionalFormat(t, out)
-	if got.count != 1 {
-		t.Errorf("conditional format count: got %d, want 1", got.count)
-	}
-	if got.condType != 1 { // CellValue
-		t.Errorf("condition type: got %d, want 1 (CellValue)", got.condType)
-	}
-	if got.operator != 2 { // GreaterThan
-		t.Errorf("operator: got %d, want 2 (GreaterThan)", got.operator)
-	}
-	// Raw engine form: the engine prefixes every formula with "=", so a rule set
-	// as "90" reads back as "=90". The toolkit's query layer strips the prefix;
-	// this read-back bypasses it and so asserts the engine's own form.
-	if got.formula1 != "=90" {
-		t.Errorf("formula1: got %q, want %q", got.formula1, "=90")
+	// The formula is a string, and the engine's string read-back is
+	// intermittently corrupt, so the whole read-back runs under retryStable.
+	err = retryStable(5, func() error {
+		got, err := readConditionalFormatErr(out)
+		if err != nil {
+			return err
+		}
+		if got.count != 1 {
+			return fmt.Errorf("conditional format count: got %d, want 1", got.count)
+		}
+		if got.condType != 1 { // CellValue
+			return fmt.Errorf("condition type: got %d, want 1 (CellValue)", got.condType)
+		}
+		if got.operator != 2 { // GreaterThan
+			return fmt.Errorf("operator: got %d, want 2 (GreaterThan)", got.operator)
+		}
+		// Raw engine form: the engine prefixes every formula with "=", so a rule
+		// set as "90" reads back as "=90". The toolkit's query layer strips the
+		// prefix; this read-back bypasses it and so asserts the engine's own form.
+		if got.formula1 != "=90" {
+			return fmt.Errorf("formula1: got %q, want %q", got.formula1, "=90")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
 	}
 }
 

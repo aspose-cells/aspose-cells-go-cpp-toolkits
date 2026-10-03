@@ -64,6 +64,16 @@ func Unregister(ext string)
 
 Removes a previously registered extension. It is safe for concurrent use and is a no-op if the extension is not registered.
 
+### FileFormatToSaveFormat
+
+```go
+func FileFormatToSaveFormat(formatType asposecells.FileFormatType) (asposecells.SaveFormat, error)
+```
+
+Maps an engine input format to the `SaveFormat` that writes the same format back. It is what the toolkit's round-trip saves use, so an edit of a `.xls` comes back as `.xls` rather than as an engine default.
+
+A format with no matching output — one the toolkit does not support saving, or an unrecognized value — returns `ErrUnsupportedFormat` rather than `SaveFormat_Auto`. Auto leaves the choice to the engine, which does not produce the format the caller asked for, so a silent Auto would mean a document loaded in one format and saved in another with no error.
+
 ## Using formats with converter
 
 The most common use case is to convert a spreadsheet to a format inferred from the output file extension:

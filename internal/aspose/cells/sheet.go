@@ -1,6 +1,7 @@
 package cells
 
 import (
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -28,7 +29,7 @@ func (s Sheet) Resolve(wb *asposecells.Workbook) (*asposecells.Worksheet, error)
 	if s.UseIndex {
 		return SheetByIndex(wb, s.Index)
 	}
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"strings"
 	"sync"
 	"testing"
@@ -64,10 +65,13 @@ func buildP2Workbook() ([]byte, error) {
 // creates it in memory (no file opened), so this does not consume the
 // evaluation load budget.
 func newBlankWorkbookBytes() ([]byte, error) {
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		return nil, err
 	}
+	// engine.NewWorkbook disarms the binding's finalizer, so this workbook has
+	// to be released here rather than left to the garbage collector.
+	defer engine.CloseWorkbook(wb)
 	return wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 }
 
@@ -197,7 +201,10 @@ func TestEncrypt(t *testing.T) {
 	}
 
 	// The saved file is really encrypted: loading it without a password fails.
-	if _, err := asposecells.NewWorkbook_Stream(out); err == nil {
+	if wb, err := engine.OpenWorkbook(out); err == nil {
+		// Undisposed native workbooks accumulate: they are this suite's usual
+		// route to the engine's intermittent crash.
+		engine.CloseWorkbook(wb)
 		t.Fatal("loading the encrypted workbook without a password should fail")
 	}
 
@@ -212,11 +219,14 @@ func TestEncrypt(t *testing.T) {
 		if err := lo.SetPassword("secret"); err != nil {
 			return err
 		}
-		wb, err := asposecells.NewWorkbook_Stream_LoadOptions(out, lo)
+		wb, err := engine.OpenWorkbookWithOptions(out, lo)
 		if err != nil {
 			return fmt.Errorf("load with password: %w", err)
 		}
-		settings, err := wb.GetSettings()
+		// Released when this attempt returns, so a retry does not pile up a
+		// native workbook per attempt.
+		defer engine.CloseWorkbook(wb)
+		settings, err := engine.Derive(wb.GetSettings())
 		if err != nil {
 			return err
 		}
@@ -227,19 +237,19 @@ func TestEncrypt(t *testing.T) {
 		if !enc {
 			return fmt.Errorf("IsEncrypted = false, want true")
 		}
-		wss, err := wb.GetWorksheets()
+		wss, err := engine.Derive(wb.GetWorksheets())
 		if err != nil {
 			return err
 		}
-		ws, err := wss.Get_Int(0)
+		ws, err := engine.Derive(wss.Get_Int(0))
 		if err != nil {
 			return err
 		}
-		cs, err := ws.GetCells()
+		cs, err := engine.Derive(ws.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := cs.Get_Int_Int(0, 0)
+		cell, err := engine.Derive(cs.Get_Int_Int(0, 0))
 		if err != nil {
 			return err
 		}

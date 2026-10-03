@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"path/filepath"
 	"strings"
 
@@ -19,11 +20,11 @@ import (
 // renders it in the requested output format, and hands the (filename, data)
 // pair to emit. emit is backed by a datasource.DataSink in Split.
 func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveoptions.SaveOption, emit func(filename string, data []byte) error) error {
-	defaultStyle, err := workbook.GetDefaultStyle()
+	defaultStyle, err := engine.Derive(workbook.GetDefaultStyle())
 	if err != nil {
 		return err
 	}
-	worksheets, err := workbook.GetWorksheets()
+	worksheets, err := engine.Derive(workbook.GetWorksheets())
 	if err != nil {
 		return err
 	}
@@ -32,7 +33,7 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 		return err
 	}
 	for i := int32(0); i < count; i++ {
-		worksheet, err := worksheets.Get_Int(i)
+		worksheet, err := engine.Derive(worksheets.Get_Int(i))
 		if err != nil {
 			return err
 		}
@@ -40,54 +41,67 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 		if err != nil {
 			return err
 		}
-		newWorkbook, err := asposecells.NewWorkbook()
-		if err != nil {
-			return fmt.Errorf("sheet %q: %w", sheetname, err)
+		// Each worksheet gets its own standalone workbook, so the body lives in
+		// its own function: the deferred disposal then frees that workbook as
+		// soon as its output has been emitted, rather than holding one copy of
+		// the sheet per worksheet until the whole split finishes.
+		if err := renderOneWorksheet(workbook, worksheet, defaultStyle, sheetname, outSaveOption, emit); err != nil {
+			return err
 		}
-		err = newWorkbook.CopyTheme(workbook)
-		if err != nil {
-			return fmt.Errorf("sheet %q copy theme: %w", sheetname, err)
-		}
-		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
-		if err != nil {
-			return fmt.Errorf("sheet %q: %w", sheetname, err)
-		}
-		err = newDefaultStyle.Copy(defaultStyle)
-		if err != nil {
-			return fmt.Errorf("sheet %q copy style: %w", sheetname, err)
-		}
-		newWorksheets, err := newWorkbook.GetWorksheets()
-		if err != nil {
-			return fmt.Errorf("sheet %q: %w", sheetname, err)
-		}
-		newWorksheet, err := newWorksheets.Get_Int(int32(0))
-		if err != nil {
-			return fmt.Errorf("sheet %q: %w", sheetname, err)
-		}
-		err = newWorksheet.SetName(sheetname)
-		if err != nil {
-			return fmt.Errorf("sheet %q set name: %w", sheetname, err)
-		}
-		err = newWorksheet.Copy_Worksheet(worksheet)
-		if err != nil {
-			return fmt.Errorf("sheet %q copy: %w", sheetname, err)
-		}
-		newFilename := sheetname + "." + outSaveOption.GetFormat()
-		err = newWorkbook.SetFileName(newFilename)
-		if err != nil {
-			return fmt.Errorf("sheet %q set file name: %w", sheetname, err)
-		}
-		newData, err := newWorkbook.SaveToStream()
-		if err != nil {
-			return fmt.Errorf("sheet %q save: %w", sheetname, err)
-		}
-		outData, err := outSaveOption.Apply(newData)
-		if err != nil {
-			return fmt.Errorf("sheet %q apply format: %w", sheetname, err)
-		}
-		if err := emit(newFilename, outData); err != nil {
-			return fmt.Errorf("sheet %q emit: %w", sheetname, err)
-		}
+	}
+	return nil
+}
+
+// renderOneWorksheet builds the standalone workbook for a single worksheet —
+// carrying the source workbook's theme and default style — renders it in the
+// requested format, and emits the resulting (filename, data) pair.
+func renderOneWorksheet(source *asposecells.Workbook, worksheet *asposecells.Worksheet, defaultStyle *asposecells.Style, sheetname string, outSaveOption saveoptions.SaveOption, emit func(filename string, data []byte) error) error {
+	newWorkbook, err := engine.NewWorkbook()
+	if err != nil {
+		return fmt.Errorf("sheet %q: %w", sheetname, err)
+	}
+	// The rendered bytes are a Go-owned copy (the binding returns them through
+	// C.GoBytes), so they outlive this workbook.
+	defer engine.CloseWorkbook(newWorkbook)
+
+	if err := newWorkbook.CopyTheme(source); err != nil {
+		return fmt.Errorf("sheet %q copy theme: %w", sheetname, err)
+	}
+	newDefaultStyle, err := engine.Derive(newWorkbook.GetDefaultStyle())
+	if err != nil {
+		return fmt.Errorf("sheet %q: %w", sheetname, err)
+	}
+	if err := newDefaultStyle.Copy(defaultStyle); err != nil {
+		return fmt.Errorf("sheet %q copy style: %w", sheetname, err)
+	}
+	newWorksheets, err := engine.Derive(newWorkbook.GetWorksheets())
+	if err != nil {
+		return fmt.Errorf("sheet %q: %w", sheetname, err)
+	}
+	newWorksheet, err := engine.Derive(newWorksheets.Get_Int(int32(0)))
+	if err != nil {
+		return fmt.Errorf("sheet %q: %w", sheetname, err)
+	}
+	if err := newWorksheet.SetName(sheetname); err != nil {
+		return fmt.Errorf("sheet %q set name: %w", sheetname, err)
+	}
+	if err := newWorksheet.Copy_Worksheet(worksheet); err != nil {
+		return fmt.Errorf("sheet %q copy: %w", sheetname, err)
+	}
+	newFilename := sheetname + "." + outSaveOption.GetFormat()
+	if err := newWorkbook.SetFileName(newFilename); err != nil {
+		return fmt.Errorf("sheet %q set file name: %w", sheetname, err)
+	}
+	newData, err := newWorkbook.SaveToStream()
+	if err != nil {
+		return fmt.Errorf("sheet %q save: %w", sheetname, err)
+	}
+	outData, err := outSaveOption.Apply(newData)
+	if err != nil {
+		return fmt.Errorf("sheet %q apply format: %w", sheetname, err)
+	}
+	if err := emit(newFilename, outData); err != nil {
+		return fmt.Errorf("sheet %q emit: %w", sheetname, err)
 	}
 	return nil
 }
@@ -112,6 +126,8 @@ func renderWorksheetOutputs(workbook *asposecells.Workbook, outSaveOption saveop
 //	err := manipulator.Split(datasource.FilePathSource("examples/data/BookText.xlsx"),
 //		save_option, datasource.FolderSink("out/sheets"))
 func Split(source datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
 	}
@@ -125,6 +141,7 @@ func Split(source datasource.DataSource, opt saveoptions.SaveOption, sink dataso
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	return renderWorksheetOutputs(workbook, opt, sink.Write)
 }
 
@@ -162,15 +179,18 @@ func SplitSpreadsheetToZipWriter(source datasource.DataSource, zipWriter *zip.Wr
 // names each file <sheet>.<ext>, whereas this function used the source file's
 // base name as a prefix (<base>_<sheet>.<ext>).
 func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
-	workbook, err := asposecells.NewWorkbook_String(inputPath)
+	engine.LockEngine()
+	defer engine.UnlockEngine()
+	workbook, err := engine.OpenWorkbookFile(inputPath)
 	if err != nil {
 		return err
 	}
-	defaultStyle, err := workbook.GetDefaultStyle()
+	defer engine.CloseWorkbook(workbook)
+	defaultStyle, err := engine.Derive(workbook.GetDefaultStyle())
 	if err != nil {
 		return err
 	}
-	worksheets, err := workbook.GetWorksheets()
+	worksheets, err := engine.Derive(workbook.GetWorksheets())
 	if err != nil {
 		return err
 	}
@@ -190,58 +210,73 @@ func SplitSpreadsheetToFolder(inputPath string, outputFolder string) error {
 		return err
 	}
 	for i := int32(0); i < count; i++ {
-		worksheet, err := worksheets.Get_Int(i)
-		if err != nil {
-			return err
-		}
-		sheetname, err := worksheet.GetName()
-		if err != nil {
-			return err
-		}
-		newWorkbook, err := asposecells.NewWorkbook()
-		if err != nil {
-			return err
-		}
-		err = newWorkbook.CopyTheme(workbook)
-		if err != nil {
-			return err
-		}
-		newDefaultStyle, err := newWorkbook.GetDefaultStyle()
-		if err != nil {
-			return err
-		}
-		err = newDefaultStyle.Copy(defaultStyle)
-		if err != nil {
-			return err
-		}
-		newFilename := fmt.Sprintf("%s_%s%s", name, sheetname, ext)
-		newPath := filepath.Join(outputFolder, newFilename)
-		err = newWorkbook.SetFileName(newFilename)
-		if err != nil {
-			return err
-		}
-		err = newWorkbook.SetFileFormat(fileFormat)
-		if err != nil {
-			return err
-		}
-		newWorksheets, err := newWorkbook.GetWorksheets()
-		if err != nil {
-			return err
-		}
-		newWorksheet, err := newWorksheets.Get_Int(int32(0))
-		if err != nil {
-			return err
-		}
-		err = newWorksheet.SetName(sheetname)
-		if err != nil {
-			return err
-		}
-		err = newWorksheet.Copy_Worksheet(worksheet)
-		if err != nil {
-			return err
-		}
-		err = newWorkbook.Save_String(newPath)
-		if err != nil {
+		// The body is a closure so this sheet's workbook is released on every exit
+		// path. NewWorkbook disarms the binding's finalizer, so an early return
+		// here does not merely delay the free — the workbook is never freed at
+		// all. A defer inside the closure runs at the end of each iteration, which
+		// a defer in the loop itself would not.
+		if err := func() error {
+			worksheet, err := engine.Derive(worksheets.Get_Int(i))
+			if err != nil {
+				return err
+			}
+			sheetname, err := worksheet.GetName()
+			if err != nil {
+				return err
+			}
+			newWorkbook, err := engine.NewWorkbook()
+			if err != nil {
+				return err
+			}
+			defer engine.CloseWorkbook(newWorkbook)
+			err = newWorkbook.CopyTheme(workbook)
+			if err != nil {
+				return err
+			}
+			newDefaultStyle, err := engine.Derive(newWorkbook.GetDefaultStyle())
+			if err != nil {
+				return err
+			}
+			err = newDefaultStyle.Copy(defaultStyle)
+			if err != nil {
+				return err
+			}
+			newFilename := fmt.Sprintf("%s_%s%s", name, sheetname, ext)
+			// The sheet name is embedded in the output path, so it is untrusted in
+			// the same way it is for FolderSink and gets the same check; without it
+			// a crafted sheet name would write outside outputFolder.
+			if err := datasource.SafeOutputName(newFilename); err != nil {
+				return err
+			}
+			newPath := filepath.Join(outputFolder, newFilename)
+			err = newWorkbook.SetFileName(newFilename)
+			if err != nil {
+				return err
+			}
+			err = newWorkbook.SetFileFormat(fileFormat)
+			if err != nil {
+				return err
+			}
+			newWorksheets, err := engine.Derive(newWorkbook.GetWorksheets())
+			if err != nil {
+				return err
+			}
+			newWorksheet, err := engine.Derive(newWorksheets.Get_Int(int32(0)))
+			if err != nil {
+				return err
+			}
+			err = newWorksheet.SetName(sheetname)
+			if err != nil {
+				return err
+			}
+			err = newWorksheet.Copy_Worksheet(worksheet)
+			if err != nil {
+				return err
+			}
+			// The output is already on disk, so a disposal failure is not worth
+			// reporting as a failure of the split; defer still frees the workbook.
+			return newWorkbook.Save_String(newPath)
+		}(); err != nil {
 			return err
 		}
 	}

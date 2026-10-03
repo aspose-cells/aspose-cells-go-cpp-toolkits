@@ -10,6 +10,7 @@ package transfer
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"os"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -40,7 +41,7 @@ func defaultOptions() *options {
 		sheet:          cells.FirstSheet,
 		startCell:      "A1",
 		endCell:        "",
-		xmlMap:         "Sheet1",
+		xmlMap:         "",
 		convertNumeric: true,
 		separator:      ",",
 	}
@@ -79,8 +80,16 @@ func WithEndCell(ref string) Option {
 	return func(o *options) { o.endCell = ref }
 }
 
-// WithXMLMap sets the XML map name used by ExportSpreadsheetToXml, e.g.
-// "InventoryMap".
+// WithXMLMap sets the XML map name used by ExportSpreadsheetToXml. It is
+// optional: when it is not given and the source defines exactly one XML map,
+// that map is used, and when the source defines more than one the export
+// returns ErrXMLMapAmbiguous rather than guessing.
+//
+// Naming a map the workbook does not define returns ErrXMLMapNotFound. The
+// name is not something a caller can derive — when the engine loads an XML
+// document it names the map after the document's root element ("Rows_Map" for
+// a root of "Rows") — so prefer leaving the option out, or read the names from
+// the error.
 func WithXMLMap(name string) Option {
 	return func(o *options) { o.xmlMap = name }
 }
@@ -136,6 +145,8 @@ func ExportWorksheetToJson(source datasource.DataSource, sink datasource.DataSin
 //		transfer.WithSheet("Data"), transfer.WithStartCell("A1"),
 //		transfer.WithEndCell("B3"))
 func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, opts ...Option) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -148,10 +159,11 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	if err != nil {
 		return err
 	}
-	workbook, err := asposecells.NewWorkbook_Stream(data)
+	workbook, err := engine.OpenWorkbook(data)
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err
@@ -167,7 +179,7 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	var endRow, endColumn int32
 	if cfg.endCell == "" {
 		// Full used area: extend the range to the last used cell.
-		worksheetCells, err := ws.GetCells()
+		worksheetCells, err := engine.Derive(ws.GetCells())
 		if err != nil {
 			return err
 		}
@@ -200,16 +212,30 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	return sink.Write("", out)
 }
 
-// ExportSpreadsheetToXml exports the whole workbook as XML using the given XML
-// map name (WithXMLMap), writing the result to sink.
+// ExportSpreadsheetToXml exports the whole workbook as XML through one of the
+// workbook's XML maps, writing the result to sink.
+//
+// The map is chosen with WithXMLMap; omitting it uses the workbook's only map,
+// or returns ErrXMLMapAmbiguous when the workbook defines several. A named map
+// the workbook does not define returns ErrXMLMapNotFound.
+//
+// The map has to exist before any of this: the engine answers a request for a
+// missing map with an empty result and no error, and it builds a workbook's
+// map from the XML document the workbook was loaded from. So this exports a
+// workbook that was opened from XML — the element data it read then comes back
+// out — and not one authored cell by cell, whose cells no map is bound to.
+// An XML source is loaded with XML-map semantics automatically; see
+// cells.LooksLikeXML.
 //
 // Example:
 //
+//	// Round-trip an XML document: the engine's map is found for us.
 //	err := transfer.ExportSpreadsheetToXml(
-//		datasource.FilePathSource("out/seed.xlsx"),
-//		datasource.FilePathSink("out/inventory.xml"),
-//		transfer.WithXMLMap("InventoryMap"))
+//		datasource.FilePathSource("examples/data/data.xml"),
+//		datasource.FilePathSink("out/inventory.xml"))
 func ExportSpreadsheetToXml(source datasource.DataSource, sink datasource.DataSink, opts ...Option) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -218,15 +244,68 @@ func ExportSpreadsheetToXml(source datasource.DataSource, sink datasource.DataSi
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+
+	raw, err := cells.ReadSource(source)
 	if err != nil {
 		return err
 	}
-	data, err := workbook.ExportXml_String(cfg.xmlMap)
+	// Loading an XML document without XML-map semantics discards its schema,
+	// leaving the workbook with no map to export through.
+	var workbook *asposecells.Workbook
+	if cells.LooksLikeXML(raw) {
+		workbook, err = cells.GetWorkbookFromBytesWithXMLLoad(raw)
+	} else {
+		workbook, err = cells.GetWorkbookFromBytes(raw)
+	}
 	if err != nil {
 		return err
 	}
-	return sink.Write("", data)
+	defer engine.CloseWorkbook(workbook)
+
+	available, err := cells.XMLMapNames(workbook)
+	if err != nil {
+		return err
+	}
+	mapName, err := resolveXMLMap(cfg.xmlMap, available)
+	if err != nil {
+		return err
+	}
+
+	out, err := workbook.ExportXml_String(mapName)
+	if err != nil {
+		return err
+	}
+	if len(out) == 0 {
+		// Unreachable while the engine keeps answering a present map with at
+		// least its declaration, but writing an empty file is the failure this
+		// function exists to prevent, so it does not get to happen quietly.
+		return fmt.Errorf("xml map %q produced no output", mapName)
+	}
+	return sink.Write("", out)
+}
+
+// resolveXMLMap picks the XML map to export through. An explicit name must be
+// one the workbook defines; an empty name is satisfied only by a workbook with
+// exactly one map.
+func resolveXMLMap(requested string, available []string) (string, error) {
+	if requested != "" {
+		for _, name := range available {
+			if name == requested {
+				return requested, nil
+			}
+		}
+		return "", fmt.Errorf("xml map %q: %w (workbook defines %v)",
+			requested, toolkiterrors.ErrXMLMapNotFound, available)
+	}
+	switch len(available) {
+	case 0:
+		return "", fmt.Errorf("workbook defines no xml map: %w", toolkiterrors.ErrXMLMapNotFound)
+	case 1:
+		return available[0], nil
+	default:
+		return "", fmt.Errorf("workbook defines %d xml maps %v; name one with WithXMLMap: %w",
+			len(available), available, toolkiterrors.ErrXMLMapAmbiguous)
+	}
 }
 
 // ExportWorksheetToJsonFile exports a worksheet's used range as JSON straight

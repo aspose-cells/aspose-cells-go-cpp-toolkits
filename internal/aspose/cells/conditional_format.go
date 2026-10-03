@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -82,7 +83,7 @@ func AddConditionalFormatting(ws *asposecells.Worksheet, areaStr string) (*aspos
 	if err := ValidateGridArea(area); err != nil {
 		return nil, err
 	}
-	formattings, err := ws.GetConditionalFormattings()
+	formattings, err := engine.Derive(ws.GetConditionalFormattings())
 	if err != nil {
 		return nil, err
 	}

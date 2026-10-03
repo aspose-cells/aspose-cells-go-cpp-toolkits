@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"reflect"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -81,6 +82,8 @@ func WithSheetIndex(i int) WriteRowsOption {
 //		editor.WithWriteHeader(true),
 //	)
 func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, rows []T, opts ...WriteRowsOption) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultWriteRowsConfig()
 	applyWriteRowsOptions(cfg, opts)
 	if source == nil {
@@ -102,6 +105,7 @@ func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, ro
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err

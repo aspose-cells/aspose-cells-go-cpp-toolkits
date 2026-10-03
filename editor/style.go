@@ -1,6 +1,9 @@
 package editor
 
-import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+import (
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
+)
 
 // WithFontName creates a StyleAction that sets the font name (typeface) of the style.
 //
@@ -11,7 +14,7 @@ import asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 //   - StyleAction: A function that modifies the font name of the target style.
 func WithFontName(fontName string) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -28,7 +31,7 @@ func WithFontName(fontName string) StyleAction {
 //   - StyleAction: A function that modifies the font size of the target style.
 func WithFontSize(size int) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -45,7 +48,7 @@ func WithFontSize(size int) StyleAction {
 //   - StyleAction: A function that modifies the bold property of the target style.
 func WithFontIsBold(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -62,7 +65,7 @@ func WithFontIsBold(value bool) StyleAction {
 //   - StyleAction: A function that modifies the italic property of the target style.
 func WithFontIsItalic(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -79,7 +82,7 @@ func WithFontIsItalic(value bool) StyleAction {
 //   - StyleAction: A function that modifies the superscript property of the target style.
 func WithFontIsSuperscript(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -96,7 +99,7 @@ func WithFontIsSuperscript(value bool) StyleAction {
 //   - StyleAction: A function that modifies the subscript property of the target style.
 func WithFontIsSubscript(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -113,7 +116,7 @@ func WithFontIsSubscript(value bool) StyleAction {
 //   - StyleAction: A function that modifies the strikeout property of the target style.
 func WithFontIsStrikeout(value bool) StyleAction {
 	return func(style *asposecells.Style) error {
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -137,7 +140,7 @@ func WithFontColor(color interface{}) StyleAction {
 		if err != nil {
 			return err
 		}
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}
@@ -161,7 +164,7 @@ func WithFontUnderline(value interface{}) StyleAction {
 		if err != nil {
 			return err
 		}
-		font, err := style.GetFont()
+		font, err := engine.Derive(style.GetFont())
 		if err != nil {
 			return err
 		}

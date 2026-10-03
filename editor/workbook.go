@@ -4,6 +4,7 @@ package editor
 
 import (
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -18,7 +19,7 @@ import (
 //     the active sheet.
 func WithActiveSheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, err := workbook.GetWorksheets()
+		wss, err := engine.Derive(workbook.GetWorksheets())
 		if err != nil {
 			return err
 		}
@@ -36,7 +37,7 @@ func WithActiveSheet(sheetName string) WorkbookAction {
 
 func WithAddWorksheet(newSheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, err := workbook.GetWorksheets()
+		wss, err := engine.Derive(workbook.GetWorksheets())
 		if err != nil {
 			return err
 		}
@@ -54,7 +55,7 @@ func WithAddWorksheet(newSheetName string) WorkbookAction {
 //   - WorkbookAction: A function that deletes the workbook by the sheet name.
 func WithDeleteWorksheet(sheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, err := workbook.GetWorksheets()
+		wss, err := engine.Derive(workbook.GetWorksheets())
 		if err != nil {
 			return err
 		}
@@ -72,7 +73,7 @@ func WithDeleteWorksheet(sheetName string) WorkbookAction {
 //   - WorkbookAction: A function that renames the specified worksheet.
 func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		wss, err := workbook.GetWorksheets()
+		wss, err := engine.Derive(workbook.GetWorksheets())
 		if err != nil {
 			return err
 		}
@@ -96,7 +97,7 @@ func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction {
 //   - WorkbookAction: A function that modifies the default style of the workbook.
 func InDefaultStyle(actions ...StyleAction) WorkbookAction {
 	return func(workbook *asposecells.Workbook) error {
-		defaultStyle, err := workbook.GetDefaultStyle()
+		defaultStyle, err := engine.Derive(workbook.GetDefaultStyle())
 		if err != nil {
 			return err
 		}

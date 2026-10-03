@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,15 +31,16 @@ import (
 // which re-rolls the whole operation on fresh input.
 func newNamedWorkbookBytes(t *testing.T, names ...string) []byte {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook: %v", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("GetWorksheets: %v", err)
 	}
-	first, err := wss.Get_Int(0)
+	first, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		t.Fatalf("Get_Int(0): %v", err)
 	}
@@ -117,11 +119,12 @@ func TestMergeCombinesWorkbooks(t *testing.T) {
 		if err := manipulator.Merge([]datasource.DataSource{alpha, beta}, formats.Get("xlsx"), &out); err != nil {
 			return fmt.Errorf("Merge: %w", err)
 		}
-		merged, err := asposecells.NewWorkbook_Stream(out.Bytes())
+		merged, err := engine.OpenWorkbook(out.Bytes())
 		if err != nil {
 			return fmt.Errorf("load merged workbook: %w", err)
 		}
-		wss, err := merged.GetWorksheets()
+		defer engine.CloseWorkbook(merged)
+		wss, err := engine.Derive(merged.GetWorksheets())
 		if err != nil {
 			return fmt.Errorf("GetWorksheets: %w", err)
 		}

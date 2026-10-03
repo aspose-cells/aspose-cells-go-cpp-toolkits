@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"sync"
 	"testing"
 	"time"
@@ -47,15 +48,16 @@ func queryTestWorkbook(t *testing.T) []byte {
 }
 
 func buildQueryTestWorkbook() ([]byte, error) {
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		return nil, err
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return nil, err
 	}
-	first, err := wss.Get_Int(0)
+	first, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		return nil, err
 	}
@@ -332,5 +334,19 @@ func TestQueryErrors(t *testing.T) {
 
 	if _, err := query.ReadCell(src, "A1", query.WithSheetIndex(99)); !errors.Is(err, toolkiterrors.ErrInvalidSheetID) {
 		t.Errorf("ReadCell(WithSheetIndex 99) error = %v, want ErrInvalidSheetID", err)
+	}
+}
+
+// TestQueryReadRangeRefusesOversizedRead verifies that an in-grid but enormous
+// range is reported instead of being allocated. The range is valid — every cell
+// in it exists in the grid — so the grid-bounds check cannot catch it; without
+// the size cap the read would try to materialize a few billion CellValues and
+// be killed by the OS before it could return an error.
+func TestQueryReadRangeRefusesOversizedRead(t *testing.T) {
+	src := datasource.BytesSource(queryTestWorkbook(t))
+
+	_, err := query.ReadRange(src, "A1", "ZZ1000000")
+	if !errors.Is(err, toolkiterrors.ErrRangeTooLarge) {
+		t.Fatalf("ReadRange(A1:ZZ1000000) error = %v, want ErrRangeTooLarge", err)
 	}
 }

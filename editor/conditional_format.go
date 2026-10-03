@@ -5,6 +5,7 @@ import (
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -108,7 +109,7 @@ func AddConditionalFormatting(sheetID interface{}, cellRange string, actions ...
 //	)
 func InConditionalFormatting(index int, actions ...ConditionalFormatAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		formattings, err := worksheet.GetConditionalFormattings()
+		formattings, err := engine.Derive(worksheet.GetConditionalFormattings())
 		if err != nil {
 			return err
 		}
@@ -145,7 +146,7 @@ func InConditionalFormatting(index int, actions ...ConditionalFormatAction) Work
 //   - WorksheetAction: A function that deletes the conditional formatting.
 func DeleteConditionalFormatting(index int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		formattings, err := worksheet.GetConditionalFormattings()
+		formattings, err := engine.Derive(worksheet.GetConditionalFormattings())
 		if err != nil {
 			return err
 		}
@@ -238,7 +239,7 @@ func WithColorScale(minColor, maxColor interface{}, midColor interface{}) Condit
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
@@ -302,7 +303,7 @@ func WithDataBar(color interface{}) ConditionalFormatAction {
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
@@ -341,7 +342,7 @@ func WithIconSet(iconSetType IconSetType) ConditionalFormatAction {
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
@@ -393,13 +394,13 @@ func WithCellValueRule(operator OperatorType, formula1, formula2 string, styleAc
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := cond.GetStyle()
+			style, err := engine.Derive(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -441,13 +442,13 @@ func WithExpressionRule(formula string, styleActions ...StyleAction) Conditional
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := cond.GetStyle()
+			style, err := engine.Derive(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -488,13 +489,13 @@ func WithAboveAverageRule(styleActions ...StyleAction) ConditionalFormatAction {
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := cond.GetStyle()
+			style, err := engine.Derive(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -536,7 +537,7 @@ func WithTop10Rule(rank int, isTop bool, styleActions ...StyleAction) Conditiona
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
@@ -553,7 +554,7 @@ func WithTop10Rule(rank int, isTop bool, styleActions ...StyleAction) Conditiona
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := cond.GetStyle()
+			style, err := engine.Derive(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -614,22 +615,29 @@ func WithConditionalFormatRule(condType FormatConditionType, operator OperatorTy
 		if err != nil {
 			return err
 		}
-		op, err := cells.ResolveOperatorType(string(operator))
-		if err != nil {
-			// Some condition types don't need an operator, so use None as default
-			op = asposecells.OperatorType_None
+		// An empty operator is how a caller says "this condition type needs no
+		// operator" (see the doc comment), and maps to the engine's None. Any
+		// other unresolvable name is a typo, and is reported rather than
+		// silently written as None — for a cellValue or expression rule that
+		// would quietly change what the rule matches.
+		op := asposecells.OperatorType_None
+		if operator != "" {
+			op, err = cells.ResolveOperatorType(string(operator))
+			if err != nil {
+				return err
+			}
 		}
 		idx, err := cells.AddConditionToCollection(collection, ct, op, formula1, formula2)
 		if err != nil {
 			return err
 		}
-		cond, err := cells.GetCondition(collection, idx)
+		cond, err := engine.Derive(cells.GetCondition(collection, idx))
 		if err != nil {
 			return err
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := cond.GetStyle()
+			style, err := engine.Derive(cond.GetStyle())
 			if err != nil {
 				return err
 			}

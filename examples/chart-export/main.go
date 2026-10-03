@@ -8,17 +8,22 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/converter"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
+	examples "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/examples/common"
 )
 
 func main() {
-	// Create output directory
-	outDir := filepath.Join("examples", "chart-export", "out")
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := examples.SetLicense(); err != nil {
+		log.Printf("license: %v", err)
+	}
+	// Resolve outputs from the source location, not the working directory:
+	// examples/run.sh launches each example from inside its own directory, so a
+	// relative path would land the artifacts in a nested copy of the tree.
+	outDir := examples.OutDir("chart-export")
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		log.Fatalf("create output directory: %v", err)
 	}
 
@@ -66,7 +71,7 @@ func main() {
 	dataSource := datasource.BytesSource(workbookData)
 
 	// Export as PNG
-	pngPath := filepath.Join(outDir, "chart.png")
+	pngPath := examples.OutPath("chart-export", "chart.png")
 	err = converter.ExportChartToFile(
 		dataSource,
 		pngPath,
@@ -82,7 +87,7 @@ func main() {
 	fmt.Printf("✓ Exported chart as PNG: %s\n", pngPath)
 
 	// Export as JPEG with custom quality
-	jpegPath := filepath.Join(outDir, "chart.jpg")
+	jpegPath := examples.OutPath("chart-export", "chart.jpg")
 	err = converter.ExportChartToFile(
 		dataSource,
 		jpegPath,
@@ -99,7 +104,7 @@ func main() {
 	fmt.Printf("✓ Exported chart as JPEG: %s\n", jpegPath)
 
 	// Export as SVG (vector format)
-	svgPath := filepath.Join(outDir, "chart.svg")
+	svgPath := examples.OutPath("chart-export", "chart.svg")
 	err = converter.ExportChartToFile(
 		dataSource,
 		svgPath,
@@ -115,7 +120,7 @@ func main() {
 	fmt.Printf("✓ Exported chart as SVG: %s\n", svgPath)
 
 	// Export as a real PDF document
-	pdfPath := filepath.Join(outDir, "chart.pdf")
+	pdfPath := examples.OutPath("chart-export", "chart.pdf")
 	err = converter.ExportChartToFile(
 		dataSource,
 		pdfPath,
@@ -131,7 +136,7 @@ func main() {
 	fmt.Printf("✓ Exported chart as PDF: %s\n", pdfPath)
 
 	// Export at an exact pixel size (both dimensions required)
-	customPath := filepath.Join(outDir, "chart-custom-size.png")
+	customPath := examples.OutPath("chart-export", "chart-custom-size.png")
 	err = converter.ExportChartToFile(
 		dataSource,
 		customPath,

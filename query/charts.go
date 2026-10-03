@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -91,6 +92,8 @@ type ChartSeries struct {
 //	}
 //	fmt.Println(info.Type, info.Title, info.SeriesCount)
 func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (ChartMetadata, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	var out ChartMetadata
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
@@ -101,6 +104,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	if err != nil {
 		return out, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return out, err
@@ -119,7 +123,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	out.Type = chartTypeName(chartType)
 
 	// Title
-	title, err := chart.GetTitle()
+	title, err := engine.Derive(chart.GetTitle())
 	if err != nil {
 		return out, err
 	}
@@ -135,7 +139,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	out.TitleVisible = titleVisible
 
 	// Style
-	style, err := chart.GetStyle()
+	style, err := engine.Derive(chart.GetStyle())
 	if err != nil {
 		return out, err
 	}
@@ -148,7 +152,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	}
 	out.ShowLegend = showLegend
 	if showLegend {
-		legend, err := chart.GetLegend()
+		legend, err := engine.Derive(chart.GetLegend())
 		if err != nil {
 			return out, err
 		}
@@ -195,7 +199,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	out.DataRange = dataRange
 
 	// Series count
-	series, err := chart.GetNSeries()
+	series, err := engine.Derive(chart.GetNSeries())
 	if err != nil {
 		return out, err
 	}
@@ -222,6 +226,8 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 //		fmt.Println(s.Values, s.DataValueCount)
 //	}
 func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Option) ([]ChartSeries, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -231,6 +237,7 @@ func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Optio
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
@@ -239,7 +246,7 @@ func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Optio
 	if err != nil {
 		return nil, err
 	}
-	seriesCollection, err := chart.GetNSeries()
+	seriesCollection, err := engine.Derive(chart.GetNSeries())
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +295,8 @@ func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Optio
 //	}
 //	fmt.Printf("worksheet has %d chart(s)\n", n)
 func ChartCount(source datasource.DataSource, opts ...Option) (int, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -297,6 +306,7 @@ func ChartCount(source datasource.DataSource, opts ...Option) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return 0, err

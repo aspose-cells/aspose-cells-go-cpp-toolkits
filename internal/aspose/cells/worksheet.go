@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -19,7 +20,7 @@ func WorksheetByName(worksheets *asposecells.WorksheetCollection, name string) (
 		return nil, err
 	}
 	for i := int32(0); i < count; i++ {
-		ws, err := worksheets.Get_Int(i)
+		ws, err := engine.Derive(worksheets.Get_Int(i))
 		if err != nil {
 			return nil, err
 		}

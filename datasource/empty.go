@@ -1,6 +1,7 @@
 package datasource
 
 import (
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -14,13 +15,20 @@ import (
 // without touching the disk. Unlike loading an existing file, building it
 // never consumes the engine's evaluation-mode load budget.
 func NewEmptyWorkbook() (BytesSource, error) {
-	wb, err := asposecells.NewWorkbook()
+	engine.LockEngine()
+	defer engine.UnlockEngine()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		return nil, err
 	}
+	// Release the engine-side workbook once it has been serialized; the binding
+	// would only do this from a finalizer, at some later GC.
+	defer engine.CloseWorkbook(wb)
+
 	data, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 	if err != nil {
 		return nil, err
 	}
+	// The returned bytes are an independent copy, so they outlive the disposal.
 	return BytesSource(data), nil
 }

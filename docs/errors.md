@@ -143,6 +143,173 @@ var ErrNameNotFound = errors.New("named range not found")
 
 Returned when a named range is referenced by name but no such name exists in the workbook.
 
+### ErrInvalidCount
+
+```go
+var ErrInvalidCount = errors.New("invalid count")
+```
+
+Returned when a row, column, or cell count argument is zero or negative. The engine treats a zero count as a silent no-op, so the toolkit rejects it rather than returning success for a call that changed nothing.
+
+### ErrInvalidShiftType
+
+```go
+var ErrInvalidShiftType = errors.New("invalid shift type")
+```
+
+Returned when a cell-shift direction name is not one the toolkit recognizes. Accepting an unknown name would silently perform a different destructive edit than the caller asked for.
+
+### ErrRangeTooLarge
+
+```go
+var ErrRangeTooLarge = errors.New("range too large")
+```
+
+Returned when a read would materialize more cells than the toolkit is willing to allocate. A range is checked for size before any memory is reserved, so an in-grid but enormous range (e.g. an entire column range) is reported rather than exhausting memory.
+
+```go
+grid, err := query.ReadRange(src, "A1", "ZZ1000000")
+if errors.Is(err, toolkiterrors.ErrRangeTooLarge) {
+    // read the sheet in slices instead
+}
+```
+
+### ErrUnsafeSinkName
+
+```go
+var ErrUnsafeSinkName = errors.New("unsafe output name")
+```
+
+Returned when a `datasource.DataSink` is asked to write under a name that would escape its own destination, e.g. an archive entry or file name containing `..` segments. The name in a multi-output sink comes from the source document's worksheet names, so it is untrusted input.
+
+### ErrInvalidFontUnderline
+
+```go
+var ErrInvalidFontUnderline = errors.New("invalid font underline")
+```
+
+Returned when a font underline style name is not one the engine recognizes. Falling back to `None` would silently drop an underline the caller asked for.
+
+### ErrInvalidTextAlignment
+
+```go
+var ErrInvalidTextAlignment = errors.New("invalid text alignment")
+```
+
+Returned when a text alignment name is not one the engine recognizes. Falling back to `General` would silently discard an alignment the caller asked for.
+
+### ErrXMLMapNotFound
+
+```go
+var ErrXMLMapNotFound = errors.New("xml map not found")
+```
+
+Returned by `transfer.ExportSpreadsheetToXml` when the named XML map is not one the workbook defines, or the workbook defines none at all. The engine answers a request for a missing map with empty output and no error, so without this check the caller gets a successful-looking zero-byte write. The error names the maps the workbook does define.
+
+### ErrXMLMapAmbiguous
+
+```go
+var ErrXMLMapAmbiguous = errors.New("xml map is ambiguous")
+```
+
+Returned by `transfer.ExportSpreadsheetToXml` when no XML map was named and the workbook defines more than one, so there is no single obvious choice. Name one with `transfer.WithXMLMap`.
+
+### ErrChartNotFound
+
+```go
+var ErrChartNotFound = errors.New("chart not found")
+```
+
+Returned when a chart is referenced by an index that is out of range for the target worksheet.
+
+### ErrInvalidChartType
+
+```go
+var ErrInvalidChartType = errors.New("invalid chart type")
+```
+
+Returned when a chart type name is not one the engine recognizes.
+
+### ErrInvalidChartStyle
+
+```go
+var ErrInvalidChartStyle = errors.New("invalid chart style")
+```
+
+Returned when a chart style number falls outside the engine's supported 1..48 range.
+
+### ErrInvalidChartPosition
+
+```go
+var ErrInvalidChartPosition = errors.New("invalid chart legend position")
+```
+
+Returned when a chart legend position name is not one the engine recognizes.
+
+### ErrInvalidChartSize
+
+```go
+var ErrInvalidChartSize = errors.New("invalid chart export size")
+```
+
+Returned when a chart export requests an unusable pixel size: a negative width or height, or exactly one of the two set while the other is left at zero. The engine's `SetDesiredSize` requires both, so a half-specified size cannot be honored and is rejected rather than silently guessed.
+
+### ErrPictureAddFailed
+
+```go
+var ErrPictureAddFailed = errors.New("picture could not be added")
+```
+
+Returned when an image cannot be embedded into a worksheet, e.g. the engine rejects the data as an undecodable image or hands back no picture collection.
+
+### ErrValidationNotFound
+
+```go
+var ErrValidationNotFound = errors.New("validation not found")
+```
+
+Returned when a data validation is referenced by an index that is out of range for the target worksheet.
+
+### ErrInvalidValidationType
+
+```go
+var ErrInvalidValidationType = errors.New("invalid validation type")
+```
+
+Returned when a validation type name is not one the engine recognizes.
+
+### ErrInvalidOperatorType
+
+```go
+var ErrInvalidOperatorType = errors.New("invalid operator type")
+```
+
+Returned when an operator type name is not one the engine recognizes.
+
+### ErrConditionNotFound
+
+```go
+var ErrConditionNotFound = errors.New("condition not found")
+```
+
+Returned when a conditional formatting condition is referenced by an index that is out of range.
+
+### ErrInvalidFormatConditionType
+
+```go
+var ErrInvalidFormatConditionType = errors.New("invalid format condition type")
+```
+
+Returned when a format condition type name is not one the engine recognizes.
+
+### ErrInvalidIconSetType
+
+```go
+var ErrInvalidIconSetType = errors.New("invalid icon set type")
+```
+
+Returned when an icon set type name is not one the engine recognizes.
+
 ## Error classification examples
 
 ### Distinguishing failure types

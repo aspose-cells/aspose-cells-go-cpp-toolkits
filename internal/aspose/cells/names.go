@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -11,7 +12,7 @@ import (
 // ranges are workbook-scoped (the names live on the WorksheetCollection), even
 // though each refers to cells on a specific worksheet.
 func WorkbookNames(wb *asposecells.Workbook) (*asposecells.NameCollection, error) {
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func FindName(wb *asposecells.Workbook, name string) (*asposecells.Name, error) 
 		return nil, err
 	}
 	for i := int32(0); i < count; i++ {
-		n, err := names.Get_Int(i)
+		n, err := engine.Derive(names.Get_Int(i))
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +63,7 @@ func SetOrAddNamedRange(wb *asposecells.Workbook, name, refersTo string) error {
 		return err
 	}
 	for i := int32(0); i < count; i++ {
-		n, err := names.Get_Int(i)
+		n, err := engine.Derive(names.Get_Int(i))
 		if err != nil {
 			return err
 		}
@@ -78,7 +79,7 @@ func SetOrAddNamedRange(wb *asposecells.Workbook, name, refersTo string) error {
 	if err != nil {
 		return err
 	}
-	n, err := names.Get_Int(idx)
+	n, err := engine.Derive(names.Get_Int(idx))
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func SetOrAddNamedRange(wb *asposecells.Workbook, name, refersTo string) error {
 
 // SetCellComment adds or replaces the comment note on the cell at (row, col).
 func SetCellComment(ws *asposecells.Worksheet, row, col int32, text string) error {
-	comments, err := ws.GetComments()
+	comments, err := engine.Derive(ws.GetComments())
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,7 @@ func SetCellComment(ws *asposecells.Worksheet, row, col int32, text string) erro
 	if err != nil {
 		return err
 	}
-	comment, err := comments.Get_Int(idx)
+	comment, err := engine.Derive(comments.Get_Int(idx))
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func SetCellComment(ws *asposecells.Worksheet, row, col int32, text string) erro
 // on the comment's position, because the binding's Cell.GetComment returns a
 // dangling handle (a hard crash on use) for a comment-free cell.
 func CellComment(ws *asposecells.Worksheet, row, col int32) (string, error) {
-	comments, err := ws.GetComments()
+	comments, err := engine.Derive(ws.GetComments())
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +117,7 @@ func CellComment(ws *asposecells.Worksheet, row, col int32) (string, error) {
 		return "", err
 	}
 	for i := int32(0); i < count; i++ {
-		comment, err := comments.Get_Int(i)
+		comment, err := engine.Derive(comments.Get_Int(i))
 		if err != nil {
 			return "", err
 		}
@@ -146,7 +147,7 @@ func ClearComments(ws *asposecells.Worksheet) error {
 // password must be supplied at load time (LoadOptions.Password), which the
 // toolkit's shared loader does not yet expose.
 func EncryptWorkbook(wb *asposecells.Workbook, password string) error {
-	settings, err := wb.GetSettings()
+	settings, err := engine.Derive(wb.GetSettings())
 	if err != nil {
 		return err
 	}

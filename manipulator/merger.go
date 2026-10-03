@@ -8,6 +8,7 @@ package manipulator
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"io"
 	"path/filepath"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // Merge combines multiple spreadsheets into a single workbook in the format
@@ -40,6 +40,8 @@ import (
 //	err := manipulator.Merge(mergedDataSource, save_option,
 //		datasource.FilePathSink("out/mergedOutput2.html"))
 func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
 	}
@@ -49,11 +51,12 @@ func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink dat
 	if len(sources) == 0 {
 		return toolkiterrors.ErrNoSources
 	}
-	newWorkbook, err := asposecells.NewWorkbook()
+	newWorkbook, err := engine.NewWorkbook()
 	if err != nil {
 		return err
 	}
-	worksheets, err := newWorkbook.GetWorksheets()
+	defer engine.CloseWorkbook(newWorkbook)
+	worksheets, err := engine.Derive(newWorkbook.GetWorksheets())
 	if err != nil {
 		return err
 	}
@@ -69,6 +72,10 @@ func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink dat
 		if err != nil {
 			return fmt.Errorf("source %d: %w", i, err)
 		}
+		// Released when Merge returns, not at the end of this iteration: on the
+		// chance that Combine references the source's worksheets rather than
+		// copying them, the source has to outlive the combined workbook's save.
+		defer engine.CloseWorkbook(workbook)
 		err = newWorkbook.Combine(workbook)
 		if err != nil {
 			return fmt.Errorf("combine source %d: %w", i, err)

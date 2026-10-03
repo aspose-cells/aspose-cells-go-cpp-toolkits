@@ -151,10 +151,14 @@ func SuggestDataRange(dataRows, dataCols int, hasCategories bool) string {
 	if hasCategories {
 		totalCols++ // Include category column
 	}
+	if totalRows > cells.MaxGridRows || totalCols > cells.MaxGridCols {
+		return ""
+	}
 
-	// Convert to Excel column letters
-	startCol := 'A'
-	endCol := rune('A' + totalCols - 1)
-
-	return fmt.Sprintf("%c1:%c%d", startCol, endCol, totalRows)
+	// Render through cells.CellRef rather than arithmetic on 'A', which does not
+	// carry past "Z" — 'A'+26 is '[' and the result would not be a valid range.
+	return cells.Area{
+		Start: cells.CellRef{Row: 0, Col: 0},
+		End:   cells.CellRef{Row: totalRows - 1, Col: totalCols - 1},
+	}.String()
 }

@@ -3,6 +3,7 @@ package tests
 import (
 	"errors"
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"sync"
 	"testing"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/query"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // validationSheetIndex is the worksheet every validation test targets.
@@ -72,20 +72,20 @@ type validationReadback struct {
 
 func readValidation(t *testing.T, data []byte) validationReadback {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook_Stream(data)
+	wb, err := engine.OpenWorkbook(data)
 	if err != nil {
 		t.Fatalf("open workbook: %v", err)
 	}
-	defer wb.Dispose()
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("get worksheets: %v", err)
 	}
-	ws, err := wss.Get_Int(int32(validationSheetIndex))
+	ws, err := engine.Derive(wss.Get_Int(int32(validationSheetIndex)))
 	if err != nil {
 		t.Fatalf("get worksheet: %v", err)
 	}
-	validations, err := ws.GetValidations()
+	validations, err := engine.Derive(ws.GetValidations())
 	if err != nil {
 		t.Fatalf("get validations: %v", err)
 	}
@@ -140,7 +140,7 @@ func readValidation(t *testing.T, data []byte) validationReadback {
 	if err != nil {
 		t.Fatalf("get show input: %v", err)
 	}
-	areas, err := v.GetAreas()
+	areas, err := engine.Derive(v.GetAreas())
 	if err != nil {
 		t.Fatalf("get areas: %v", err)
 	}

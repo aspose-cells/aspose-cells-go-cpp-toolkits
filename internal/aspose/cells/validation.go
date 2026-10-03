@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -47,11 +48,14 @@ func ResolveValidationType(name string) (asposecells.ValidationType, error) {
 	return 0, fmt.Errorf("validation type %q: %w", name, toolkiterrors.ErrInvalidValidationType)
 }
 
-// operatorTypeByName maps normalized operator names to engine enums.
+// operatorTypeByName maps normalized operator names to engine enums. Keep this
+// in step with query.operatorTypeName, which maps the ordinals back to names.
 var operatorTypeByName = map[string]asposecells.OperatorType{
 	"between":        asposecells.OperatorType_Between,
 	"equal":          asposecells.OperatorType_Equal,
 	"notequal":       asposecells.OperatorType_NotEqual,
+	"notbetween":     asposecells.OperatorType_NotBetween,
+	"none":           asposecells.OperatorType_None,
 	"lessthan":       asposecells.OperatorType_LessThan,
 	"lessorequal":    asposecells.OperatorType_LessOrEqual,
 	"greaterthan":    asposecells.OperatorType_GreaterThan,
@@ -94,7 +98,7 @@ func AddValidation(ws *asposecells.Worksheet, areaStr string) (*asposecells.Vali
 	if err := ValidateGridArea(area); err != nil {
 		return nil, err
 	}
-	validations, err := ws.GetValidations()
+	validations, err := engine.Derive(ws.GetValidations())
 	if err != nil {
 		return nil, err
 	}

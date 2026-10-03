@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -231,7 +232,7 @@ func ValidateChartBounds(topRow, leftColumn, bottomRow, rightColumn int) error {
 // an error rather than a collection that reports zero charts, so a caller can
 // tell "this sheet has no charts" from "the handle is unusable".
 func Charts(ws *asposecells.Worksheet) (*asposecells.ChartCollection, error) {
-	charts, err := ws.GetCharts()
+	charts, err := engine.Derive(ws.GetCharts())
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,7 @@ func Chart(ws *asposecells.Worksheet, index int) (*asposecells.Chart, error) {
 		return nil, fmt.Errorf("chart index %d out of range (worksheet has %d): %w",
 			index, count, toolkiterrors.ErrChartNotFound)
 	}
-	chart, err := charts.Get_Int(int32(index))
+	chart, err := engine.Derive(charts.Get_Int(int32(index)))
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +365,7 @@ func ClearCharts(ws *asposecells.Worksheet) error {
 
 // ChartSeries returns the chart's series collection.
 func ChartSeries(chart *asposecells.Chart) (*asposecells.SeriesCollection, error) {
-	ns, err := chart.GetNSeries()
+	ns, err := engine.Derive(chart.GetNSeries())
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +384,7 @@ func ChartSeries(chart *asposecells.Chart) (*asposecells.SeriesCollection, error
 
 // ChartTitle returns the chart's title object.
 func ChartTitle(chart *asposecells.Chart) (*asposecells.Title, error) {
-	title, err := chart.GetTitle()
+	title, err := engine.Derive(chart.GetTitle())
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +403,7 @@ func ChartTitle(chart *asposecells.Chart) (*asposecells.Title, error) {
 
 // ChartLegend returns the chart's legend object.
 func ChartLegend(chart *asposecells.Chart) (*asposecells.Legend, error) {
-	legend, err := chart.GetLegend()
+	legend, err := engine.Derive(chart.GetLegend())
 	if err != nil {
 		return nil, err
 	}

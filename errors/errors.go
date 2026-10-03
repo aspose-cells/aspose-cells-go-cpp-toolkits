@@ -65,6 +65,29 @@ var (
 	// cannot be parsed into a cell coordinate.
 	ErrInvalidCellRef = errors.New("invalid cell reference")
 
+	// ErrInvalidCount is returned when a row, column, or cell count argument is
+	// zero or negative. The engine treats a zero count as a silent no-op, so
+	// the toolkit rejects it rather than returning success for a call that
+	// changed nothing.
+	ErrInvalidCount = errors.New("invalid count")
+
+	// ErrInvalidShiftType is returned when a cell-shift direction name is not
+	// one the toolkit recognizes. Accepting an unknown name would silently
+	// perform a different destructive edit than the caller asked for.
+	ErrInvalidShiftType = errors.New("invalid shift type")
+
+	// ErrRangeTooLarge is returned when a read would materialize more cells than
+	// the toolkit is willing to allocate. A range is checked for size before any
+	// memory is reserved, so an in-grid but enormous range (e.g. an entire
+	// column range) is reported rather than exhausting memory.
+	ErrRangeTooLarge = errors.New("range too large")
+
+	// ErrUnsafeSinkName is returned when a DataSink is asked to write under a
+	// name that would escape its own destination, e.g. an archive entry or file
+	// name containing ".." segments. The name in a multi-output sink comes from
+	// the source document's worksheet names, so it is untrusted input.
+	ErrUnsafeSinkName = errors.New("unsafe output name")
+
 	// ErrInvalidRange is returned when a cell range has an invalid shape, e.g. a
 	// range whose start cell lies below or to the right of its end cell, or an
 	// area string with more than one ":" separator.
@@ -134,4 +157,24 @@ var (
 	// ErrInvalidIconSetType is returned when an icon set type name is not one
 	// the engine recognizes.
 	ErrInvalidIconSetType = errors.New("invalid icon set type")
+
+	// ErrInvalidFontUnderline is returned when a font underline style name is
+	// not one the engine recognizes. Falling back to None would silently drop
+	// an underline the caller asked for.
+	ErrInvalidFontUnderline = errors.New("invalid font underline")
+
+	// ErrInvalidTextAlignment is returned when a text alignment name is not one
+	// the engine recognizes. Falling back to General would silently discard an
+	// alignment the caller asked for.
+	ErrInvalidTextAlignment = errors.New("invalid text alignment")
+
+	// ErrXMLMapNotFound is returned when an XML export names an XML map the
+	// workbook does not define, or the workbook defines none at all. The engine
+	// answers a request for a missing map with empty output and no error, so
+	// without this check the caller gets a successful-looking zero-byte write.
+	ErrXMLMapNotFound = errors.New("xml map not found")
+
+	// ErrXMLMapAmbiguous is returned when an XML export names no XML map and the
+	// workbook defines more than one, so there is no single obvious choice.
+	ErrXMLMapAmbiguous = errors.New("xml map is ambiguous")
 )

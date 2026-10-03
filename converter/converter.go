@@ -10,6 +10,7 @@ package converter
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"io"
 	"path/filepath"
 
@@ -40,6 +41,8 @@ import (
 //	err := converter.Convert(datasource.FilePathSource("examples/data/BookText.xlsx"),
 //		save_option, datasource.FilePathSink("out/output2.pdf"))
 func Convert(source datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
 	}

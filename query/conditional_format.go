@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -49,6 +50,8 @@ type ConditionInfo struct {
 // ConditionalFormattingCount returns the number of conditional formatting
 // collections on the specified worksheet.
 func ConditionalFormattingCount(src datasource.DataSource, opts ...Option) (int, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -58,11 +61,12 @@ func ConditionalFormattingCount(src datasource.DataSource, opts ...Option) (int,
 	if err != nil {
 		return 0, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return 0, err
 	}
-	formattings, err := ws.GetConditionalFormattings()
+	formattings, err := engine.Derive(ws.GetConditionalFormattings())
 	if err != nil {
 		return 0, err
 	}
@@ -76,6 +80,8 @@ func ConditionalFormattingCount(src datasource.DataSource, opts ...Option) (int,
 // ConditionalFormattingInfoAt returns metadata about the conditional formatting
 // collection at the given index on the specified worksheet.
 func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...Option) (ConditionalFormattingInfo, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -85,11 +91,12 @@ func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...O
 	if err != nil {
 		return ConditionalFormattingInfo{}, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return ConditionalFormattingInfo{}, err
 	}
-	formattings, err := ws.GetConditionalFormattings()
+	formattings, err := engine.Derive(ws.GetConditionalFormattings())
 	if err != nil {
 		return ConditionalFormattingInfo{}, err
 	}
@@ -110,6 +117,8 @@ func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...O
 // AllConditionalFormattings returns metadata about all conditional formatting
 // collections on the specified worksheet.
 func AllConditionalFormattings(src datasource.DataSource, opts ...Option) ([]ConditionalFormattingInfo, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -119,11 +128,12 @@ func AllConditionalFormattings(src datasource.DataSource, opts ...Option) ([]Con
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
 	}
-	formattings, err := ws.GetConditionalFormattings()
+	formattings, err := engine.Derive(ws.GetConditionalFormattings())
 	if err != nil {
 		return nil, err
 	}

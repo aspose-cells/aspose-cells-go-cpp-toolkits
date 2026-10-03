@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -153,7 +154,7 @@ func fromCell(cell *asposecells.Cell) (CellValue, error) {
 		// Dates are stored as serial numbers, so a numeric cell whose number
 		// format is a date/time format is a date. The engine reports it via the
 		// cell's style rather than the value type.
-		style, err := cell.GetStyle()
+		style, err := engine.Derive(cell.GetStyle())
 		if err != nil {
 			return CellValue{}, err
 		}

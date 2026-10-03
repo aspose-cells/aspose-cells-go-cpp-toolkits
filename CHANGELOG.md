@@ -5,6 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
+
 - **ISSUE-CELLSGO-302**: Chart export functionality — `converter.ExportChartToSink`, `converter.ExportChartToBytes`, and `converter.ExportChartToFile` export a single chart from a workbook, addressed by worksheet index and chart index. Formats: PNG (`ChartExportFormatPNG`), JPEG (`ChartExportFormatJPEG`), SVG (`ChartExportFormatSVG`), and **real PDF** (`ChartExportFormatPDF`) — the chart is rendered to a PNG, embedded in a one-sheet workbook sized to the image, and saved through the PDF save option, so the result opens in any reader (it holds a raster image of the chart on a chart-sized page, since the engine exposes no vector chart-to-PDF call). `ChartExportOptions` carries the format, an exact pixel size, and JPEG quality. The output shape (file, `io.Writer`, or in-memory bytes) is chosen by picking the sink, matching `converter.Convert`. All three entry points share one internal path, so the load → sheet → chart → dispatch sequence exists once. **Strict by design**: `Width`/`Height` are both-or-neither (setting only one is `ErrInvalidChartSize`, not a guess), a negative size is the same error, and a JPEG `Quality` outside 1-100 is `ErrInvalidValue` rather than a silent clamp; the sheet lookup range-checks before touching the engine and reports `ErrInvalidSheetID`, and the chart lookup and the new picture embedding go through `internal/aspose/cells` helpers (`SheetByIndex`, `Chart`, `AddPictureAt`) rather than reaching into the engine. New sentinels: `ErrInvalidChartSize`, `ErrPictureAddFailed`, plus `ErrUnsupportedFormat` for unknown format strings.
 - **ISSUE-CELLSGO-302**: `examples/chart-export` — a binding-free example (no `asposecells` import) that builds a workbook with quarterly data and a column chart, then exports it as PNG, JPEG, SVG, PDF, and a 1200×800 PNG, and finally to memory. New `internal/aspose/cells/picture.go` (`Pictures`, `AddPictureAt`) is the toolkit's single funnel for embedding an image into a worksheet.
 - **ISSUE-CELLSGO-301**: Data validation support — `editor.AddDataValidation(cellRange, actions...)` adds validation rules to cell ranges, `editor.InValidation(index, actions...)` modifies existing validations, `editor.DeleteValidation(index)` removes them. Validation types: `ValidationTypeWholeNumber`, `ValidationTypeDecimal`, `ValidationTypeList`, `ValidationTypeDate`, `ValidationTypeTime`, `ValidationTypeTextLength`, `ValidationTypeCustom`. Operators: `OperatorTypeBetween`, `OperatorTypeEqual`, `OperatorTypeNotEqual`, `OperatorTypeLessThan`, `OperatorTypeLessOrEqual`, `OperatorTypeGreaterThan`, `OperatorTypeGreaterOrEqual`. Actions: `WithValidationType`, `WithValidationOperator`, `WithValidationFormula1/2`, `WithValidationList`, `WithValidationInCellDropDown`, `WithValidationIgnoreBlank`, `WithValidationShowInput`, `WithValidationShowError`, `WithValidationAlertStyle`, `WithValidationErrorTitle/Message`, `WithValidationInputTitle/Message`. New sentinels: `ErrValidationNotFound`, `ErrInvalidValidationType`, `ErrInvalidOperatorType`.
@@ -14,6 +15,24 @@ All notable changes to this project are documented in this file.
 - **ISSUE-CELLSGO-301**: Internal helpers in `internal/aspose/cells/validation.go` and `internal/aspose/cells/conditional_format.go` for validation type/operator/alert resolution, conditional formatting condition type/icon set type resolution, and engine object access.
 
 ### Fixed
+
+- **ISSUE-CELLSGO-318**: Handles derived from a workbook are now **disarmed the moment the toolkit obtains them** (`engine.Derive(ws.GetCells())`). The binding's finalizers are destructive rather than merely wasteful — `Delete_Worksheet` really does destroy the worksheet, `Delete_Cell` the cell — so a wrapper dropped inside a public entry point became unreachable, the next collection destroyed an object the engine still held a pointer to, and the call after that walked freed memory and jumped through a null vtable. **This is the half of the crash the engine lock cannot reach**: a finalizer runs on Go's finalizer goroutine and never takes the lock. Measured with a create-and-drop probe, `Delete_Worksheet`, `Delete_Cell` and `Delete_Charts` each fault the engine within 20,000 iterations, and disarming the same three takes the probe from 1 clean run in 5 to 5 in 5; end to end, the suite went from 12 access violations in 200 runs to 0 in 200. `engine.OpenWorkbook` and the other workbook constructors disarm by construction. Option objects and `NewObject_*` value objects are deliberately left armed: they are owned by the caller, and their finalizer is their only release.
+- **ISSUE-CELLSGO-318**: Engine access is now **serialized**. The native engine cannot be entered from more than one goroutine at a time — four goroutines loading concurrently wedge it on every run, and a load overlapping a finalizer freeing an object dies with an access violation inside the load path (4 of 15 full test runs). Every public entry point that can reach the engine now holds the new `internal/aspose/engine` lock for its duration. The lock is **re-entrant per goroutine**, which the toolkit's own composition makes mandatory rather than convenient: `manipulator.Merge` does engine work and then hands the result to a `saveoptions.Apply` that takes the lock again, `Split` does the same per worksheet, and `Convert` is nothing but an `Apply` — a plain mutex would deadlock on the first nested call. `GOGC=off` also eliminates the access violations entirely, which is the experiment that identified GC-driven finalizers as the trigger for the second defect above.
+- **ISSUE-CELLSGO-318**: `engine.CloseWorkbook` documents that it must be called **exactly once** per workbook, and the test suite no longer releases `cells.LoadStable`'s result twice. `DeleteWorkbook` nils the handle's pointer after freeing, so a second call reaches the engine's allocator with a null pointer; the damage is silent and surfaces much later as an access violation in an unrelated call, two test files downstream of the double release.
+- **ISSUE-CELLSGO-318**: `editor.WithFontColor` / `editor.WithBackgroundColor` on an **unrecognized color name** no longer terminates the process. The name was handed to the engine's `Color_FromName`, which throws an uncaught C++ exception — `0xe06d7363`, crossing the cgo boundary, so no Go-side `recover` can contain it — for any name it does not know. A misspelled color name was therefore a hard crash, not an error. Names now resolve through `editor/namedColorConstructors`, a generated table of the engine's own 140 named-color constructors, so the vocabulary is still exactly the engine's while an unknown name returns `ErrInvalidColor`. Matching is case- and punctuation-insensitive, so `"Light Sea Green"`, `"lightseagreen"` and `"Light-Sea-Green"` all resolve alike.
+- **ISSUE-CELLSGO-318**: Unknown **font underline** and **text alignment** names are now reported (`ErrInvalidFontUnderline`, `ErrInvalidTextAlignment`) instead of silently falling back to `None` / `General`. `editor.WithFontUnderline("singel")` and `editor.WithHorizontalAlignment("censored")` used to return `err=nil` and quietly apply the default — a typo changed the formatting with no signal, and the `error` return on those resolvers was dead code. Non-string, non-enum values are likewise rejected rather than ignored.
+- **ISSUE-CELLSGO-318**: `editor.WithConditionalFormatRule` no longer swallows an unresolvable operator name. It fell back to the engine's `None`, which for a cell-value or expression rule silently changes what the rule matches; the error is now propagated.
+- **ISSUE-CELLSGO-318**: Validation **operator names** now map to the right engine enum. The engine's `OperatorType` ordinals are not in the order the names suggest — `None` is 6 and the two "not" operators follow it (`NotBetween` 7, `NotEqual` 8) rather than sitting next to their positive counterparts — so `query.ValidationInfoAt` / `AllValidations` reported the wrong operator name for `notEqual`, `notBetween` and `none`. `query.operatorTypeName` and `internal/aspose/cells.operatorTypeByName` are now exact inverses and cross-reference each other; `editor` gained the full `OperatorType` constant set (`OperatorTypeNone`, `OperatorTypeNotBetween`, `OperatorTypeNotEqual`).
+- **ISSUE-CELLSGO-318**: `editor.WithChartPreset` no longer hides an existing legend behind the caller's back. A preset that did not mention the legend still applied `ShowLegend: false`, because a `bool` cannot distinguish "hide it" from "leave it alone"; the new `ChartStylePreset.ApplyLegend` field makes `ShowLegend: false` mean _hide_ only when the caller says so. The zero-value-preset behavior (`ShowLegend` false, `ApplyLegend` false) now leaves the legend untouched.
+- **ISSUE-CELLSGO-318**: `editor.SuggestDataRange` no longer produces an invalid range for wide data. It built the column letter by arithmetic on `'A'`, which does not carry past `Z` (`'A'+26` is `'['`), so any suggestion wider than 26 columns came back as a string that is not a cell reference at all. It now renders through `cells.Area`, which carries AA/AB/… correctly, and returns `""` for a suggestion that would fall outside the worksheet grid.
+- **ISSUE-CELLSGO-318**: `datasource.FolderSink` and `datasource.ZipSink` reject a write whose **name escapes the destination** (`ErrUnsafeSinkName`). The name is not the caller's own — `manipulator.Split` passes the source document's worksheet name — so a crafted sheet name could write outside the sink's folder or plant a zip-slip entry in the archive. `datasource.SafeOutputName` is exported for custom sinks, and the deprecated `manipulator.SplitSpreadsheetToFolder`, which embeds the sheet name in an output path, applies the same check.
+- **ISSUE-CELLSGO-318**: `query.ReadRange` and `query.ReadWorksheet` refuse to materialize an absurd number of cells (`ErrRangeTooLarge`). The grid-bounds check cannot catch this, because the range is _valid_ — a caller who writes `"A1:ZZ1000000"` by accident named about 700 million in-grid cells, and the toolkit reserved memory for all of them and was killed by the OS before it could return anything. Reads are now capped at 2,000,000 cells (roughly 160 MB of `CellValue`), checked before any allocation, with a message saying to read in slices instead.
+- **ISSUE-CELLSGO-318**: `transfer.ExportSpreadsheetToXml` reports a missing XML map (`ErrXMLMapNotFound`) instead of writing an empty file and returning success, and no longer requires the caller to name a map they cannot know. The engine answers `ExportXml` for a map the workbook does not define with empty output and a nil error, so the previous code wrote a **zero-byte file and reported success** — which the `transfer` example then did on every run, producing two empty `.xml` artifacts. The map name was also unguessable: the engine derives it from the XML document's root element (`Rows_Map` for a root of `Rows`), and `WithXMLMap` merely defaulted to `"Sheet1"`, a name no workbook has. `WithXMLMap` is now optional — a workbook with exactly one map uses it, and one with several returns `ErrXMLMapAmbiguous` rather than guessing — and the error lists the maps that do exist. An XML source is loaded with `XmlLoadOptions.IsXmlMap` (see `internal/aspose/cells.LooksLikeXML`), without which the engine discards the document's schema and the workbook ends up with no map at all: **the toolkit previously had no code path that could reach a working XML export**. The `transfer` example now round-trips `examples/data/data.xml` and writes real XML with the data in it; the feature exports the XML document a workbook was loaded from, not a cell-by-cell `.xlsx`, whose cells no map is bound to. New sentinels: `ErrXMLMapNotFound`, `ErrXMLMapAmbiguous`.
+- **ISSUE-CELLSGO-318**: `formats.FileFormatToSaveFormat` returns `ErrUnsupportedFormat` for a format it cannot map, instead of `SaveFormat_Auto`. Auto leaves the choice to the engine, so a round-trip save of a document loaded in an unmapped format silently came back as a different format. This is a **breaking signature change** — the function now returns `(asposecells.SaveFormat, error)`; `internal/aspose/cells.WorkbookToByteData` propagates the error.
+- **ISSUE-CELLSGO-318**: `editor.InsertRows` / `InsertColumns` / `DeleteRange` reject a zero or negative count (`ErrInvalidCount`) and an unrecognized shift direction (`ErrInvalidShiftType`) instead of returning success for a call that changed nothing. The engine treats a zero count as a silent no-op and an unknown shift name as left-to-right whatever-it-was, either of which makes a caller believe an edit landed when it did not.
+- **ISSUE-CELLSGO-318**: Workbooks are now **disposed deterministically** at every load site in `query`, `editor`, `transfer`, `manipulator`, `converter`, `datasource` and the 20 `saveoptions` format packages. The binding installs a finalizer on every `Workbook`, so these were not permanent leaks — but reclamation waited on a GC that may not run for a long time, so a batch process held one engine-side workbook per file it had handled. `datasource.NewEmptyWorkbook` (the binding-free seed) and `manipulator`'s per-sheet workbooks are covered too; `manipulator.Split` renders each worksheet in its own function so a sheet's workbook is freed as soon as its file is written rather than at the end of the split.
+- **ISSUE-CELLSGO-318**: `core.SetLicense` serializes concurrent calls with a mutex. The license is process-global state inside the C++ engine, so two callers raced on memory Go's race detector cannot see. The `License` object that was applied is also retained, because the binding's finalizer deletes the C++ `License` and a collected object cannot be assumed to leave the engine's license state as it was. The mutex cannot cover the case that matters more — applying a license while another goroutine is already loading a workbook — so the doc comment now states that `SetLicense` must complete before other toolkit work starts.
+- **ISSUE-CELLSGO-318**: The `edit`, `query`, `transfer` and `merge-split` examples no longer import the engine binding. Each one built its seed workbook with `asposecells.NewWorkbook()` + `Save_SaveFormat` to get an empty input; they now call `datasource.NewEmptyWorkbook()`, the entry point added for exactly this, so every example in the repository is binding-free.
 - **ISSUE-CELLSGO-279**: Referencing a worksheet by a name that does not exist now returns `ErrWorksheetNotFound` instead of crashing the process. The binding's `Get_String(name)` returns `err=nil` with a dangling native handle for missing names; every by-name lookup (`editor.WithRenameWorksheet`, `editor.InWorksheet`, `transfer.ExportRangeToJson`, `transfer.ExportWorksheetToJson`) now iterates the collection via the new `internal/aspose/cells.WorksheetByName` helper.
 - **ISSUE-CELLSGO-279**: Committed the `examples/` and GitHub Actions CI that v26.8.0 documented but never shipped (both were hidden by `.gitignore`). The examples were rewritten against the released API, and `.gitattributes` (`* text eol=lf`) was added so `gofmt` and tests behave identically on Linux and Windows.
 - **ISSUE-CELLSGO-279**: `manipulator.Merge` no longer silently succeeds with zero input sources (which produced a meaningless empty workbook); it now returns `ErrNoSources`. Errors raised while reading or combining a source now carry the source index (`source 0: …`), and `manipulator.Split` errors carry the offending sheet name (`sheet "…": …`), so failures in loops are traceable.
@@ -28,6 +47,7 @@ All notable changes to this project are documented in this file.
 - **ISSUE-CELLSGO-301**: Validation and conditional-formatting formulas now read back bare. The engine stores every formula with a leading `=` and returns it that way, so a rule set as `"90"` came back as `"=90"` — a value that no longer compared equal to what the caller wrote. `query.ValidationInfoAt` / `AllValidations` and `query.ConditionalFormattingInfoAt` / `AllConditionalFormattings` now strip exactly one leading `=` through the new `internal/aspose/cells.StripFormulaPrefix`, so a formula always reads back without one whether or not the caller included it (the engine normalizes the two to the same stored form). Only the leading character is removed: an expression such as `"=A1=(B1)"` keeps its inner `=`. List validations are exempt — their `Formula1` holds literal comma-separated values rather than a formula, the engine does not prefix it, and stripping there would corrupt a list whose first entry legitimately begins with `=`.
 
 ### Added
+
 - **ISSUE-CELLSGO-294**: `query` package — the read counterpart of `transfer`. It loads a spreadsheet from a `datasource.DataSource` and returns Go-native data: typed `CellValue` grids (`ReadCell`, `ReadRange`, `ReadWorksheet`), merged regions (`ReadMergedCells`), sheet names (`SheetNames`), and used-range dimensions (`Dimensions`). `CellValue` pairs a value with a `CellKind` (empty/text/int/float/bool/date-time/error) and exposes matching accessors; options are `WithSheet`, `WithSheetIndex` (index-based, immune to evaluation-mode name corruption; the default targets the first sheet by index), and `WithTrimSpace`. `CellRef` / `Area` plus `ParseCellRef` / `ParseArea` provide Excel-style cell addressing.
 - **ISSUE-CELLSGO-294**: `editor.EditSpreadsheetToSink(source, sink, actions...)` — sink-based form of `EditSpreadsheet`, letting the caller choose the output shape (file, writer, or bytes); `EditSpreadsheet` is now a thin wrapper over it.
 - **ISSUE-CELLSGO-294**: `editor.SetFormula(row, col, formula)` worksheet action and `editor.CalculateAll()` workbook action for writing and recalculating formulas.
@@ -43,7 +63,7 @@ All notable changes to this project are documented in this file.
 - **ISSUE-CELLSGO-298**: Structured table read/write — `query.ReadRows[T]` maps a worksheet's used range into `[]struct` and `editor.WriteRows[T]` writes `[]struct` back, both sharing one column-mapping rule (`excel:"name"` tag, else field name, `excel:"-"` to skip; header match is case-insensitive). `ReadRows` supports string / int / uint / float / bool / `time.Time` fields, decodes an empty cell to the zero value, and reports a missing column as the new `errors.ErrColumnNotFound`; `WriteRows` offers `WithWriteHeader`, `WithSheetIndex`, and `WithSheet` (default first sheet by index). The reflection mapping lives in the shared `internal/rows` package so the two sides cannot drift.
 - **ISSUE-CELLSGO-298**: `editor.toObject` now also converts `uint` / `uint8` / `uint32`, and `query.CellKind` gains a `String()` method for readable error messages.
 - **ISSUE-CELLSGO-299**: Named ranges, cell comments, and workbook encryption. `query.NamedRanges` lists a workbook's defined names as `NamedRange{Name, RefersTo, Area}` (area resolved best-effort), `query.ReadNamedRange` reads a name's cells as a grid, and `query.ReadCellComment` returns a cell's comment note (empty when none). The editor counterparts are `DefineNamedRange` (idempotent; returns `ErrInvalidRange` on reversed coordinates), `SetCellComment`, and `ClearComments`. `editor.Encrypt` encrypts the saved workbook (strong AES, `Workbook.SetEncryptionOptions`) so it requires the password to open; loading encrypted files back needs a password at load time, which the toolkit loader does not yet expose. Comment reads iterate the engine's comment collection because the binding's `Cell.GetComment` returns a dangling handle (hard crash on use) for a comment-free cell. New sentinel `errors.ErrNameNotFound`; `internal/aspose/cells.CellRef` gains `AbsoluteString()` for `$A$1`-style references.
-- **ISSUE-CELLSGO-300**: Chart support in the `editor` DSL — add, delete, and modify charts without touching the engine binding. `editor.AddChart(chartType, dataRange, byColumn, topRow, leftColumn, bottomRow, rightColumn, actions...)` creates a chart (returning it for the chained actions), `editor.InChart(index, actions...)` targets an existing one, and `editor.DeleteChart` / `editor.DeleteAllCharts` remove them. The rectangle is a required parameter rather than an optional action and there is no default placement, so a chart is never drawn somewhere the caller did not ask for; `WithChartBounds` remains for moving a chart that already exists. `ChartAction`s cover the title (`WithChartTitle`, `HideChartTitle`), the built-in style (`WithChartStyle`, 1..48), the type (`WithChartType`), the legend (`WithChartLegend`, `WithChartLegendPosition`), placement (`WithChartBounds`), and the data (`WithChartDataRange` to re-point wholesale, plus `WithChartSeries` / `RemoveChartSeries` / `ClearChartSeries` / `WithChartCategoryData` for series-level work). Chart types and legend positions are toolkit-native `string` enums — 34 curated `ChartType` constants plus raw-name fallback to reach all 81 engine types, matched case- and punctuation-insensitively — so `asposecells.ChartType` is never exposed. Validation is deliberately strict because the engine validates nothing: an out-of-grid, reversed, single-cell, or single-row range yields a silently empty chart rather than an error, and a style number above 48 is silently clamped to 48, so ranges are parsed and grid-bounds-checked and styles range-checked before the engine sees them (「能报错就报错,不静默降级」). New sentinels `errors.ErrChartNotFound`, `errors.ErrInvalidChartType`, `errors.ErrInvalidChartStyle`, `errors.ErrInvalidChartPosition`. `editor.ChartAction` joins `WorkbookAction` / `WorksheetAction` / `StyleAction` as a fourth action type. Note that `WithChartTitle` sets the title text *and* its visibility, because text alone does not survive a save and reload as a visible title, and that `HideChartTitle` is not reversible through this API — hiding discards the text, so a reloaded file falls back to the automatic title derived from the series. Of the legend positions, `ChartLegendNotDocked` is applied but does not survive a save: the engine reports it back in memory, but XLSX cannot record an undocked legend, so a reloaded chart is docked right like any chart that never had a position set (all other positions round-trip unchanged).
+- **ISSUE-CELLSGO-300**: Chart support in the `editor` DSL — add, delete, and modify charts without touching the engine binding. `editor.AddChart(chartType, dataRange, byColumn, topRow, leftColumn, bottomRow, rightColumn, actions...)` creates a chart (returning it for the chained actions), `editor.InChart(index, actions...)` targets an existing one, and `editor.DeleteChart` / `editor.DeleteAllCharts` remove them. The rectangle is a required parameter rather than an optional action and there is no default placement, so a chart is never drawn somewhere the caller did not ask for; `WithChartBounds` remains for moving a chart that already exists. `ChartAction`s cover the title (`WithChartTitle`, `HideChartTitle`), the built-in style (`WithChartStyle`, 1..48), the type (`WithChartType`), the legend (`WithChartLegend`, `WithChartLegendPosition`), placement (`WithChartBounds`), and the data (`WithChartDataRange` to re-point wholesale, plus `WithChartSeries` / `RemoveChartSeries` / `ClearChartSeries` / `WithChartCategoryData` for series-level work). Chart types and legend positions are toolkit-native `string` enums — 34 curated `ChartType` constants plus raw-name fallback to reach all 81 engine types, matched case- and punctuation-insensitively — so `asposecells.ChartType` is never exposed. Validation is deliberately strict because the engine validates nothing: an out-of-grid, reversed, single-cell, or single-row range yields a silently empty chart rather than an error, and a style number above 48 is silently clamped to 48, so ranges are parsed and grid-bounds-checked and styles range-checked before the engine sees them (「能报错就报错,不静默降级」). New sentinels `errors.ErrChartNotFound`, `errors.ErrInvalidChartType`, `errors.ErrInvalidChartStyle`, `errors.ErrInvalidChartPosition`. `editor.ChartAction` joins `WorkbookAction` / `WorksheetAction` / `StyleAction` as a fourth action type. Note that `WithChartTitle` sets the title text _and_ its visibility, because text alone does not survive a save and reload as a visible title, and that `HideChartTitle` is not reversible through this API — hiding discards the text, so a reloaded file falls back to the automatic title derived from the series. Of the legend positions, `ChartLegendNotDocked` is applied but does not survive a save: the engine reports it back in memory, but XLSX cannot record an undocked legend, so a reloaded chart is docked right like any chart that never had a position set (all other positions round-trip unchanged).
 - **ISSUE-CELLSGO-300**: `examples/chart` — a binding-free example that builds four chart-bearing workbooks (`datasource.NewEmptyWorkbook` seed, no `asposecells` import), the third of which is produced by re-opening the first from disk and editing chart 0 in place, so the example doubles as a demonstration that a chart written by one pass is found and changed by the next. Wired into `examples/run.sh`, `run_all.sh`, `run.ps1`, `run_all.ps1`, and the CI examples step.
 - **ISSUE-CELLSGO-300**: Chart query API — `query.ChartInfo`, `query.ChartSeriesData`, and `query.ChartCount` read chart metadata, series data, and chart counts from a worksheet. `ChartMetadata` reports the chart's type, title, visibility, built-in style, legend, bounds, data range, and series count as Go-native values; `ChartSeries` reports each series' values range, category data, and data point count. The read counterpart of `editor.AddChart` and `editor.InChart`.
 - **ISSUE-CELLSGO-300**: `editor.ChartStylePreset` bundles common chart configuration and styling options (chart type, built-in style, title, legend visibility, legend position, data range, category data, bounds) into a single value for reuse across charts or workbooks. `editor.WithChartPreset(preset)` applies the preset's settings in order; zero-value fields are skipped, so a preset can partially specify configuration. Enhanced from the initial 4-field version to a comprehensive 9-field preset that can completely define a chart's appearance and data.
@@ -51,6 +71,7 @@ All notable changes to this project are documented in this file.
 - **ISSUE-CELLSGO-300**: Deep chart styling control — `editor.WithChartTitleFont`, `editor.WithChartTitleColor`, `editor.WithChartLegendFont`, `editor.WithChartSeriesColor`, and `editor.WithChartSeriesName` provide fine-grained control over chart element appearance. Set title/legend fonts (name, size, bold), title color, series colors, and series names. These functions work alongside `ChartStylePreset` for comprehensive customization.
 
 ### Changed
+
 - License configuration now reads the **`LicenseFilePath`** environment variable (the legacy `LicensePath` remains as a fallback): `core.SetLicense("")` falls back to it, every `examples/` command applies it through the new shared `examples.SetLicense()` helper, and the `tests` package applies it in `TestMain` — failing fast when a configured path is invalid instead of silently degrading to evaluation mode. `core.SetLicense` also pre-checks that a non-empty path exists and is readable, so a missing/unreadable license file is now reported as `ErrLicenseInvalid` instead of being silently ignored by the engine.
 - **ISSUE-CELLSGO-279**: `datasource.DataSink.Write` now takes `(name string, data []byte) error` instead of returning an `io.WriteCloser`; `DataSource.ByteData()` (which swallowed read errors by returning nil) is removed, and all reads go through `internal/aspose/cells.ReadSource` with full error propagation. `ReaderSource` now wraps an `io.Reader` instead of an `io.ReadCloser`, and `FileStore` is gone (its two capabilities are `FilePathSource` / `FilePathSink`).
 - **ISSUE-CELLSGO-279**: Removed the three byte-returning `transfer` exports whose names collide with the new sink-based signatures (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`); use the sink-based versions with a `*datasource.BytesSink` instead.
@@ -72,6 +93,7 @@ All notable changes to this project are documented in this file.
 ## [v26.8.0] - 2026-08-30
 
 ### Added
+
 - **ISSUE-CELLSGO-263**: Export features — export worksheets or cell ranges to JSON / XML (`transfer.ExportRangeToJson`, `ExportWorksheetToJson`, `ExportSpreadsheetToXml`, and their `*File` variants)
 - **ISSUE-CELLSGO-266**: Write / import interface — import CSV / XML / JSON data into a worksheet (`transfer.ImportCSVDataIntoSpreadsheet`, `ImportXMLDataIntoSpreadsheet`, `ImportJsonDataIntoSpreadsheet`, and their `*File` variants)
 - **ISSUE-CELLSGO-279**: Add / delete / rename worksheets (`editor.WithAddWorksheet`, `editor.WithDeleteWorksheet`, `editor.WithRenameWorksheet`)
@@ -81,6 +103,7 @@ All notable changes to this project are documented in this file.
 - **ISSUE-CELLSGO-279**: GitHub Actions CI (build, vet, gofmt, test) on Windows and Linux
 
 ### Changed
+
 - Updated `go.mod` to Go 1.21 and bumped the `aspose-cells-go-cpp` dependency to v26.7.0
 - **ISSUE-CELLSGO-279**: Replaced the duplicated `Open() → ReadAll → NewWorkbook_Stream` pattern with shared `internal/aspose/cells` helpers
 - **ISSUE-CELLSGO-279**: Deduplicated `SplitSpreadsheet` / `SplitSpreadsheetToZipWriter` via a shared `renderWorksheetOutputs` helper
@@ -94,6 +117,7 @@ All notable changes to this project are documented in this file.
 ## [v26.6.1] - 2026-06-10
 
 ### Changed
+
 - **ISSUE-CELLSGO-260**: Updated README documentation and bumped the version badge to v26.6.1
 
 ---
@@ -101,16 +125,18 @@ All notable changes to this project are documented in this file.
 ## [v26.6.0] - 2026-06-07
 
 ### Added
+
 - **ISSUE-CELLSGO-254**: Added `editor` package for workbook editing capabilities
 - **ISSUE-CELLSGO-256**: Support for setting styles on cells and ranges
 - **ISSUE-CELLSGO-259**: Added comprehensive documentation for core packages:
-    - `converter` - Document conversion utilities
-    - `datasource` - Data source management
-    - `editor` - Workbook editing operations
-    - `manipulator` - Document manipulation functions
-    - `saveoptions` - Save options configuration
+  - `converter` - Document conversion utilities
+  - `datasource` - Data source management
+  - `editor` - Workbook editing operations
+  - `manipulator` - Document manipulation functions
+  - `saveoptions` - Save options configuration
 
 ### Enhanced
+
 - **ISSUE-CELLSGO-256**: Enhanced function descriptions across all public APIs
 - **ISSUE-CELLSGO-254**: Updated README documentation
 
@@ -119,6 +145,7 @@ All notable changes to this project are documented in this file.
 ## [v26.4.0] - 2026-04-19
 
 ### Changed
+
 - Updated `go.mod` dependencies to latest versions
 
 ---
@@ -126,10 +153,12 @@ All notable changes to this project are documented in this file.
 ## [v26.3.1] - 2026-04-05
 
 ### Added
+
 - **ISSUE-CELLSGO-243**: Enhanced Aspose.Cells for Go via C++ Toolkits documentation
 - **ISSUE-CELLSGO-245**: Added `splitter` package with document splitting functions
 
 ### Enhanced
+
 - **ISSUE-CELLSGO-245**: Enhanced `SaveOption` interface with additional configuration options
 
 ---
@@ -137,14 +166,17 @@ All notable changes to this project are documented in this file.
 ## [v26.3.0] - 2026-03-28
 
 ### Added
+
 - **ISSUE-CELLSGO-239**: Added comprehensive function comments across all packages
 - **ISSUE-CELLSGO-251**: Added `merge` function for combining workbooks
 - **ISSUE-CELLSGO-239**: Improved import path documentation
 
 ### Optimized
+
 - **ISSUE-CELLSGO-251**: Optimized `convert` and `split` functions for better performance
 
 ### Changed
+
 - **ISSUE-CELLSGO-239**: Updated README documentation
 - **ISSUE-CELLSGO-239**: Removed `main.go` from the codebase
 - **ISSUE-CELLSGO-239**: Updated import information in documentation
@@ -154,27 +186,29 @@ All notable changes to this project are documented in this file.
 ## [v26.2.0] - 2026-03-20
 
 ### Added
+
 - **ISSUE-CELLSGO-234**: Initial development of Aspose.Cells for Go via C++ Toolkits
-    - Core package structure established
-    - Basic workbook manipulation capabilities
-    - Foundation for document conversion and processing
+  - Core package structure established
+  - Basic workbook manipulation capabilities
+  - Foundation for document conversion and processing
 
 ### Changed
+
 - **Initial commit**: Project repository initialized
 
 ---
 
 ## Version Tag Reference
 
-| Version Tag | Release Date | Key Features |
-|-------------|--------------|--------------|
-| v26.8.0 | 2026-08-30 | Export/import features, worksheet management, sentinel errors, CI, examples |
-| v26.6.1 | 2026-06-10 | README and CHANGELOG updates |
-| v26.6.0 | 2026-06-07 | Editor package, style support, enhanced docs |
-| v26.4.0 | 2026-04-19 | Dependency updates |
-| v26.3.1 | 2026-04-05 | Splitter package, enhanced SaveOption |
-| v26.3.0 | 2026-03-28 | Merge function, optimized converters |
-| v26.2.0 | 2026-03-20 | Initial release |
+| Version Tag | Release Date | Key Features                                                                |
+| ----------- | ------------ | --------------------------------------------------------------------------- |
+| v26.8.0     | 2026-08-30   | Export/import features, worksheet management, sentinel errors, CI, examples |
+| v26.6.1     | 2026-06-10   | README and CHANGELOG updates                                                |
+| v26.6.0     | 2026-06-07   | Editor package, style support, enhanced docs                                |
+| v26.4.0     | 2026-04-19   | Dependency updates                                                          |
+| v26.3.1     | 2026-04-05   | Splitter package, enhanced SaveOption                                       |
+| v26.3.0     | 2026-03-28   | Merge function, optimized converters                                        |
+| v26.2.0     | 2026-03-20   | Initial release                                                             |
 
 ---
 
@@ -200,10 +234,11 @@ All changes are tracked under the **CELLSGO** issue prefix. For more details, pl
 ## Semantic Versioning
 
 This project follows [Semantic Versioning](https://semver.org/):
+
 - **Major version (v26)**: Breaking changes
 - **Minor version (8,6,4,3,2)**: New features and enhancements
 - **Patch version (0,1)**: Bug fixes and documentation updates
 
 ---
 
-*This changelog is automatically maintained based on commit history. Last updated: 2026-08-30*
+_This changelog is automatically maintained based on commit history. Last updated: 2026-08-30_

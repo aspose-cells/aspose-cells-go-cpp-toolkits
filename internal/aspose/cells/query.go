@@ -4,23 +4,24 @@ import (
 	"fmt"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 // GetCell returns the cell at the zero-based (row, col) coordinates.
 func GetCell(ws *asposecells.Worksheet, row, col int32) (*asposecells.Cell, error) {
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
-	return cs.Get_Int_Int(row, col)
+	return engine.Derive(cs.Get_Int_Int(row, col))
 }
 
 // UsedRange returns the dimensions of the worksheet's used range: the maximum
 // used row plus one and the maximum used column plus one. An empty sheet
 // yields (0, 0).
 func UsedRange(ws *asposecells.Worksheet) (rows, cols int32, err error) {
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return 0, 0, err
 	}
@@ -37,11 +38,11 @@ func UsedRange(ws *asposecells.Worksheet) (rows, cols int32, err error) {
 // regions come from the engine's Cells.GetMergedAreas, so each anchor region
 // is reported exactly once.
 func MergedAreas(ws *asposecells.Worksheet) ([]Area, error) {
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
-	cellAreas, err := cs.GetMergedAreas()
+	cellAreas, err := engine.Derive(cs.GetMergedAreas())
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func MergedAreas(ws *asposecells.Worksheet) ([]Area, error) {
 
 // SheetNames returns the names of all worksheets in the workbook, in order.
 func SheetNames(wb *asposecells.Workbook) ([]string, error) {
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func SheetNames(wb *asposecells.Workbook) ([]string, error) {
 	}
 	names := make([]string, 0, count)
 	for i := int32(0); i < count; i++ {
-		ws, err := wss.Get_Int(i)
+		ws, err := engine.Derive(wss.Get_Int(i))
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +101,7 @@ func SheetNames(wb *asposecells.Workbook) ([]string, error) {
 // indexes return ErrInvalidSheetID instead of relying on the engine's
 // Get_Int behavior.
 func SheetByIndex(wb *asposecells.Workbook, index int) (*asposecells.Worksheet, error) {
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return nil, err
 	}
@@ -111,5 +112,5 @@ func SheetByIndex(wb *asposecells.Workbook, index int) (*asposecells.Worksheet, 
 	if index < 0 || int32(index) >= count {
 		return nil, fmt.Errorf("sheet index %d out of range (workbook has %d worksheets): %w", index, count, toolkiterrors.ErrInvalidSheetID)
 	}
-	return wss.Get_Int(int32(index))
+	return engine.Derive(wss.Get_Int(int32(index)))
 }

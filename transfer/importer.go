@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -21,6 +22,8 @@ import (
 //		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
 //		transfer.WithConvertNumeric(true), transfer.WithSeparator(","))
 func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink datasource.DataSink, opts ...Option) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil || csvData == nil {
@@ -33,11 +36,12 @@ func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err
 	}
-	worksheetCells, err := ws.GetCells()
+	worksheetCells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return err
 	}
@@ -60,6 +64,8 @@ func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink
 // writes the resulting workbook to sink. The target sheet defaults to "Sheet1",
 // the top-left cell to (0,0); use WithSheet / WithBeginCell to change them.
 func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource, sink datasource.DataSink, opts ...Option) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil || jsonData == nil {
@@ -72,11 +78,12 @@ func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err
 	}
-	worksheetCells, err := ws.GetCells()
+	worksheetCells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return err
 	}
@@ -103,6 +110,8 @@ func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource
 // writes the resulting workbook to sink. The target sheet defaults to "Sheet1",
 // the top-left cell to (0,0); use WithSheet / WithBeginCell to change them.
 func ImportXMLData(source datasource.DataSource, xmlData datasource.DataSource, sink datasource.DataSink, opts ...Option) error {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil || xmlData == nil {
@@ -115,6 +124,7 @@ func ImportXMLData(source datasource.DataSource, xmlData datasource.DataSource, 
 	if err != nil {
 		return err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := cfg.sheet.Resolve(workbook)
 	if err != nil {
 		return err

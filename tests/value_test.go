@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"testing"
 	"time"
 
@@ -107,10 +108,11 @@ func TestCellValueStringFormats(t *testing.T) {
 // Exercised through the engine, so the int64-boundary cells live on their own
 // worksheet that no other test's grid depends on.
 func TestNumericClassification(t *testing.T) {
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook: %v", err)
 	}
+	defer engine.CloseWorkbook(wb)
 	seed, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
 	if err != nil {
 		t.Fatalf("Save_SaveFormat: %v", err)

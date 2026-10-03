@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -74,6 +75,8 @@ type ValidationInfo struct {
 // ValidationCount returns the number of data validations on the specified
 // worksheet.
 func ValidationCount(src datasource.DataSource, opts ...Option) (int, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -83,11 +86,12 @@ func ValidationCount(src datasource.DataSource, opts ...Option) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return 0, err
 	}
-	validations, err := ws.GetValidations()
+	validations, err := engine.Derive(ws.GetValidations())
 	if err != nil {
 		return 0, err
 	}
@@ -101,6 +105,8 @@ func ValidationCount(src datasource.DataSource, opts ...Option) (int, error) {
 // ValidationInfoAt returns metadata about the data validation at the given index
 // on the specified worksheet.
 func ValidationInfoAt(src datasource.DataSource, index int, opts ...Option) (ValidationInfo, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -110,15 +116,16 @@ func ValidationInfoAt(src datasource.DataSource, index int, opts ...Option) (Val
 	if err != nil {
 		return ValidationInfo{}, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return ValidationInfo{}, err
 	}
-	validations, err := ws.GetValidations()
+	validations, err := engine.Derive(ws.GetValidations())
 	if err != nil {
 		return ValidationInfo{}, err
 	}
-	v, err := cells.GetValidation(validations, index)
+	v, err := engine.Derive(cells.GetValidation(validations, index))
 	if err != nil {
 		return ValidationInfo{}, err
 	}
@@ -128,6 +135,8 @@ func ValidationInfoAt(src datasource.DataSource, index int, opts ...Option) (Val
 // AllValidations returns metadata about all data validations on the specified
 // worksheet.
 func AllValidations(src datasource.DataSource, opts ...Option) ([]ValidationInfo, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if src == nil {
@@ -137,11 +146,12 @@ func AllValidations(src datasource.DataSource, opts ...Option) ([]ValidationInfo
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return nil, err
 	}
-	validations, err := ws.GetValidations()
+	validations, err := engine.Derive(ws.GetValidations())
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +211,7 @@ func readValidationInfo(v *asposecells.Validation, index int) (ValidationInfo, e
 	}
 
 	// Areas
-	areas, err := v.GetAreas()
+	areas, err := engine.Derive(v.GetAreas())
 	if err != nil {
 		return ValidationInfo{}, err
 	}
@@ -278,6 +288,11 @@ func validationTypeName(vt int32) string {
 }
 
 // operatorTypeName maps operator type enum values to toolkit-native names.
+//
+// The ordinals are the engine's OperatorType values, where None is 6 and the
+// two "not" operators sit after it (NotBetween 7, NotEqual 8) rather than next
+// to their positive counterparts. Keep this in step with
+// internal/aspose/cells.operatorTypeByName, which maps the names back.
 func operatorTypeName(op int32) string {
 	switch op {
 	case 0:
@@ -293,6 +308,10 @@ func operatorTypeName(op int32) string {
 	case 5:
 		return "lessOrEqual"
 	case 6:
+		return "none"
+	case 7:
+		return "notBetween"
+	case 8:
 		return "notEqual"
 	default:
 		return "unknown"

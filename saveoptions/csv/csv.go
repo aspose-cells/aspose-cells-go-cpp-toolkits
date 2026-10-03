@@ -4,6 +4,7 @@ package csv
 
 import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	saveoptions "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -33,6 +34,8 @@ type Config struct {
 // - []byte: The resulting Csv file content as a byte slice.
 // - error: error information.
 func (c *Config) Apply(source []byte) ([]byte, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	opts, err := asposecells.NewTxtSaveOptions_SaveFormat(asposecells.SaveFormat_Csv)
 	if err != nil {
 		return nil, err
@@ -95,10 +98,11 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err := c.ApplyCommon(opts); err != nil {
 		return nil, err
 	}
-	workbook, err := asposecells.NewWorkbook_Stream(source)
+	workbook, err := engine.OpenWorkbook(source)
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	saveOption := opts.ToSaveOptions()
 	return workbook.Save_SaveOptions(saveOption)
 }

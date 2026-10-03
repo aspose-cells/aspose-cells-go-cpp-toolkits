@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"io"
 )
@@ -36,15 +37,22 @@ func GetWorkbookWithDataSource(source datasource.DataSource) (*asposecells.Workb
 	if err != nil {
 		return nil, err
 	}
-	return asposecells.NewWorkbook_Stream(data)
+	return engine.OpenWorkbook(data)
 }
 
+// WorkbookToByteData serializes a workbook back to bytes in its own format: the
+// format it was loaded in, so an edit of a .xls comes back as .xls rather than
+// as an engine default. A loaded format the toolkit cannot write is reported
+// rather than saved as some other format the caller did not ask for.
 func WorkbookToByteData(workbook *asposecells.Workbook) ([]byte, error) {
 	fileFormat, err := workbook.GetFileFormat()
 	if err != nil {
 		return nil, err
 	}
-	saveFormat := formats.FileFormatToSaveFormat(fileFormat)
+	saveFormat, err := formats.FileFormatToSaveFormat(fileFormat)
+	if err != nil {
+		return nil, err
+	}
 	return workbook.Save_SaveFormat(saveFormat)
 }
 
@@ -79,7 +87,7 @@ func LoadStable(source datasource.DataSource, attempts int, verify func(*asposec
 		}
 		if err := verify(wb); err != nil {
 			lastErr = err
-			_ = wb.Dispose()
+			engine.CloseWorkbook(wb)
 			continue
 		}
 		return wb, nil

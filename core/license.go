@@ -7,10 +7,25 @@ package core
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// licenseMu serializes SetLicense. The license lives in process-global state
+// inside the C++ engine, so two concurrent calls would race on engine memory
+// that Go's race detector cannot see. Serializing them at least makes the
+// toolkit's own calls safe; see the doc comment for the constraint the mutex
+// cannot enforce.
+var licenseMu sync.Mutex
+
+// appliedLicense keeps the License object that was successfully applied alive
+// for the life of the process. The binding installs a finalizer that deletes
+// the C++ License, and an object that has been collected cannot be assumed to
+// leave the engine's license state as it was — keeping one small allocation
+// around removes the question.
+var appliedLicense *asposecells.License
 
 // SetLicense loads and applies a license for the Aspose.Cells engine from the
 // specified file path.
@@ -39,6 +54,11 @@ import (
 //   - If no license is set, the library operates in trial mode, which may
 //     impose restrictions such as watermarks on output documents or a limited
 //     worksheet size.
+//   - Concurrency: concurrent SetLicense calls are serialized, so they cannot
+//     race each other. The mutex cannot cover the case that matters more,
+//     though — a license applied while another goroutine is already loading or
+//     saving a workbook races engine state on both sides. Call SetLicense to
+//     completion before starting any other toolkit work.
 //
 // Example:
 //
@@ -46,6 +66,9 @@ import (
 //		log.Fatal(err)
 //	}
 func SetLicense(licensePath string) error {
+	licenseMu.Lock()
+	defer licenseMu.Unlock()
+
 	if licensePath == "" {
 		licensePath = os.Getenv("LicenseFilePath")
 	}
@@ -68,5 +91,6 @@ func SetLicense(licensePath string) error {
 	if err := lic.SetLicense_String(licensePath); err != nil {
 		return fmt.Errorf("apply license %q: %w: %v", licensePath, toolkiterrors.ErrLicenseInvalid, err)
 	}
+	appliedLicense = lic
 	return nil
 }

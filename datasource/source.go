@@ -10,10 +10,14 @@ package datasource
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 )
 
 // DataSource abstracts a readable input. Any type that implements Open can
@@ -148,14 +152,55 @@ func (b *BytesSink) Bytes() []byte {
 	return b.buf.Bytes()
 }
 
+// SafeOutputName validates the name a multi-output sink was asked to write
+// under, and is the check FolderSink and ZipSink apply before writing.
+//
+// That name is not the caller's own: Split, and anything else that writes one
+// output per worksheet, passes the source document's worksheet name, so it is
+// untrusted input. A name carrying a path separator, a volume prefix, or a ".."
+// segment would let the document being read decide where the output lands —
+// writing outside the sink's folder, or, for the archive sink, creating a
+// zip-slip entry that escapes wherever the archive is later extracted.
+//
+// The file format already forbids these characters in a worksheet name, but the
+// check is repeated here rather than taken on the engine's word: the engine's
+// validation is not a security boundary the toolkit controls, and a miss is an
+// arbitrary file write.
+//
+// Exported because a custom DataSink that writes one output per name needs the
+// same check, and duplicating it invites the two copies to drift apart.
+func SafeOutputName(name string) error {
+	if name == "" {
+		return fmt.Errorf("%w: name is empty", toolkiterrors.ErrUnsafeSinkName)
+	}
+	// A separator in either flavor — the name may have been produced on another
+	// platform — a drive-relative "c:" (also an NTFS alternate data stream), or
+	// an absolute path.
+	if name != filepath.Base(name) ||
+		strings.ContainsAny(name, `/\:`) ||
+		filepath.IsAbs(name) ||
+		filepath.VolumeName(name) != "" {
+		return fmt.Errorf("name %q is a path, not a plain file name: %w", name, toolkiterrors.ErrUnsafeSinkName)
+	}
+	if name == "." || name == ".." {
+		return fmt.Errorf("name %q denotes a directory: %w", name, toolkiterrors.ErrUnsafeSinkName)
+	}
+	return nil
+}
+
 // FolderSink writes each Write call to a file named name inside the given
 // folder, creating the folder if needed. It backs manipulator.Split's
 // per-worksheet file output.
 type FolderSink string
 
 // Write creates the folder if needed and writes data to
-// <folder>/<name>.
+// <folder>/<name>. A name that is not a plain file name — one containing a path
+// separator or a ".." segment — is rejected with ErrUnsafeSinkName rather than
+// resolved against the folder, since the name comes from the source document.
 func (f FolderSink) Write(name string, data []byte) error {
+	if err := SafeOutputName(name); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(string(f), 0o755); err != nil {
 		return err
 	}
@@ -174,8 +219,14 @@ func NewZipSink(zw *zip.Writer) *ZipSink {
 	return &ZipSink{zw: zw}
 }
 
-// Write creates an entry named name in the archive and writes data to it.
+// Write creates an entry named name in the archive and writes data to it. A
+// name that is not a plain file name — one containing a path separator or a
+// ".." segment — is rejected with ErrUnsafeSinkName, so the archive cannot
+// carry a zip-slip entry built from a worksheet name.
 func (z ZipSink) Write(name string, data []byte) error {
+	if err := SafeOutputName(name); err != nil {
+		return err
+	}
 	entry, err := z.zw.Create(name)
 	if err != nil {
 		return err

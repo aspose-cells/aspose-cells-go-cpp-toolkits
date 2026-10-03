@@ -7,7 +7,7 @@
 //
 //   - ExportWorksheetToJson:  sheet -> JSON (WithSheet)
 //   - ExportRangeToJson:      cell range -> JSON (WithSheet/WithStartCell/WithEndCell)
-//   - ExportSpreadsheetToXml: workbook -> XML (WithXMLMap)
+//   - ExportSpreadsheetToXml: XML document -> XML, through the workbook's own XML map
 //   - ImportCSV / ImportJsonData / ImportXMLData: data -> worksheet (WithSheet)
 //
 // It seeds an in-memory workbook; the import samples come from examples/data
@@ -22,7 +22,6 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/editor"
 	examples "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/examples/common"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/transfer"
-	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
 func main() {
@@ -37,16 +36,12 @@ func main() {
 	// name is unreliable in evaluation mode (the engine can corrupt it), so the
 	// table goes on an explicitly named "Data" sheet; the imports target a
 	// worksheet named "Imported", created up front.
-	wb, err := asposecells.NewWorkbook()
-	if err != nil {
-		log.Fatal(err)
-	}
-	empty, err := wb.Save_SaveFormat(asposecells.SaveFormat_Xlsx)
+	empty, err := datasource.NewEmptyWorkbook()
 	if err != nil {
 		log.Fatal(err)
 	}
 	seeded, err := editor.EditSpreadsheet(
-		datasource.BytesSource(empty),
+		empty,
 		editor.WithAddWorksheet("Data"),
 		editor.InWorksheet("Data",
 			editor.SetCellValue(0, 0, "ID"),
@@ -86,10 +81,14 @@ func main() {
 		log.Fatalf("export range json: %v", err)
 	}
 
-	// Export the whole workbook as XML, both to bytes and to a file.
+	// Round-trip an XML document back out as XML, both to bytes and to a file.
+	// The workbook's XML map comes from the document itself — the engine names
+	// it after the root element — so the export does not name it. Pointing this
+	// at a workbook with no XML map, such as the xlsx seed above, returns
+	// ErrXMLMapNotFound rather than writing an empty file.
 	var xmlSink datasource.BytesSink
 	if err := transfer.ExportSpreadsheetToXml(
-		datasource.BytesSource(seeded), &xmlSink, transfer.WithXMLMap("InventoryMap"),
+		datasource.FilePathSource(examples.DataPath("data.xml")), &xmlSink,
 	); err != nil {
 		log.Fatalf("export xml: %v", err)
 	}
@@ -97,9 +96,8 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := transfer.ExportSpreadsheetToXml(
-		datasource.FilePathSource(seedPath),
+		datasource.FilePathSource(examples.DataPath("data.xml")),
 		datasource.FilePathSink(examples.OutPath("transfer", "inventory-file.xml")),
-		transfer.WithXMLMap("InventoryMap"),
 	); err != nil {
 		log.Fatalf("export xml file: %v", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -31,6 +32,8 @@ type NamedRange struct {
 //		fmt.Println(r.Name, r.RefersTo, r.Area)
 //	}
 func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	applyOptions(defaultOptions(), opts)
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
@@ -39,6 +42,7 @@ func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, er
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	names, err := cells.WorkbookNames(workbook)
 	if err != nil {
 		return nil, err
@@ -49,7 +53,7 @@ func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, er
 	}
 	out := make([]NamedRange, 0, count)
 	for i := int32(0); i < count; i++ {
-		n, err := names.Get_Int(i)
+		n, err := engine.Derive(names.Get_Int(i))
 		if err != nil {
 			return nil, err
 		}
@@ -110,6 +114,8 @@ func nameRangeArea(n *asposecells.Name) (Area, bool) {
 //
 //	grid, err := query.ReadNamedRange(datasource.FilePathSource("data.xlsx"), "MyRange")
 func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) ([][]CellValue, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -119,6 +125,7 @@ func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) (
 	if err != nil {
 		return nil, err
 	}
+	defer engine.CloseWorkbook(workbook)
 	n, err := cells.FindName(workbook, name)
 	if err != nil {
 		return nil, err
@@ -153,7 +160,7 @@ func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) (
 // readGrid reads a rectangular block of cells starting at (row, col) with the
 // given dimensions, row-major. grid[r][c] is the cell at row row+r, column col+c.
 func readGrid(ws *asposecells.Worksheet, row, col, rowCount, colCount int32, trim bool) ([][]CellValue, error) {
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +168,7 @@ func readGrid(ws *asposecells.Worksheet, row, col, rowCount, colCount int32, tri
 	for r := int32(0); r < rowCount; r++ {
 		grid[r] = make([]CellValue, colCount)
 		for c := int32(0); c < colCount; c++ {
-			cell, err := cs.Get_Int_Int(row+r, col+c)
+			cell, err := engine.Derive(cs.Get_Int_Int(row+r, col+c))
 			if err != nil {
 				return nil, err
 			}
@@ -182,6 +189,8 @@ func readGrid(ws *asposecells.Worksheet, row, col, rowCount, colCount int32, tri
 //
 //	note, err := query.ReadCellComment(datasource.FilePathSource("data.xlsx"), "A1")
 func ReadCellComment(source datasource.DataSource, ref string, opts ...Option) (string, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
 	cfg := defaultOptions()
 	applyOptions(cfg, opts)
 	if source == nil {
@@ -195,6 +204,7 @@ func ReadCellComment(source datasource.DataSource, ref string, opts ...Option) (
 	if err != nil {
 		return "", err
 	}
+	defer engine.CloseWorkbook(workbook)
 	ws, err := sheetFor(cfg, workbook)
 	if err != nil {
 		return "", err

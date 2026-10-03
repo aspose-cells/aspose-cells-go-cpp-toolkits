@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"testing"
 
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
@@ -11,19 +12,19 @@ import (
 
 // sheetZeroA1 returns the string value of A1 on the workbook's first sheet.
 func sheetZeroA1(wb *asposecells.Workbook) (string, error) {
-	wss, err := wb.GetWorksheets()
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		return "", err
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		return "", err
 	}
-	cs, err := ws.GetCells()
+	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return "", err
 	}
-	cell, err := cs.Get_Int_Int(0, 0)
+	cell, err := engine.Derive(cs.Get_Int_Int(0, 0))
 	if err != nil {
 		return "", err
 	}
@@ -47,10 +48,17 @@ func TestLoadStable(t *testing.T) {
 		}
 		return nil
 	})
+	// LoadStable returns nil on failure, so this is the accepted workbook. This
+	// is the only place the workbook is released: a second CloseWorkbook on the
+	// same handle reaches Delete_CObject with a nil pointer, which leaves the
+	// engine's allocator corrupted and shows up as a null dereference inside a
+	// much later Save.
+	if wb != nil {
+		defer engine.CloseWorkbook(wb)
+	}
 	if err != nil {
 		t.Fatalf("LoadStable: %v", err)
 	}
-	defer wb.Dispose()
 	if verified == 0 {
 		t.Fatal("verification was never called")
 	}
@@ -63,7 +71,7 @@ func TestLoadStableNoVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadStable(nil verify): %v", err)
 	}
-	defer wb.Dispose()
+	defer engine.CloseWorkbook(wb)
 }
 
 // TestLoadStableExhausted reports an error and stops after attempts retries when
@@ -72,10 +80,15 @@ func TestLoadStableExhausted(t *testing.T) {
 	src := datasource.BytesSource(queryTestWorkbook(t))
 	const attempts = 3
 	var calls int
-	_, err := cells.LoadStable(src, attempts, func(*asposecells.Workbook) error {
+	wb, err := cells.LoadStable(src, attempts, func(*asposecells.Workbook) error {
 		calls++
 		return fmt.Errorf("verification always fails")
 	})
+	// Every load is rejected, so this should be nil; dispose anyway rather than
+	// leaking a native workbook if that ever stops being true.
+	if wb != nil {
+		defer engine.CloseWorkbook(wb)
+	}
 	if err == nil {
 		t.Fatal("LoadStable with always-failing verification: want error, got nil")
 	}

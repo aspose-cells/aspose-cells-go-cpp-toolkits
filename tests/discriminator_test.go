@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	"strings"
 	"testing"
 
@@ -64,10 +65,11 @@ func TestXlsmRoundTripProducesXlsm(t *testing.T) {
 		if err := converter.Convert(src, formats.Get("xlsm"), &out); err != nil {
 			return fmt.Errorf("Convert to xlsm: %w", err)
 		}
-		wb, err := asposecells.NewWorkbook_Stream(out.Bytes())
+		wb, err := engine.OpenWorkbook(out.Bytes())
 		if err != nil {
 			return fmt.Errorf("load converted bytes: %w", err)
 		}
+		defer engine.CloseWorkbook(wb)
 		got, err := wb.GetFileFormat()
 		if err != nil {
 			return fmt.Errorf("GetFileFormat: %w", err)
@@ -85,28 +87,29 @@ func TestXlsmRoundTripProducesXlsm(t *testing.T) {
 // A1 and label in B1, so a delimited-text export is guaranteed non-empty.
 func newWorkbookWithValue(t *testing.T, name, value, label string) []byte {
 	t.Helper()
-	wb, err := asposecells.NewWorkbook()
+	wb, err := engine.NewWorkbook()
 	if err != nil {
 		t.Fatalf("NewWorkbook: %v", err)
 	}
-	wss, err := wb.GetWorksheets()
+	defer engine.CloseWorkbook(wb)
+	wss, err := engine.Derive(wb.GetWorksheets())
 	if err != nil {
 		t.Fatalf("GetWorksheets: %v", err)
 	}
-	ws, err := wss.Get_Int(0)
+	ws, err := engine.Derive(wss.Get_Int(0))
 	if err != nil {
 		t.Fatalf("Get_Int(0): %v", err)
 	}
 	if err := ws.SetName(name); err != nil {
 		t.Fatalf("SetName: %v", err)
 	}
-	cells, err := ws.GetCells()
+	cells, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		t.Fatalf("GetCells: %v", err)
 	}
 	values := []string{value, label}
 	for i, v := range values {
-		cell, err := cells.Get_Int_Int(0, int32(i))
+		cell, err := engine.Derive(cells.Get_Int_Int(0, int32(i)))
 		if err != nil {
 			t.Fatalf("Get_Int_Int(0,%d): %v", i, err)
 		}
