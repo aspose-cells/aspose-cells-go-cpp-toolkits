@@ -31,11 +31,13 @@ type Row struct {
 }
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
 	if err := os.MkdirAll(examples.OutDir("query"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// --- Part 1: read the real sample workbook -------------------------------
@@ -45,7 +47,7 @@ func main() {
 
 	cell, err := query.ReadCell(book, "B2", first)
 	if err != nil {
-		log.Fatalf("read cell: %v", err)
+		examples.Fatalf("read cell: %v", err)
 	}
 	if s, ok := cell.String(); ok {
 		fmt.Printf("ReadCell(B2): %s\n", s)
@@ -53,27 +55,27 @@ func main() {
 
 	grid, err := query.ReadRange(book, "A1", "C4", first)
 	if err != nil {
-		log.Fatalf("read range: %v", err)
+		examples.Fatalf("read range: %v", err)
 	}
 	fmt.Println("ReadRange(A1:C4):")
 	printGrid(grid)
 
 	whole, err := query.ReadWorksheet(book, first)
 	if err != nil {
-		log.Fatalf("read worksheet: %v", err)
+		examples.Fatalf("read worksheet: %v", err)
 	}
 	fmt.Println("ReadWorksheet (first sheet):")
 	printGrid(whole)
 
 	rows, cols, err := query.Dimensions(book, first)
 	if err != nil {
-		log.Fatalf("dimensions: %v", err)
+		examples.Fatalf("dimensions: %v", err)
 	}
 	fmt.Printf("Dimensions: %d rows x %d cols\n", rows, cols)
 
 	records, err := query.ReadRows[Row](book, first)
 	if err != nil {
-		log.Fatalf("read rows: %v", err)
+		examples.Fatalf("read rows: %v", err)
 	}
 	fmt.Println("ReadRows[Row] (headers Item/Category/Note):")
 	for _, r := range records {
@@ -87,7 +89,7 @@ func main() {
 	// mode; the reads below target it by index.
 	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	table, err := editor.EditSpreadsheet(
 		seed,
@@ -108,11 +110,11 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("seed worksheet: %v", err)
+		examples.Fatalf("seed worksheet: %v", err)
 	}
 	tablePath := examples.OutPath("query", "table.xlsx")
 	if err := os.WriteFile(tablePath, table, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// The "Data" sheet is targeted by name, not by index: evaluation mode can
@@ -124,7 +126,7 @@ func main() {
 
 	sheets, err := query.SheetNames(tableSrc)
 	if err != nil {
-		log.Fatalf("sheet names: %v", err)
+		examples.Fatalf("sheet names: %v", err)
 	}
 	fmt.Println("SheetNames:", sheets)
 
@@ -139,7 +141,7 @@ func main() {
 
 	names, err := query.NamedRanges(tableSrc)
 	if err != nil {
-		log.Fatalf("named ranges: %v", err)
+		examples.Fatalf("named ranges: %v", err)
 	}
 	for _, nr := range names {
 		fmt.Printf("NamedRanges: %s -> %s\n", nr.Name, nr.RefersTo)

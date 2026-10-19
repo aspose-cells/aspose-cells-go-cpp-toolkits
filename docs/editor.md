@@ -53,6 +53,268 @@ err := EditSpreadsheetToSink(fileSource, &sink, InWorksheet("Sheet1", SetCellVal
 data := sink.Bytes()
 ```
 
+### InWorksheet
+
+```go
+func InWorksheet(identifier interface{}, actions ...WorksheetAction) WorkbookAction
+```
+
+Scopes a group of actions to one worksheet. `identifier` is either a sheet name
+(`string`) or a zero-based sheet index (`int`); each `WorksheetAction` in
+`actions` runs against that sheet, in order. If the sheet cannot be resolved the
+whole edit fails with `ErrWorksheetNotFound` or `ErrInvalidSheetID`.
+
+```go
+editor.InWorksheet(0, editor.SetCellValue(0, 0, "Hello"))
+editor.InWorksheet("Sheet1", editor.SetCellValue(0, 0, "Hello"))
+```
+
+Prefer the index form: evaluation mode occasionally corrupts worksheet names at
+load time, and index-based lookups never read a name. The same caveat is
+described under [query options](query.md#options).
+
+### InDefaultStyle
+
+```go
+func InDefaultStyle(actions ...StyleAction) WorkbookAction
+```
+
+Applies style actions to the workbook's default style, so cells that carry no
+explicit style inherit the change. Fails fast: the first failing action stops
+the edit.
+
+### SetCellValue
+
+```go
+func SetCellValue(row, column int, value interface{}) WorksheetAction
+```
+
+Writes one cell. Supported value types are `string`, `bool`, `time.Time`, all
+signed and unsigned integer widths (`int`, `int8`, `int16`, `int32`, `int64`,
+`uint`, `uint8`, `uint16`, `uint32`, `uint64`), and `float32` / `float64`. A
+`time.Time` is written as a date and given a date number format. Any other type
+returns `ErrInvalidValue` instead of silently writing nothing.
+
+```go
+editor.InWorksheet(0, editor.SetCellValue(0, 0, "Hello"))
+```
+
+### SetCellValues
+
+```go
+func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetAction
+```
+
+Writes a two-dimensional block. Each inner slice is one row, starting at
+`(beginRow, beginColumn)`; the block may have rows of different lengths, and a
+`nil` entry leaves that cell untouched. Value types are the same as
+`SetCellValue`.
+
+```go
+editor.InWorksheet(0, editor.SetCellValues(0, 0, [][]interface{}{
+    {"Name", "Age"},
+    {"Alice", 30},
+    {"Bob", 25},
+}))
+```
+
+### SetValue
+
+```go
+func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) WorksheetAction
+```
+
+Writes the same value into every cell of a rectangular range.
+
+```go
+editor.InWorksheet(0, editor.SetValue(1, 0, 3, 2, "pending"))
+```
+
+### ClearContents
+
+```go
+func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction
+```
+
+Clears values and formulas in a range while preserving cell formatting.
+
+### ClearFormats
+
+```go
+func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction
+```
+
+Clears formatting in a range while preserving values and formulas.
+
+### SetStyle
+
+```go
+func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) WorksheetAction
+```
+
+Reads the current style of the range, applies each `StyleAction` in order, and
+writes the result back. Fails fast: the first failing action stops the edit and
+no style is assigned.
+
+The style actions are:
+
+| Action | Argument | Effect |
+| --- | --- | --- |
+| `WithFontName` | `string` | Font family |
+| `WithFontSize` | `int` | Font size in points |
+| `WithFontIsBold` | `bool` | Bold |
+| `WithFontIsItalic` | `bool` | Italic |
+| `WithFontIsStrikeout` | `bool` | Strike-through |
+| `WithFontIsSubscript` | `bool` | Subscript |
+| `WithFontIsSuperscript` | `bool` | Superscript |
+| `WithFontUnderline` | name or engine enum | Underline style |
+| `WithFontColor` | color | Font color |
+| `WithBackgroundColor` | color | Cell fill color |
+| `WithHorizontalAlignment` | name or engine enum | Left / center / right / justify / … |
+| `WithVerticalAlignment` | name or engine enum | Top / center / bottom |
+| `WithIndentLevel` | `int` | Indentation level |
+| `WithIsTextWrapped` | `bool` | Wrap text |
+| `WithIsAlignmentApplied` | `bool` | Mark alignment as explicitly applied |
+| `WithIsBorderApplied` | `bool` | Mark borders as explicitly applied |
+| `WithIsFillApplied` | `bool` | Mark fill as explicitly applied |
+| `WithIsProtectionApplied` | `bool` | Mark protection as explicitly applied |
+
+Colors and alignment/underline names are validated strictly and matched
+case- and punctuation-insensitively; see `StyleAction` under [Types](#styleaction)
+for the accepted forms.
+
+```go
+editor.InWorksheet(0, editor.SetStyle(0, 0, 1, 1,
+    editor.WithFontName("Arial"),
+    editor.WithFontSize(14),
+    editor.WithFontIsBold(true),
+    editor.WithFontColor("#1F4E79"),
+    editor.WithHorizontalAlignment("center"),
+))
+```
+
+### Merge
+
+```go
+func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) WorksheetAction
+```
+
+Merges a rectangular region. Set `mergeConflict` to `true` to allow a merge
+that overlaps an existing merged region.
+
+### UnMerge
+
+```go
+func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction
+```
+
+Splits a previously merged rectangular region back into individual cells.
+
+### InsertRows
+
+```go
+func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction
+```
+
+Inserts `rows` rows at `beginRow`. When `updateReference` is true, formulas and
+named ranges that point below the insertion point are shifted.
+
+### DeleteRows
+
+```go
+func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction
+```
+
+Deletes `rows` rows starting at `beginRow`, optionally updating references.
+
+### InsertColumns
+
+```go
+func InsertColumns(beginColumn int, columns int, updateReference bool) WorksheetAction
+```
+
+Inserts `columns` columns at `beginColumn`, optionally updating references.
+
+### DeleteColumns
+
+```go
+func DeleteColumns(beginColumn int, columns int, updateReference bool) WorksheetAction
+```
+
+Deletes `columns` columns starting at `beginColumn`, optionally updating
+references.
+
+### DeleteBlankRows
+
+```go
+func DeleteBlankRows() WorksheetAction
+```
+
+Removes every row that contains neither data nor formatting.
+
+### DeleteBlankColumns
+
+```go
+func DeleteBlankColumns() WorksheetAction
+```
+
+Removes every column that contains neither data nor formatting.
+
+### DeleteRange
+
+```go
+func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) WorksheetAction
+```
+
+Deletes a rectangular range and shifts the surviving cells into the gap.
+`shiftType` is `"up"`, `"down"`, `"left"`, or `"right"` (case-insensitive); an
+empty string means no shift. Any other value is an error rather than a silent
+fallback to "no shift", because the direction decides which cells the deletion
+consumes.
+
+### Worksheet actions
+
+```go
+func WithAddWorksheet(newSheetName string) WorkbookAction
+func WithDeleteWorksheet(sheetName string) WorkbookAction
+func WithRenameWorksheet(sheetName string, newSheetName string) WorkbookAction
+func WithActiveSheet(sheetName string) WorkbookAction
+```
+
+Workbook-level actions that create, delete, rename, or activate a worksheet.
+`WithAddWorksheet` appends a sheet with the given name; the engine rejects a
+duplicate name.
+
+```go
+editor.EditSpreadsheet(source,
+    editor.WithAddWorksheet("Report"),
+    editor.InWorksheet("Report", editor.SetCellValue(0, 0, "Q3")),
+)
+```
+
+### Validation and suggestion helpers
+
+```go
+func SuggestDataRange(dataRows, dataCols int, hasCategories bool) string
+func ValidateChartBounds(topRow, leftColumn, bottomRow, rightColumn int) error
+func ValidateChartDataRange(dataRange string, byColumn bool) error
+func ValidateChartStyle(style int) error
+func ValidateChartType(chartType ChartType) error
+func ValidateLegendPosition(position ChartLegendPosition) error
+```
+
+Local checks that catch configuration mistakes before the engine is asked to
+build a chart. They return an error describing the fix, so they can be used in
+tests or input validation; `SuggestDataRange` instead returns an A1-notation
+range such as `"A1:D11"`.
+
+```go
+if err := editor.ValidateChartType(editor.ChartTypeColumn); err != nil {
+    log.Fatal(err)
+}
+suggestion := editor.SuggestDataRange(10, 3, true) // "A1:D11"
+```
+
 ### SetFormula
 
 ```go

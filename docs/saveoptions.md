@@ -25,6 +25,65 @@ Example implementations might include:
 
 This interface enables a flexible, decoupled design where conversion logic can be extended without modifying core conversion functions like converter.Convert, manipulator.Merge, or manipulator.Split.
 
+### CommonConfig
+
+```go
+type CommonConfig struct {
+	ClearData                 *bool
+	CachedFileFolder          *string
+	ValidateMergedAreas       *bool
+	MergeAreas                *bool
+	CreateDirectory           *bool
+	SortNames                 *bool
+	SortExternalNames         *bool
+	RefreshChartCache         *bool
+	CheckExcelRestriction     *bool
+	UpdateSmartArt            *bool
+	EncryptDocumentProperties *bool
+}
+
+func (c *CommonConfig) ApplyCommon(o CommonSetter) error
+```
+
+The option fields every format shares. Fields are pointers so "not set" (nil)
+keeps the engine default; `ApplyCommon` pushes every non-nil field onto the
+native option in the same order for every format.
+
+### CommonSetter
+
+```go
+type CommonSetter interface {
+	SetClearData(value bool) error
+	SetCachedFileFolder(value string) error
+	SetValidateMergedAreas(value bool) error
+	SetMergeAreas(value bool) error
+	SetCreateDirectory(value bool) error
+	SetSortNames(value bool) error
+	SetSortExternalNames(value bool) error
+	SetRefreshChartCache(value bool) error
+	SetCheckExcelRestriction(value bool) error
+	SetUpdateSmartArt(value bool) error
+	SetEncryptDocumentProperties(value bool) error
+}
+```
+
+The subset of the engine's save-options API implemented by every native option
+type the toolkit wraps. A format package only handles its own fields and calls
+`CommonConfig.ApplyCommon` for the shared ones.
+
+## Format packages
+
+Each subpackage implements `SaveOption` and exposes `New(opts ...Option)` plus
+its own `With*` functions:
+
+`csv`, `dbf`, `dif`, `docx`, `ebook`, `html`, `image`, `json`, `markdown`,
+`ods`, `ooxml`, `pcl`, `pdf`, `pptx`, `sqlScript`, `txt`, `xls`, `xlsb`,
+`xml`, `xps`.
+
+Import a subpackage directly when you need one format; blank-import
+`.../register` when you want every registered extension resolvable through
+`formats.Get`.
+
 
 ## Enum option names
 

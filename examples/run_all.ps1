@@ -2,6 +2,12 @@
 
 $ErrorActionPreference = "Stop"
 
+# Anchor at the repository root so the script behaves the same whether it is
+# launched from the module root, from examples/, or from anywhere else.
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$originalLocation = (Get-Location).Path
+Set-Location (Join-Path $scriptDir "..")
+
 Write-Host "=== 1. Build project ===" -ForegroundColor Cyan
 go build ./...
 
@@ -9,12 +15,20 @@ Write-Host "=== 2. Vet code ===" -ForegroundColor Cyan
 go vet ./...
 
 Write-Host "=== 3. Format check ===" -ForegroundColor Cyan
-$unformatted = gofmt -l .
-# if ($unformatted) {
-#     Write-Host "Unformatted files:" -ForegroundColor Red
-#     Write-Host $unformatted
-#     exit 1
-# }
+# Check only packages in this module; ignored/generated trees such as
+# agent/ResultOutput are outside the module and would fail gofmt -l .
+$packageDirs = go list -f '{{.Dir}}' ./...
+# List each package's .go files explicitly: gofmt recurses when handed a
+# directory, which would pull in trees outside the module.
+$goFiles = $packageDirs | ForEach-Object {
+    Get-ChildItem -LiteralPath $_ -Filter '*.go' -File
+} | ForEach-Object { $_.FullName }
+$unformatted = gofmt -l $goFiles
+if ($unformatted) {
+    Write-Host "Unformatted files:" -ForegroundColor Red
+    Write-Host $unformatted
+    exit 1
+}
 Write-Host "Format check passed" -ForegroundColor Green
 
 Write-Host "=== 4. Resolve native library directory ===" -ForegroundColor Cyan
@@ -28,27 +42,28 @@ go test -v ./...
 
 Write-Host "=== 6. Run examples ===" -ForegroundColor Cyan
 Write-Host "Running chart example..." -ForegroundColor Yellow
-& .\examples\run.ps1 chart
+& (Join-Path $scriptDir "run.ps1") chart
 
 Write-Host "Running chart-export example..." -ForegroundColor Yellow
-& .\examples\run.ps1 chart-export
+& (Join-Path $scriptDir "run.ps1") chart-export
 
 Write-Host "Running convert example..." -ForegroundColor Yellow
-& .\examples\run.ps1 convert
+& (Join-Path $scriptDir "run.ps1") convert
 
 Write-Host "Running edit example..." -ForegroundColor Yellow
-& .\examples\run.ps1 edit
+& (Join-Path $scriptDir "run.ps1") edit
 
 Write-Host "Running merge-split example..." -ForegroundColor Yellow
-& .\examples\run.ps1 merge-split
+& (Join-Path $scriptDir "run.ps1") merge-split
 
 Write-Host "Running query example..." -ForegroundColor Yellow
-& .\examples\run.ps1 query
+& (Join-Path $scriptDir "run.ps1") query
 
 Write-Host "Running transfer example..." -ForegroundColor Yellow
-& .\examples\run.ps1 transfer
+& (Join-Path $scriptDir "run.ps1") transfer
 
 Write-Host "Running validation-cf example..." -ForegroundColor Yellow
-& .\examples\run.ps1 validation-cf
+& (Join-Path $scriptDir "run.ps1") validation-cf
 
 Write-Host "=== All tests and examples completed ===" -ForegroundColor Green
+Set-Location $originalLocation

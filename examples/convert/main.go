@@ -34,11 +34,13 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
 	if err := os.MkdirAll(examples.OutDir("convert"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// The sample workbook lives in examples/data so the command is
@@ -52,21 +54,21 @@ func main() {
 	// Spreadsheet -> []byte: PDF with a functional option via a BytesSink.
 	var pdfSink datasource.BytesSink
 	if err := converter.Convert(source, pdf.New(pdf.WithOnePagePerSheet(true)), &pdfSink); err != nil {
-		log.Fatalf("convert to pdf: %v", err)
+		examples.Fatalf("convert to pdf: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("convert", "report.pdf"), pdfSink.Bytes(), 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Spreadsheet -> io.Writer: Markdown streamed straight to a file via a
 	// WriterSink.
 	file, err := os.Create(examples.OutPath("convert", "report.md"))
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	defer file.Close()
 	if err := converter.Convert(source, markdown.New(markdown.WithClearData(true)), datasource.NewWriterSink(file)); err != nil {
-		log.Fatalf("convert to markdown: %v", err)
+		examples.Fatalf("convert to markdown: %v", err)
 	}
 
 	// File -> file: resolve the output format from the extension, then hand a
@@ -75,10 +77,10 @@ func main() {
 		ext := filepath.Ext(out)[1:]
 		opt := formats.Get(ext)
 		if opt == nil {
-			log.Fatalf("no registered format for %q", ext)
+			examples.Fatalf("no registered format for %q", ext)
 		}
 		if err := converter.Convert(source, opt, datasource.FilePathSink(out)); err != nil {
-			log.Fatalf("convert to %s: %v", ext, err)
+			examples.Fatalf("convert to %s: %v", ext, err)
 		}
 	}
 
@@ -89,29 +91,29 @@ func main() {
 	// preserving the original workbook structure).
 	bytesData, err := converter.ConvertSpreadsheet(source, ooxml.New())
 	if err != nil {
-		log.Fatalf("convert spreadsheet: %v", err)
+		examples.Fatalf("convert spreadsheet: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("convert", "copy.xlsx"), bytesData, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// ConvertToWriter writes straight into an io.Writer (CSV here).
 	csvFile, err := os.Create(examples.OutPath("convert", "legacy.csv"))
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	csvOpt := formats.Get("csv")
 	if csvOpt == nil {
-		log.Fatal(`no registered format for "csv"`)
+		examples.Fatal(`no registered format for "csv"`)
 	}
 	if err := converter.ConvertToWriter(source, csvFile, csvOpt); err != nil {
-		log.Fatalf("convert to writer: %v", err)
+		examples.Fatalf("convert to writer: %v", err)
 	}
 	csvFile.Close()
 
 	// ConvertSpreadsheetToFile infers the output format from the extension.
 	if err := converter.ConvertSpreadsheetToFile(input, examples.OutPath("convert", "legacy.html")); err != nil {
-		log.Fatalf("convert to file: %v", err)
+		examples.Fatalf("convert to file: %v", err)
 	}
 
 	log.Println("conversion complete; outputs written to examples/convert/out")

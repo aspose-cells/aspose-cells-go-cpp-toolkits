@@ -23,6 +23,8 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
@@ -33,7 +35,7 @@ func main() {
 	// worksheet-name rewriting.
 	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	const sheet = "Sales"
@@ -62,7 +64,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("seed the table: %v", err)
+		examples.Fatalf("seed the table: %v", err)
 	}
 
 	// Add a column chart over A1:C5 with a title, a built-in style and a legend.
@@ -87,7 +89,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add chart: %v", err)
+		examples.Fatalf("add chart: %v", err)
 	}
 	writeOut("chart.xlsx", withChart)
 
@@ -106,7 +108,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("modify chart: %v", err)
+		examples.Fatalf("modify chart: %v", err)
 	}
 	writeOut("chart-modified.xlsx", modified)
 
@@ -131,7 +133,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("compose chart: %v", err)
+		examples.Fatalf("compose chart: %v", err)
 	}
 	writeOut("chart-composed.xlsx", composed)
 
@@ -149,7 +151,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("delete chart: %v", err)
+		examples.Fatalf("delete chart: %v", err)
 	}
 	writeOut("chart-deleted.xlsx", deleted)
 
@@ -169,7 +171,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query chart info: %v", err)
+		examples.Fatalf("query chart info: %v", err)
 	}
 	fmt.Printf("\nChart 0 on %q sheet:\n", sheet)
 	fmt.Printf("  Type:           %s\n", info.Type)
@@ -190,7 +192,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query chart series: %v", err)
+		examples.Fatalf("query chart series: %v", err)
 	}
 	fmt.Printf("\n  Series data:\n")
 	for i, s := range series {
@@ -204,7 +206,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query chart count: %v", err)
+		examples.Fatalf("query chart count: %v", err)
 	}
 	fmt.Printf("\n  Total charts on %q: %d\n", sheet, count)
 
@@ -238,7 +240,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("apply preset: %v", err)
+		examples.Fatalf("apply preset: %v", err)
 	}
 	writeOut("chart-preset.xlsx", withPreset)
 
@@ -262,7 +264,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("apply partial preset: %v", err)
+		examples.Fatalf("apply partial preset: %v", err)
 	}
 	writeOut("chart-partial-preset.xlsx", withPartialPreset)
 
@@ -279,7 +281,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("explicit category: %v", err)
+		examples.Fatalf("explicit category: %v", err)
 	}
 	writeOut("chart-explicit-category.xlsx", withExplicitCategory)
 
@@ -311,7 +313,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("apply templates: %v", err)
+		examples.Fatalf("apply templates: %v", err)
 	}
 	writeOut("chart-templates.xlsx", withTemplates)
 
@@ -331,7 +333,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("apply custom template: %v", err)
+		examples.Fatalf("apply custom template: %v", err)
 	}
 	writeOut("chart-custom-template.xlsx", withCustomTemplate)
 
@@ -357,7 +359,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("deep styling: %v", err)
+		examples.Fatalf("deep styling: %v", err)
 	}
 	writeOut("chart-deep-styling.xlsx", withDeepStyling)
 
@@ -366,10 +368,10 @@ func main() {
 
 func writeOut(name string, data []byte) {
 	if err := os.MkdirAll(examples.OutDir("chart"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	if err := os.WriteFile(examples.OutPath("chart", name), data, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	fmt.Printf("wrote %s\n", examples.OutPath("chart", name))
 }

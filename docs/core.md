@@ -2,7 +2,7 @@
 
 Package core holds engine-level configuration.
 
-Currently it exposes `SetLicense` for licensing the underlying Aspose.Cells engine before any spreadsheet is processed.
+It exposes `SetLicense` for licensing the underlying Aspose.Cells engine before any spreadsheet is processed, and `Cleanup` to release the engine's process-wide state before the program exits.
 
 ## Functions
 
@@ -106,3 +106,61 @@ if err != nil {
        }
    }
    ```
+
+## Release the engine before exit
+
+Starting with Aspose.Cells for Go via C++ **v26.10.0**, the native engine must
+be shut down explicitly before the process exits. If it is not, the C runtime
+tears down the engine's process-wide state while the Go runtime is exiting and
+the program dies with an access violation (`Exception 0xc0000005`, `PC=0x0`)
+after `main` has returned.
+
+The toolkit exposes the binding's `Cleanup` as:
+
+```go
+func core.Cleanup()
+```
+
+Call it once, after the last toolkit operation and before the process exits.
+
+### The recommended pattern
+
+`os.Exit` and `log.Fatal` terminate the process immediately and do **not** run
+deferred functions. Put `defer core.Cleanup()` in a function that returns to
+`main`, and let `main` do the exiting:
+
+```go
+func main() {
+    os.Exit(run())
+}
+
+func run() int {
+    defer core.Cleanup() // runs when run returns, before os.Exit
+
+    if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
+        log.Print(err)
+        return 1
+    }
+    if err := work(); err != nil {
+        log.Print(err)
+        return 1
+    }
+    return 0
+}
+```
+
+Returning an exit code instead of calling `log.Fatal` inside `run` is what
+makes the deferred cleanup run. If the program installs its own signal
+handler, call `core.Cleanup()` from that handler before exiting as well.
+
+### Semantics
+
+- **Terminal.** Every toolkit call after `Cleanup` returns is undefined.
+  Finish all work and stop goroutines that still use the toolkit first.
+- **Waits for in-flight work.** `Cleanup` takes the same engine lock as every
+  other entry point, so it does not overlap a load, save, or handle release.
+- **Idempotent.** Calling it more than once is safe, including when no workbook
+  was ever opened.
+- **Not required to close workbooks.** Close or finish workbooks through their
+  normal entry points; `Cleanup` releases process-wide engine state, not
+  individual documents.

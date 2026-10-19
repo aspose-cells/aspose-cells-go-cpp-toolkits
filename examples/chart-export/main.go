@@ -16,6 +16,8 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
@@ -24,13 +26,13 @@ func main() {
 	// relative path would land the artifacts in a nested copy of the tree.
 	outDir := examples.OutDir("chart-export")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		log.Fatalf("create output directory: %v", err)
+		examples.Fatalf("create output directory: %v", err)
 	}
 
 	// Create a workbook with sample data and a chart
 	src, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatalf("create empty workbook: %v", err)
+		examples.Fatalf("create empty workbook: %v", err)
 	}
 
 	workbookData, err := editor.EditSpreadsheet(
@@ -62,7 +64,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("edit spreadsheet: %v", err)
+		examples.Fatalf("edit spreadsheet: %v", err)
 	}
 
 	fmt.Println("Created workbook with quarterly data and chart")
@@ -82,7 +84,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart as PNG: %v", err)
+		examples.Fatalf("export chart as PNG: %v", err)
 	}
 	fmt.Printf("✓ Exported chart as PNG: %s\n", pngPath)
 
@@ -99,7 +101,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart as JPEG: %v", err)
+		examples.Fatalf("export chart as JPEG: %v", err)
 	}
 	fmt.Printf("✓ Exported chart as JPEG: %s\n", jpegPath)
 
@@ -115,7 +117,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart as SVG: %v", err)
+		examples.Fatalf("export chart as SVG: %v", err)
 	}
 	fmt.Printf("✓ Exported chart as SVG: %s\n", svgPath)
 
@@ -131,7 +133,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart as PDF: %v", err)
+		examples.Fatalf("export chart as PDF: %v", err)
 	}
 	fmt.Printf("✓ Exported chart as PDF: %s\n", pdfPath)
 
@@ -149,7 +151,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart with custom size: %v", err)
+		examples.Fatalf("export chart with custom size: %v", err)
 	}
 	fmt.Printf("✓ Exported chart with custom dimensions: %s\n", customPath)
 
@@ -163,7 +165,7 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatalf("export chart to bytes: %v", err)
+		examples.Fatalf("export chart to bytes: %v", err)
 	}
 	fmt.Printf("✓ Exported chart to memory: %d bytes\n", len(pngData))
 

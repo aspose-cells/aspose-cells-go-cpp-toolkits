@@ -25,11 +25,13 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
 	if err := os.MkdirAll(examples.OutDir("transfer"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Seed an in-memory workbook with a small table. The default first sheet's
@@ -38,7 +40,7 @@ func main() {
 	// worksheet named "Imported", created up front.
 	empty, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	seeded, err := editor.EditSpreadsheet(
 		empty,
@@ -54,13 +56,13 @@ func main() {
 		editor.WithAddWorksheet("Imported"),
 	)
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Persist the seed so the file-backed entry points have a real input.
 	seedPath := examples.OutPath("transfer", "seed.xlsx")
 	if err := os.WriteFile(seedPath, seeded, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Export the "Data" sheet as JSON straight from file to file.
@@ -69,7 +71,7 @@ func main() {
 		datasource.FilePathSink(examples.OutPath("transfer", "sheet.json")),
 		transfer.WithSheet("Data"),
 	); err != nil {
-		log.Fatalf("export worksheet json: %v", err)
+		examples.Fatalf("export worksheet json: %v", err)
 	}
 
 	// Export a cell range as JSON.
@@ -78,7 +80,7 @@ func main() {
 		datasource.FilePathSink(examples.OutPath("transfer", "range.json")),
 		transfer.WithSheet("Data"), transfer.WithStartCell("A1"), transfer.WithEndCell("B3"),
 	); err != nil {
-		log.Fatalf("export range json: %v", err)
+		examples.Fatalf("export range json: %v", err)
 	}
 
 	// Round-trip an XML document back out as XML, both to bytes and to a file.
@@ -90,16 +92,16 @@ func main() {
 	if err := transfer.ExportSpreadsheetToXml(
 		datasource.FilePathSource(examples.DataPath("data.xml")), &xmlSink,
 	); err != nil {
-		log.Fatalf("export xml: %v", err)
+		examples.Fatalf("export xml: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("transfer", "inventory.xml"), xmlSink.Bytes(), 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	if err := transfer.ExportSpreadsheetToXml(
 		datasource.FilePathSource(examples.DataPath("data.xml")),
 		datasource.FilePathSink(examples.OutPath("transfer", "inventory-file.xml")),
 	); err != nil {
-		log.Fatalf("export xml file: %v", err)
+		examples.Fatalf("export xml file: %v", err)
 	}
 
 	// Import CSV, JSON, and XML data into fresh copies of the workbook. The
@@ -111,7 +113,7 @@ func main() {
 		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
 		transfer.WithConvertNumeric(true), transfer.WithSeparator(","),
 	); err != nil {
-		log.Fatalf("import csv: %v", err)
+		examples.Fatalf("import csv: %v", err)
 	}
 	if err := transfer.ImportJsonData(
 		datasource.FilePathSource(seedPath),
@@ -119,7 +121,7 @@ func main() {
 		datasource.FilePathSink(examples.OutPath("transfer", "imported-json.xlsx")),
 		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
 	); err != nil {
-		log.Fatalf("import json: %v", err)
+		examples.Fatalf("import json: %v", err)
 	}
 	if err := transfer.ImportXMLData(
 		datasource.FilePathSource(seedPath),
@@ -127,7 +129,7 @@ func main() {
 		datasource.FilePathSink(examples.OutPath("transfer", "imported-xml.xlsx")),
 		transfer.WithSheet("Imported"), transfer.WithBeginCell(0, 0),
 	); err != nil {
-		log.Fatalf("import xml: %v", err)
+		examples.Fatalf("import xml: %v", err)
 	}
 
 	log.Println("transfer complete; outputs written to examples/transfer/out")

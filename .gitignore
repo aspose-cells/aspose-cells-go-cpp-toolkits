@@ -20,3 +20,7 @@ examples/*/out/
 .vscode/
 *.swp
 .DS_Store
+
+# Local SDK wiring: go.work may point at a local Aspose.Cells build
+go.work
+go.work.sum

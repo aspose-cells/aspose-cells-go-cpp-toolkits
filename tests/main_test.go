@@ -26,11 +26,16 @@ func TestMain(m *testing.M) {
 	if path != "" {
 		if err := core.SetLicense(path); err != nil {
 			fmt.Fprintf(os.Stderr, "tests: applying license %q failed: %v\n", path, err)
+			core.Cleanup()
 			os.Exit(1)
 		}
 		fmt.Fprintf(os.Stderr, "tests: license applied from %q\n", path)
 	} else {
 		fmt.Fprintln(os.Stderr, "tests: no license configured (LicenseFilePath unset), running in evaluation mode")
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	// Engine v26.10.0 must be released before the test binary exits; without
+	// this the process crashes after the last test has already passed.
+	core.Cleanup()
+	os.Exit(code)
 }

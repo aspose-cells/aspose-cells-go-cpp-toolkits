@@ -1,7 +1,8 @@
 // Package core holds engine-level configuration.
 //
-// Currently it exposes SetLicense for licensing the underlying Aspose.Cells
-// engine before any spreadsheet is processed.
+// It exposes SetLicense for licensing the underlying Aspose.Cells engine
+// before any spreadsheet is processed, and Cleanup to release the engine's
+// process-wide state before the program exits.
 package core
 
 import (

@@ -21,6 +21,8 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
@@ -28,7 +30,7 @@ func main() {
 	// Seed an empty workbook so the example runs without a data file.
 	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// The table, named range, and comment live on a "Data" sheet added after
@@ -82,14 +84,14 @@ func main() {
 		editor.InDefaultStyle(editor.WithFontName("Calibri")),
 	)
 	if err != nil {
-		log.Fatalf("edit spreadsheet: %v", err)
+		examples.Fatalf("edit spreadsheet: %v", err)
 	}
 	if err := os.MkdirAll(examples.OutDir("edit"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	editedPath := examples.OutPath("edit", "edited.xlsx")
 	if err := os.WriteFile(editedPath, edited, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Read the file back and push a further edit into a copy, then write it out.
@@ -98,10 +100,10 @@ func main() {
 		editor.InWorksheet(1, editor.SetCellValue(0, 0, "Touched")), // 1 = "Data"
 	)
 	if err != nil {
-		log.Fatalf("edit copy: %v", err)
+		examples.Fatalf("edit copy: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("edit", "edited-copy.xlsx"), editedCopy, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Read the saved workbook back with the query package to show the named
@@ -109,7 +111,7 @@ func main() {
 	editedSrc := datasource.FilePathSource(editedPath)
 	names, err := query.NamedRanges(editedSrc)
 	if err != nil {
-		log.Fatalf("read named ranges: %v", err)
+		examples.Fatalf("read named ranges: %v", err)
 	}
 	for _, nr := range names {
 		fmt.Printf("named range %s: %s -> %s\n", nr.Name, nr.RefersTo, nr.Area.String())
@@ -148,10 +150,10 @@ func main() {
 		editor.Encrypt("hunter2"),
 	)
 	if err != nil {
-		log.Fatalf("encrypt: %v", err)
+		examples.Fatalf("encrypt: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("edit", "edited-encrypted.xlsx"), encrypted, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	log.Println("edited workbooks written to examples/edit/out/edited.xlsx, edited-copy.xlsx, and edited-encrypted.xlsx")

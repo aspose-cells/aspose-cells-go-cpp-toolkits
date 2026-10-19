@@ -103,9 +103,9 @@ err := converter.Convert(
 
 The `register` package registers all the following formats:
 
-- `bmp`, `csv`, `dbf`, `dif`, `docx`, `epub`, `gif`, `html`
+- `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`
 - `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`
-- `pptx`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`
+- `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`
 - `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`
 
 ## Trade-offs

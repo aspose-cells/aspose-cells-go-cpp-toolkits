@@ -97,6 +97,7 @@ The following formats are registered by default (via the `register` package or m
 | `dbf` | DBF | Database File Format |
 | `dif` | DIF | Data Interchange Format |
 | `docx` | DOCX | Microsoft Word Document |
+| `emf` | EMF | Enhanced Metafile Format |
 | `epub` | EPUB | Electronic Publication |
 | `gif` | GIF | Graphics Interchange Format |
 | `html` | HTML | HyperText Markup Language |
@@ -108,6 +109,7 @@ The following formats are registered by default (via the `register` package or m
 | `pdf` | PDF | Portable Document Format |
 | `png` | PNG | Portable Network Graphics |
 | `pptx` | PPTX | PowerPoint Document |
+| `sql` | SQL | SQL Script |
 | `svg` | SVG | Scalable Vector Graphics |
 | `tif` / `tiff` | TIFF | Tagged Image File Format |
 | `tsv` | TSV | Tab Separated Values |

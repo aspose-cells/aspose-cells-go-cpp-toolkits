@@ -22,6 +22,8 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
@@ -29,7 +31,7 @@ func main() {
 	// Seed an empty workbook with sample data
 	seed, err := datasource.NewEmptyWorkbook()
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	const sheet = "Data"
@@ -69,7 +71,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("seed data: %v", err)
+		examples.Fatalf("seed data: %v", err)
 	}
 
 	// Example 1: Data Validation
@@ -108,7 +110,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add validation: %v", err)
+		examples.Fatalf("add validation: %v", err)
 	}
 	writeOut("validation.xlsx", withValidation)
 
@@ -121,7 +123,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add color scale: %v", err)
+		examples.Fatalf("add color scale: %v", err)
 	}
 	writeOut("color-scale.xlsx", withColorScale)
 
@@ -134,7 +136,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add data bar: %v", err)
+		examples.Fatalf("add data bar: %v", err)
 	}
 	writeOut("data-bar.xlsx", withDataBar)
 
@@ -147,7 +149,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add icon set: %v", err)
+		examples.Fatalf("add icon set: %v", err)
 	}
 	writeOut("icon-set.xlsx", withIconSet)
 
@@ -164,7 +166,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add cell value rule: %v", err)
+		examples.Fatalf("add cell value rule: %v", err)
 	}
 	writeOut("cell-value-rule.xlsx", withCellValueRule)
 
@@ -179,7 +181,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add expression rule: %v", err)
+		examples.Fatalf("add expression rule: %v", err)
 	}
 	writeOut("expression-rule.xlsx", withExpressionRule)
 
@@ -195,7 +197,7 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("add top 10 rule: %v", err)
+		examples.Fatalf("add top 10 rule: %v", err)
 	}
 	writeOut("top10-rule.xlsx", withTop10)
 
@@ -206,7 +208,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query validation count: %v", err)
+		examples.Fatalf("query validation count: %v", err)
 	}
 	fmt.Printf("Total validations: %d\n", count)
 
@@ -215,7 +217,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query all validations: %v", err)
+		examples.Fatalf("query all validations: %v", err)
 	}
 	for _, v := range validations {
 		fmt.Printf("  Validation %d: Type=%s, Operator=%s, Formula1=%s, Formula2=%s\n",
@@ -231,7 +233,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query conditional formatting count: %v", err)
+		examples.Fatalf("query conditional formatting count: %v", err)
 	}
 	fmt.Printf("Total conditional formattings: %d\n", cfCount)
 
@@ -240,7 +242,7 @@ func main() {
 		query.WithSheet(sheet),
 	)
 	if err != nil {
-		log.Fatalf("query all conditional formattings: %v", err)
+		examples.Fatalf("query all conditional formattings: %v", err)
 	}
 	for _, cf := range cfList {
 		fmt.Printf("  Conditional Formatting %d:\n", cf.Index)
@@ -256,10 +258,10 @@ func main() {
 
 func writeOut(name string, data []byte) {
 	if err := os.MkdirAll(examples.OutDir("validation-cf"), 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	if err := os.WriteFile(examples.OutPath("validation-cf", name), data, 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	fmt.Printf("wrote %s\n", examples.OutPath("validation-cf", name))
 }

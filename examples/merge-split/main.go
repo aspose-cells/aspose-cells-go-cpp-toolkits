@@ -25,23 +25,25 @@ import (
 )
 
 func main() {
+	defer examples.Cleanup()
+
 	if err := examples.SetLicense(); err != nil {
 		log.Printf("license: %v", err)
 	}
 	out := examples.OutDir("merge-split")
 	if err := os.MkdirAll(out, 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	sheetsDir := filepath.Join(out, "sheets")
 	if err := os.MkdirAll(sheetsDir, 0o755); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// seed builds a workbook whose second sheet is named after the given label.
 	seed := func(name, value string) []byte {
 		empty, err := datasource.NewEmptyWorkbook()
 		if err != nil {
-			log.Fatal(err)
+			examples.Fatal(err)
 		}
 		bytes, err := editor.EditSpreadsheet(
 			empty,
@@ -50,7 +52,7 @@ func main() {
 			editor.InWorksheet(name, editor.SetCellValue(0, 0, value)),
 		)
 		if err != nil {
-			log.Fatal(err)
+			examples.Fatal(err)
 		}
 		return bytes
 	}
@@ -64,10 +66,10 @@ func main() {
 		[]datasource.DataSource{datasource.BytesSource(alpha), datasource.BytesSource(beta)},
 		ooxml.New(), &mergedSink,
 	); err != nil {
-		log.Fatalf("merge: %v", err)
+		examples.Fatalf("merge: %v", err)
 	}
 	if err := os.WriteFile(examples.OutPath("merge-split", "merged.xlsx"), mergedSink.Bytes(), 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Merge real sample workbooks from files to a file: FilePathSource inputs,
@@ -76,7 +78,7 @@ func main() {
 	ext := filepath.Ext(mergedFile)[1:]
 	opt := formats.Get(ext)
 	if opt == nil {
-		log.Fatalf("no registered format for %q", ext)
+		examples.Fatalf("no registered format for %q", ext)
 	}
 	if err := manipulator.Merge(
 		[]datasource.DataSource{
@@ -86,19 +88,19 @@ func main() {
 		},
 		opt, datasource.FilePathSink(mergedFile),
 	); err != nil {
-		log.Fatalf("merge to file: %v", err)
+		examples.Fatalf("merge to file: %v", err)
 	}
 
 	// Merge straight into a writer (single-file HTML here) via a WriterSink.
 	mergedHTML, err := os.Create(examples.OutPath("merge-split", "merged.html"))
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	if err := manipulator.Merge(
 		[]datasource.DataSource{datasource.BytesSource(alpha), datasource.BytesSource(beta)},
 		html.New(html.WithSaveAsSingleFile(true)), datasource.NewWriterSink(mergedHTML),
 	); err != nil {
-		log.Fatalf("merge to writer: %v", err)
+		examples.Fatalf("merge to writer: %v", err)
 	}
 	mergedHTML.Close()
 
@@ -107,33 +109,33 @@ func main() {
 	zipBuf := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuf)
 	if err := manipulator.Split(datasource.BytesSource(mergedSink.Bytes()), ooxml.New(), datasource.NewZipSink(zipWriter)); err != nil {
-		log.Fatalf("split to zip: %v", err)
+		examples.Fatalf("split to zip: %v", err)
 	}
 	if err := zipWriter.Close(); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	if err := os.WriteFile(examples.OutPath("merge-split", "split.zip"), zipBuf.Bytes(), 0o644); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 
 	// Split into a zip.Writer handed in by the caller.
 	zipFile, err := os.Create(examples.OutPath("merge-split", "split-writer.zip"))
 	if err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	zipWriter2 := zip.NewWriter(zipFile)
 	if err := manipulator.Split(datasource.BytesSource(mergedSink.Bytes()), ooxml.New(), datasource.NewZipSink(zipWriter2)); err != nil {
-		log.Fatalf("split to zip writer: %v", err)
+		examples.Fatalf("split to zip writer: %v", err)
 	}
 	if err := zipWriter2.Close(); err != nil {
-		log.Fatal(err)
+		examples.Fatal(err)
 	}
 	zipFile.Close()
 
 	// Split the merged file into a folder of standalone files, one per sheet,
 	// via a FolderSink. Each file is named <sheet>.<ext>.
 	if err := manipulator.Split(datasource.FilePathSource(mergedFile), ooxml.New(), datasource.FolderSink(sheetsDir)); err != nil {
-		log.Fatalf("split to folder: %v", err)
+		examples.Fatalf("split to folder: %v", err)
 	}
 
 	log.Println("merge/split complete; outputs written to examples/merge-split/out")
