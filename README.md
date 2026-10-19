@@ -61,6 +61,7 @@ import (
 )
 
 func main() {
+  defer core.Cleanup() // release the native library before exit
   if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
     log.Fatal(err)
   }
