@@ -143,11 +143,11 @@ func WithChartSeriesColor(seriesIndex int, color interface{}) ChartAction {
 		if err != nil {
 			return err
 		}
-		s, err := series.Get(int32(seriesIndex))
+		s, err := engine.Derive(series.Get(int32(seriesIndex)))
 		if err != nil {
 			return err
 		}
-		area, err := s.GetArea()
+		area, err := engine.Derive(s.GetArea())
 		if err != nil {
 			return err
 		}
@@ -178,7 +178,7 @@ func WithChartSeriesName(seriesIndex int, name string) ChartAction {
 		if err != nil {
 			return err
 		}
-		s, err := series.Get(int32(seriesIndex))
+		s, err := engine.Derive(series.Get(int32(seriesIndex)))
 		if err != nil {
 			return err
 		}

@@ -8,6 +8,7 @@ package formats
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -20,13 +21,28 @@ var (
 )
 
 // Register maps a file extension to a factory that produces its SaveOption.
-// The extension is normalized to lower case and lookups are case-insensitive.
+// The extension is normalized (trimmed, leading dot removed, lower case) and
+// lookups are case-insensitive.
+//
+// Register panics if the extension is empty or factory is nil. Both are
+// programming errors that would otherwise surface as a nil SaveOption from an
+// unrelated Get call; the registry is populated at initialization, where a
+// panic names the bad registration immediately. This mirrors database/sql's
+// registry.
+//
 // Register is safe for concurrent use and may be called at any time, not only
 // during package initialization.
 func Register(ext string, factory func() saveoptions.SaveOption) {
+	key := normalizeExt(ext)
+	if key == "" {
+		panic("formats.Register: empty extension")
+	}
+	if factory == nil {
+		panic("formats.Register: nil factory for extension " + strconv.Quote(key))
+	}
 	registryMu.Lock()
 	defer registryMu.Unlock()
-	registry[strings.ToLower(ext)] = factory
+	registry[key] = factory
 }
 
 // Unregister removes a previously registered extension. It is safe for
@@ -34,19 +50,26 @@ func Register(ext string, factory func() saveoptions.SaveOption) {
 func Unregister(ext string) {
 	registryMu.Lock()
 	defer registryMu.Unlock()
-	delete(registry, strings.ToLower(ext))
+	delete(registry, normalizeExt(ext))
 }
 
 // Get returns a new SaveOption for the given extension, or nil if the
 // extension is not registered. Get is safe for concurrent use.
 func Get(ext string) saveoptions.SaveOption {
 	registryMu.RLock()
-	factory, ok := registry[strings.ToLower(ext)]
+	factory, ok := registry[normalizeExt(ext)]
 	registryMu.RUnlock()
-	if !ok {
+	if !ok || factory == nil {
 		return nil
 	}
 	return factory()
+}
+
+// normalizeExt puts an extension in the form the registry keys on: no
+// surrounding space, no leading dot (filepath.Ext returns one, callers of
+// Register usually do not), and lower case.
+func normalizeExt(ext string) string {
+	return strings.ToLower(strings.TrimPrefix(strings.TrimSpace(ext), "."))
 }
 
 // List returns all registered extensions in sorted order. List is safe for

@@ -25,6 +25,27 @@ Example implementations might include:
 
 This interface enables a flexible, decoupled design where conversion logic can be extended without modifying core conversion functions like converter.Convert, manipulator.Merge, or manipulator.Split.
 
+### WorkbookApplier
+
+```go
+type WorkbookApplier interface {
+	SaveOption
+	SaveWorkbook(workbook any) ([]byte, error)
+}
+```
+
+An optional extension implemented by every `SaveOption` shipped in this module.
+`converter.Convert`, `manipulator.Merge`, and `manipulator.Split` load a
+workbook anyway, so they call `SaveWorkbook` with that live workbook instead of
+serializing it to bytes and letting `Apply` reload a second workbook. The
+`workbook` parameter is an `*asposecells.Workbook` typed as `any` to keep the
+binding out of the toolkit's public API; a wrong type returns an error wrapping
+`ErrInvalidWorkbook`. The caller keeps ownership of the workbook and closes it
+after the call.
+
+A third-party `SaveOption` that only implements `Apply` (and `GetFormat`) keeps
+working through the old serialize/reload path.
+
 ### CommonConfig
 
 ```go

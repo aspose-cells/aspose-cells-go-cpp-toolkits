@@ -1,6 +1,8 @@
 package query
 
 import (
+	"fmt"
+
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
@@ -34,11 +36,12 @@ type NamedRange struct {
 func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, error) {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
-	applyOptions(defaultOptions(), opts)
+	cfg := defaultOptions()
+	applyOptions(cfg, opts)
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +82,7 @@ func NamedRanges(source datasource.DataSource, opts ...Option) ([]NamedRange, er
 // block) has no contiguous range; for those the second result is false and the
 // caller leaves the area zero.
 func nameRangeArea(n *asposecells.Name) (Area, bool) {
-	rng, err := n.GetRange()
+	rng, err := engine.Derive(n.GetRange())
 	if err != nil {
 		return Area{}, false
 	}
@@ -121,7 +124,7 @@ func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) (
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -130,11 +133,11 @@ func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) (
 	if err != nil {
 		return nil, err
 	}
-	rng, err := n.GetRange()
+	rng, err := engine.Derive(n.GetRange())
 	if err != nil {
 		return nil, err
 	}
-	ws, err := rng.GetWorksheet()
+	ws, err := engine.Derive(rng.GetWorksheet())
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +162,20 @@ func ReadNamedRange(source datasource.DataSource, name string, opts ...Option) (
 
 // readGrid reads a rectangular block of cells starting at (row, col) with the
 // given dimensions, row-major. grid[r][c] is the cell at row row+r, column col+c.
+//
+// The bounds are checked before the grid is allocated: a named range may refer
+// to a full column or sheet ("$A:$A"), whose engine-reported row count is far
+// larger than any read the toolkit should attempt.
 func readGrid(ws *asposecells.Worksheet, row, col, rowCount, colCount int32, trim bool) ([][]CellValue, error) {
+	if row < 0 || col < 0 || rowCount < 0 || colCount < 0 ||
+		int64(row)+int64(rowCount) > cells.MaxGridRows ||
+		int64(col)+int64(colCount) > cells.MaxGridCols {
+		return nil, fmt.Errorf("range at (%d,%d) with %d rows x %d columns does not fit on the worksheet grid: %w",
+			row, col, rowCount, colCount, toolkiterrors.ErrInvalidRange)
+	}
+	if err := checkReadSize(int(rowCount), int(colCount)); err != nil {
+		return nil, err
+	}
 	cs, err := engine.Derive(ws.GetCells())
 	if err != nil {
 		return nil, err
@@ -196,11 +212,11 @@ func ReadCellComment(source datasource.DataSource, ref string, opts ...Option) (
 	if source == nil {
 		return "", toolkiterrors.ErrDataSourceNil
 	}
-	parsed, err := ParseCellRef(ref)
+	parsed, err := ParseCellRefWithinGrid(ref)
 	if err != nil {
 		return "", err
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return "", err
 	}

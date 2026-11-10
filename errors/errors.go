@@ -61,6 +61,15 @@ var (
 	// sources, which would otherwise silently produce an empty workbook.
 	ErrNoSources = errors.New("no data sources to merge")
 
+	// ErrInvalidWorkbook is returned by a saveoptions.WorkbookApplier when the
+	// handle it is asked to write is not a workbook the toolkit can save.
+	ErrInvalidWorkbook = errors.New("invalid workbook handle")
+
+	// ErrInvalidSink is returned when a multi-output operation (manipulator.Split)
+	// is given a sink that can only accept a single output. Such a sink would
+	// silently keep only one worksheet, so the mismatch is reported instead.
+	ErrInvalidSink = errors.New("data sink does not accept multiple outputs")
+
 	// ErrInvalidCellRef is returned when a cell reference string (e.g. "B3")
 	// cannot be parsed into a cell coordinate.
 	ErrInvalidCellRef = errors.New("invalid cell reference")

@@ -19,7 +19,32 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
+	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// Option configures a conversion.
+type Option func(*options)
+
+type options struct {
+	load cells.LoadOptions
+}
+
+func defaultOptions() *options { return &options{} }
+
+func applyOptions(cfg *options, opts []Option) {
+	for _, opt := range opts {
+		if opt != nil {
+			opt(cfg)
+		}
+	}
+}
+
+// WithPassword opens a password-protected source workbook with password. The
+// source is read once and saved directly, so the password does not have to be
+// supplied again for the write half of the conversion.
+func WithPassword(password string) Option {
+	return func(o *options) { o.load.Password = password }
+}
 
 // Convert converts a spreadsheet from the given data source into the format
 // described by opt and writes the result to sink.
@@ -40,9 +65,11 @@ import (
 //	save_option := pdf.New(pdf.WithOnePagePerSheet(true))
 //	err := converter.Convert(datasource.FilePathSource("examples/data/BookText.xlsx"),
 //		save_option, datasource.FilePathSink("out/output2.pdf"))
-func Convert(source datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink) error {
+func Convert(source datasource.DataSource, opt saveoptions.SaveOption, sink datasource.DataSink, opts ...Option) error {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
+	cfg := defaultOptions()
+	applyOptions(cfg, opts)
 	if opt == nil {
 		return toolkiterrors.ErrSaveOptionNil
 	}
@@ -52,15 +79,49 @@ func Convert(source datasource.DataSource, opt saveoptions.SaveOption, sink data
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	data, errRead := cells.ReadSource(source)
-	if errRead != nil {
-		return errRead
+	var result []byte
+	var err error
+	if applier, ok := opt.(saveoptions.WorkbookApplier); ok {
+		// Load once and save the live workbook: no serialize/reload cycle, and
+		// load options (the source password) reach the one load there is.
+		var workbook *asposecells.Workbook
+		workbook, err = cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
+		if err != nil {
+			// Returned unwrapped: callers use os.IsNotExist on a missing input
+			// path, and that predicate does not see through a fmt wrap.
+			return err
+		}
+		defer engine.CloseWorkbook(workbook)
+		result, err = applier.SaveWorkbook(workbook)
+	} else {
+		var data []byte
+		data, err = cells.ReadSource(source)
+		if err != nil {
+			return err
+		}
+		if cfg.load.Password != "" {
+			// A SaveOption that only implements Apply opens the bytes itself, so
+			// decrypt here and hand it plain bytes.
+			var workbook *asposecells.Workbook
+			workbook, err = cells.OpenWorkbookData(data, cfg.load)
+			if err != nil {
+				return fmt.Errorf("load source: %w", err)
+			}
+			data, err = cells.WorkbookToByteData(workbook)
+			engine.CloseWorkbook(workbook)
+			if err != nil {
+				return fmt.Errorf("load source: %w", err)
+			}
+		}
+		result, err = opt.Apply(data)
 	}
-	result, errApply := opt.Apply(data)
-	if errApply != nil {
-		return errApply
+	if err != nil {
+		return fmt.Errorf("convert to %s: %w", opt.GetFormat(), err)
 	}
-	return sink.Write("", result)
+	if err := sink.Write("", result); err != nil {
+		return fmt.Errorf("write %s output: %w", opt.GetFormat(), err)
+	}
+	return nil
 }
 
 // ConvertSpreadsheet converts a spreadsheet from the given data source into the

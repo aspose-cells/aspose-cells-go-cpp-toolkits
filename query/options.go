@@ -10,6 +10,7 @@ type Option func(*options)
 type options struct {
 	sheet     cells.Sheet
 	trimSpace bool
+	load      cells.LoadOptions
 }
 
 func defaultOptions() *options {
@@ -41,6 +42,13 @@ func WithSheetIndex(i int) Option {
 // cells is trimmed before the value is returned. Defaults to false.
 func WithTrimSpace(b bool) Option {
 	return func(o *options) { o.trimSpace = b }
+}
+
+// WithPassword opens a password-protected workbook with password. It applies
+// to every query entry point that reads a source, and is the read half of the
+// editor's WithPassword / Encrypt write path.
+func WithPassword(password string) Option {
+	return func(o *options) { o.load.Password = password }
 }
 
 func applyOptions(o *options, opts []Option) {

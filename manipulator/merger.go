@@ -82,11 +82,7 @@ func Merge(sources []datasource.DataSource, opt saveoptions.SaveOption, sink dat
 		}
 	}
 
-	newData, err := newWorkbook.SaveToStream()
-	if err != nil {
-		return err
-	}
-	outData, err := opt.Apply(newData)
+	outData, err := saveWorkbookBytes(opt, newWorkbook)
 	if err != nil {
 		return err
 	}

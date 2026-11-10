@@ -121,7 +121,7 @@ func InConditionalFormatting(index int, actions ...ConditionalFormatAction) Work
 			return fmt.Errorf("conditional formatting index %d out of range [0, %d): %w",
 				index, count, toolkiterrors.ErrConditionNotFound)
 		}
-		collection, err := formattings.Get(int32(index))
+		collection, err := engine.Derive(formattings.Get(int32(index)))
 		if err != nil {
 			return err
 		}
@@ -159,7 +159,7 @@ func DeleteConditionalFormatting(index int) WorksheetAction {
 				index, count, toolkiterrors.ErrConditionNotFound)
 		}
 		// Get the collection to find its areas
-		collection, err := formattings.Get(int32(index))
+		collection, err := engine.Derive(formattings.Get(int32(index)))
 		if err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func DeleteConditionalFormatting(index int) WorksheetAction {
 			return err
 		}
 		for i := int32(areaCount) - 1; i >= 0; i-- {
-			area, err := collection.GetCellArea(i)
+			area, err := engine.Derive(collection.GetCellArea(i))
 			if err != nil {
 				return err
 			}
@@ -249,7 +249,7 @@ func WithColorScale(minColor, maxColor interface{}, midColor interface{}) Condit
 		if err != nil {
 			return err
 		}
-		cs, err := cond.GetColorScale()
+		cs, err := engine.Derive(cond.GetColorScale())
 		if err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ func WithDataBar(color interface{}) ConditionalFormatAction {
 		if err != nil {
 			return err
 		}
-		db, err := cond.GetDataBar()
+		db, err := engine.Derive(cond.GetDataBar())
 		if err != nil {
 			return err
 		}
@@ -353,7 +353,7 @@ func WithIconSet(iconSetType IconSetType) ConditionalFormatAction {
 		if err != nil {
 			return err
 		}
-		is, err := cond.GetIconSet()
+		is, err := engine.Derive(cond.GetIconSet())
 		if err != nil {
 			return err
 		}
@@ -407,7 +407,7 @@ func WithCellValueRule(operator OperatorType, formula1, formula2 string, styleAc
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := engine.Derive(cond.GetStyle())
+			style, err := engine.DerivePtr(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -455,7 +455,7 @@ func WithExpressionRule(formula string, styleActions ...StyleAction) Conditional
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := engine.Derive(cond.GetStyle())
+			style, err := engine.DerivePtr(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -502,7 +502,7 @@ func WithAboveAverageRule(styleActions ...StyleAction) ConditionalFormatAction {
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := engine.Derive(cond.GetStyle())
+			style, err := engine.DerivePtr(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -548,7 +548,7 @@ func WithTop10Rule(rank int, isTop bool, styleActions ...StyleAction) Conditiona
 		if err != nil {
 			return err
 		}
-		top10, err := cond.GetTop10()
+		top10, err := engine.Derive(cond.GetTop10())
 		if err != nil {
 			return err
 		}
@@ -561,7 +561,7 @@ func WithTop10Rule(rank int, isTop bool, styleActions ...StyleAction) Conditiona
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := engine.Derive(cond.GetStyle())
+			style, err := engine.DerivePtr(cond.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -644,7 +644,7 @@ func WithConditionalFormatRule(condType FormatConditionType, operator OperatorTy
 		}
 		// Apply style actions if provided
 		if len(styleActions) > 0 {
-			style, err := engine.Derive(cond.GetStyle())
+			style, err := engine.DerivePtr(cond.GetStyle())
 			if err != nil {
 				return err
 			}

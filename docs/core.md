@@ -2,7 +2,7 @@
 
 Package core holds engine-level configuration.
 
-It exposes `SetLicense` for licensing the underlying Aspose.Cells engine before any spreadsheet is processed, and `Cleanup` to release the engine's process-wide state before the program exits.
+It exposes `SetLicense` for licensing the underlying Aspose.Cells engine before any spreadsheet is processed, `IsLicensed` to report whether a license was actually applied, and `Cleanup` to release the engine's process-wide state before the program exits.
 
 ## Functions
 
@@ -20,7 +20,7 @@ Loads and applies a license for the Aspose.Cells engine from the specified file 
 
 #### Returns
 
-- **error**: `nil` when the license was applied; otherwise an error wrapping `ErrLicenseInvalid` (plus the underlying engine error). Callers that need to detect license failure should check the return value; a statement call without one keeps compiling and simply ignores the failure.
+- **error**: `nil` when a license was applied, and also `nil` when no path is configured at all (the engine then runs in evaluation mode). Use `IsLicensed` to distinguish those two outcomes. A path that was configured but cannot be used returns an error wrapping `ErrLicenseInvalid` (plus the underlying engine error). Callers that need to detect license failure should check the return value; a statement call without one keeps compiling and simply ignores the failure.
 
 #### Notes
 
@@ -38,7 +38,9 @@ if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
 
 #### License verification
 
-To verify that the license was applied successfully, check the return value:
+Check the return value for errors, and `IsLicensed` for the evaluation-mode
+case in which `SetLicense` legitimately returns `nil` because no path was
+configured:
 
 ```go
 import (
@@ -57,9 +59,24 @@ if err != nil {
         log.Fatalf("Failed to set license: %v", err)
     }
 }
+if !core.IsLicensed() {
+    log.Println("No license applied; running in evaluation mode")
+}
 ```
 
-`SetLicense` is `core`'s only exported symbol; the sentinel it wraps lives in the `errors` package, which the docs elsewhere import as `toolkiterrors`.
+### IsLicensed
+
+```go
+func IsLicensed() bool
+```
+
+Reports whether a license has been successfully applied by this process. It
+returns `false` when `SetLicense` was never called, when no path was configured
+(evaluation mode), or when the license could not be applied. It is safe for
+concurrent use.
+
+The sentinel wrapped by `SetLicense` lives in the `errors` package, which the
+docs elsewhere import as `toolkiterrors`.
 
 ## Evaluation vs Licensed mode
 
@@ -104,6 +121,9 @@ if err != nil {
        if err := core.SetLicense(path); err != nil {
            log.Printf("License error: %v; running in evaluation mode", err)
        }
+   }
+   if !core.IsLicensed() {
+       log.Print("No license applied; running in evaluation mode")
    }
    ```
 

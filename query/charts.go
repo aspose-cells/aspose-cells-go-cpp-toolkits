@@ -100,7 +100,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	if source == nil {
 		return out, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return out, err
 	}
@@ -164,7 +164,7 @@ func ChartInfo(source datasource.DataSource, chartIndex int, opts ...Option) (Ch
 	}
 
 	// Bounds
-	shape, err := chart.GetChartObject()
+	shape, err := engine.Derive(chart.GetChartObject())
 	if err != nil {
 		return out, err
 	}
@@ -233,7 +233,7 @@ func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Optio
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func ChartSeriesData(source datasource.DataSource, chartIndex int, opts ...Optio
 
 	out := make([]ChartSeries, 0, count)
 	for i := int32(0); i < count; i++ {
-		s, err := seriesCollection.Get(i)
+		s, err := engine.Derive(seriesCollection.Get(i))
 		if err != nil {
 			return nil, err
 		}
@@ -302,7 +302,7 @@ func ChartCount(source datasource.DataSource, opts ...Option) (int, error) {
 	if source == nil {
 		return 0, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return 0, err
 	}

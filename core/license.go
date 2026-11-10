@@ -1,14 +1,16 @@
 // Package core holds engine-level configuration.
 //
 // It exposes SetLicense for licensing the underlying Aspose.Cells engine
-// before any spreadsheet is processed, and Cleanup to release the engine's
-// process-wide state before the program exits.
+// before any spreadsheet is processed, IsLicensed to report whether that
+// succeeded, and Cleanup to release the engine's process-wide state before the
+// program exits.
 package core
 
 import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
@@ -28,6 +30,12 @@ var licenseMu sync.Mutex
 // around removes the question.
 var appliedLicense *asposecells.License
 
+// licensed records whether SetLicense has successfully applied a license in
+// this process. It is atomic because IsLicensed may be called from any
+// goroutine while SetLicense runs; the native license state itself is still
+// serialized by licenseMu.
+var licensed atomic.Bool
+
 // SetLicense loads and applies a license for the Aspose.Cells engine from the
 // specified file path.
 //
@@ -41,10 +49,11 @@ var appliedLicense *asposecells.License
 //     limitations).
 //
 // Returns:
-//   - error: nil when the license was applied; otherwise an error wrapping
-//     ErrLicenseInvalid (plus the underlying engine error). Callers that need
-//     to detect license failure should check the return value; a statement
-//     call without one keeps compiling and simply ignores the failure.
+//   - error: nil when a license was applied, and also nil when no path is
+//     configured at all (the engine then runs in evaluation mode). Use
+//     IsLicensed to tell those two outcomes apart. A path that was configured
+//     but could not be used returns an error wrapping ErrLicenseInvalid plus
+//     the underlying engine error.
 //
 // Notes:
 //   - This function configures the global license state for the underlying
@@ -65,6 +74,9 @@ var appliedLicense *asposecells.License
 //
 //	if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
 //		log.Fatal(err)
+//	}
+//	if !core.IsLicensed() {
+//		log.Print("no license configured; running in evaluation mode")
 //	}
 func SetLicense(licensePath string) error {
 	licenseMu.Lock()
@@ -93,5 +105,24 @@ func SetLicense(licensePath string) error {
 		return fmt.Errorf("apply license %q: %w: %v", licensePath, toolkiterrors.ErrLicenseInvalid, err)
 	}
 	appliedLicense = lic
+	// An empty path calls the engine's SetLicense with "". That is a no-op that
+	// leaves the process unlicensed, so only a non-empty path flips the flag.
+	if licensePath != "" {
+		licensed.Store(true)
+	}
 	return nil
+}
+
+// IsLicensed reports whether a license has been successfully applied by this
+// process.
+//
+// It returns false when SetLicense was never called, when it was called with no
+// path configured (evaluation mode), or when the license could not be applied.
+// SetLicense returns nil for the "no path configured" case because evaluation
+// mode is a supported way to run; IsLicensed is how a caller distinguishes that
+// from a licensed run.
+//
+// IsLicensed is safe for concurrent use.
+func IsLicensed() bool {
+	return licensed.Load()
 }

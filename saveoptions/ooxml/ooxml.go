@@ -3,6 +3,9 @@
 package ooxml
 
 import (
+	"fmt"
+
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
@@ -29,6 +32,7 @@ type Config struct {
 }
 
 // saveFormat maps the configured sub-format to the engine's SaveFormat.
+// validateFormat has already rejected anything not listed here.
 func (c *Config) saveFormat() asposecells.SaveFormat {
 	switch c.format {
 	case "xlsm":
@@ -40,6 +44,18 @@ func (c *Config) saveFormat() asposecells.SaveFormat {
 	default:
 		return asposecells.SaveFormat_Xlsx
 	}
+}
+
+// validateFormat rejects a sub-format name this package does not implement.
+// Without the check an unknown name silently saved XLSX while GetFormat
+// reported the name the caller typed.
+func (c *Config) validateFormat() error {
+	switch c.format {
+	case "", "xlsx", "xlsm", "xltx", "xltm":
+		return nil
+	}
+	return fmt.Errorf("unknown ooxml format %q; want xlsx, xlsm, xltx or xltm: %w",
+		c.format, toolkiterrors.ErrInvalidEnumValue)
 }
 
 // Apply processes the given source byte slice as an Ooxml file and returns the converted output.
@@ -55,6 +71,32 @@ func (c *Config) saveFormat() asposecells.SaveFormat {
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
+	workbook, err := engine.OpenWorkbook(source)
+	if err != nil {
+		return nil, err
+	}
+	defer engine.CloseWorkbook(workbook)
+	return c.saveWorkbook(workbook)
+}
+
+// SaveWorkbook implements saveoptions.WorkbookApplier: it saves workbook in
+// this config's target format without reloading it from serialized bytes.
+func (c *Config) SaveWorkbook(workbook any) ([]byte, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
+	wb, ok := workbook.(*asposecells.Workbook)
+	if !ok || wb == nil {
+		return nil, toolkiterrors.ErrInvalidWorkbook
+	}
+	return c.saveWorkbook(wb)
+}
+
+// saveWorkbook builds the native save options from c and writes workbook. The
+// caller holds the engine lock.
+func (c *Config) saveWorkbook(workbook *asposecells.Workbook) ([]byte, error) {
+	if err := c.validateFormat(); err != nil {
+		return nil, err
+	}
 	var opts *asposecells.OoxmlSaveOptions
 	var err error
 	if c.format != "" {
@@ -65,6 +107,7 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer asposecells.DeleteOoxmlSaveOptions(opts)
 
 	if c.asFlatOpc != nil {
 		if err := opts.SetAsFlatOpc(*c.asFlatOpc); err != nil {
@@ -103,11 +146,6 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err := c.ApplyCommon(opts); err != nil {
 		return nil, err
 	}
-	workbook, err := engine.OpenWorkbook(source)
-	if err != nil {
-		return nil, err
-	}
-	defer engine.CloseWorkbook(workbook)
 	saveOption := opts.ToSaveOptions()
 	result, err := workbook.Save_SaveOptions(saveOption)
 	if err != nil {

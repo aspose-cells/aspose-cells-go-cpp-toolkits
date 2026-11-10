@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -10,6 +11,34 @@ import (
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// checkCell rejects a coordinate outside the worksheet grid. The engine
+// accepts an out-of-grid coordinate and then either indexes out of bounds or
+// silently matches nothing; narrowing an int to int32 first can also wrap a
+// large index negative. The check belongs at the API boundary.
+func checkCell(row, column int) error {
+	if row < 0 || row >= cells.MaxGridRows || column < 0 || column >= cells.MaxGridCols {
+		return fmt.Errorf("cell (%d,%d) lies outside the %d row x %d column worksheet grid: %w",
+			row, column, cells.MaxGridRows, cells.MaxGridCols, toolkiterrors.ErrInvalidRange)
+	}
+	return nil
+}
+
+// checkSpan rejects a rectangle that is empty, starts off-grid, or runs past
+// the grid's last row or column.
+func checkSpan(beginRow, beginColumn, rows, columns int) error {
+	if rows <= 0 || columns <= 0 {
+		return fmt.Errorf("range at (%d,%d) is %d rows x %d columns: %w",
+			beginRow, beginColumn, rows, columns, toolkiterrors.ErrInvalidCount)
+	}
+	if beginRow < 0 || beginColumn < 0 ||
+		int64(beginRow)+int64(rows) > cells.MaxGridRows ||
+		int64(beginColumn)+int64(columns) > cells.MaxGridCols {
+		return fmt.Errorf("range %d rows x %d columns at (%d,%d) lies outside the %d row x %d column worksheet grid: %w",
+			rows, columns, beginRow, beginColumn, cells.MaxGridRows, cells.MaxGridCols, toolkiterrors.ErrInvalidRange)
+	}
+	return nil
+}
 
 // SetCellValue creates a WorksheetAction that sets the value of a specific cell.
 // It uses a type switch to handle various data types and converts them into
@@ -26,11 +55,14 @@ import (
 //     if the provided value type is unsupported.
 func SetCellValue(row, column int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkCell(row, column); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := engine.Derive(cells.Get_Int_Int(int32(row), int32(column)))
+		cell, err := engine.DerivePtr(cells.Get_Int_Int(int32(row), int32(column)))
 		if err != nil {
 			return err
 		}
@@ -44,12 +76,59 @@ func SetCellValue(row, column int, value interface{}) WorksheetAction {
 	}
 }
 
-// putValue converts value into an engine object and writes it to the cell.
+// putValue writes value to the cell.
+//
+// The common scalar types go through the engine's typed PutValue calls: one
+// cgo call and no native allocation per cell, where the Object path costs an
+// extra allocation, an extra call, and a release. Integers too wide for
+// PutValue_Int fall through to the Object path, which boxes them without
+// narrowing. The box is freed deterministically under the engine lock instead
+// of being left to the binding's finalizer: the finalizer enters the engine
+// from the GC goroutine without the lock, and at WriteRows scale a box per
+// cell accumulates native memory faster than the GC — which sees only the
+// tiny Go wrapper — reclaims it.
 func putValue(cell *asposecells.Cell, value interface{}) error {
+	switch v := value.(type) {
+	case string:
+		return cell.PutValue_String(v)
+	case bool:
+		return cell.PutValue_Bool(v)
+	case float64:
+		return cell.PutValue_Double(v)
+	case float32:
+		return cell.PutValue_Double(float64(v))
+	case time.Time:
+		// PutValue_Date truncates to seconds, exactly like the NewObject_Date
+		// box it replaces.
+		return cell.PutValue_Date(v)
+	case int8:
+		return cell.PutValue_Int(int32(v))
+	case int16:
+		return cell.PutValue_Int(int32(v))
+	case int32:
+		return cell.PutValue_Int(v)
+	case uint8:
+		return cell.PutValue_Int(int32(v))
+	case uint16:
+		return cell.PutValue_Int(int32(v))
+	case int:
+		if v >= math.MinInt32 && v <= math.MaxInt32 {
+			return cell.PutValue_Int(int32(v))
+		}
+	case uint:
+		if v <= math.MaxInt32 {
+			return cell.PutValue_Int(int32(v))
+		}
+	case uint32:
+		if v <= math.MaxInt32 {
+			return cell.PutValue_Int(int32(v))
+		}
+	}
 	obj, err := toObject(value)
 	if err != nil {
 		return err
 	}
+	defer asposecells.DeleteObject(obj)
 	return cell.PutValue_Object(obj)
 }
 
@@ -59,7 +138,7 @@ func putValue(cell *asposecells.Cell, value interface{}) error {
 // back as a bare number. Applying a date format makes Excel render it as a date
 // and the query package's type detection recognize it as KindDateTime.
 func applyDateValueFormat(cell *asposecells.Cell, t time.Time) error {
-	style, err := engine.Derive(cell.GetStyle())
+	style, err := engine.DerivePtr(cell.GetStyle())
 	if err != nil {
 		return err
 	}
@@ -92,11 +171,14 @@ func dateNumberFormat(t time.Time) string {
 //   - WorksheetAction: A function that sets the cell's formula.
 func SetFormula(row, column int, formula string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkCell(row, column); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cell, err := engine.Derive(cells.Get_Int_Int(int32(row), int32(column)))
+		cell, err := engine.DerivePtr(cells.Get_Int_Int(int32(row), int32(column)))
 		if err != nil {
 			return err
 		}
@@ -119,7 +201,10 @@ func SetFormula(row, column int, formula string) WorksheetAction {
 //     Returns an error if the value type is unsupported.
 func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -131,11 +216,15 @@ func SetValue(beginRow, beginColumn, rows, columns int, value interface{}) Works
 		if err != nil {
 			return err
 		}
+		// Range.SetValue copies the boxed value into each cell, so the box is
+		// freed here under the engine lock rather than left to the binding's
+		// finalizer (see putValue for why the finalizer is the wrong owner).
+		defer asposecells.DeleteObject(obj)
 		if err := cellsRange.SetValue(obj); err != nil {
 			return err
 		}
 		if t, ok := value.(time.Time); ok {
-			style, err := engine.Derive(cells.GetStyle())
+			style, err := engine.DerivePtr(cells.GetStyle())
 			if err != nil {
 				return err
 			}
@@ -203,11 +292,14 @@ func toObject(value interface{}) (*asposecells.Object, error) {
 //   - WorksheetAction: A function that updates the formatting of the specified range.
 func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
-		cellsStyle, err := engine.Derive(cells.GetStyle())
+		cellsStyle, err := engine.DerivePtr(cells.GetStyle())
 		if err != nil {
 			return err
 		}
@@ -237,7 +329,10 @@ func SetStyle(beginRow, beginColumn, rows, columns int, actions ...StyleAction) 
 //   - WorksheetAction: A function that performs the cell merge operation.
 func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -257,7 +352,10 @@ func Merge(beginRow, beginColumn, rows, columns int, mergeConflict bool) Workshe
 //   - WorksheetAction: A function that splits the merged cells back into individual cells.
 func UnMerge(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -279,7 +377,14 @@ func InsertRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 		if rows <= 0 {
 			return fmt.Errorf("insert rows: row count %d: %w", rows, toolkiterrors.ErrInvalidCount)
 		}
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkCell(beginRow, 0); err != nil {
+			return err
+		}
+		if int64(beginRow)+int64(rows) > cells.MaxGridRows {
+			return fmt.Errorf("inserting %d rows at row %d runs past the worksheet grid: %w",
+				rows, beginRow, toolkiterrors.ErrInvalidRange)
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -301,7 +406,14 @@ func InsertColumns(beginColumn int, columns int, updateReference bool) Worksheet
 		if columns <= 0 {
 			return fmt.Errorf("insert columns: column count %d: %w", columns, toolkiterrors.ErrInvalidCount)
 		}
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkCell(0, beginColumn); err != nil {
+			return err
+		}
+		if int64(beginColumn)+int64(columns) > cells.MaxGridCols {
+			return fmt.Errorf("inserting %d columns at column %d runs past the worksheet grid: %w",
+				columns, beginColumn, toolkiterrors.ErrInvalidRange)
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -322,7 +434,10 @@ func InsertColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that empties the contents of the target range.
 func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -347,7 +462,10 @@ func ClearContents(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //   - WorksheetAction: A function that resets the styles of the target range.
 func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -385,7 +503,7 @@ func ClearFormats(beginRow, beginColumn, rows, columns int) WorksheetAction {
 //		))
 func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -405,6 +523,9 @@ func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetA
 		if colCount == 0 {
 			return nil
 		}
+		if err := checkSpan(beginRow, beginColumn, rowCount, colCount); err != nil {
+			return err
+		}
 
 		for r := 0; r < rowCount; r++ {
 			for c := 0; c < colCount; c++ {
@@ -414,7 +535,7 @@ func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetA
 					if val == nil {
 						continue
 					}
-					cell, err = engine.Derive(cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c)))
+					cell, err = engine.DerivePtr(cells.Get_Int_Int(int32(beginRow+r), int32(beginColumn+c)))
 					if err != nil {
 						return fmt.Errorf("cell (%d, %d): %w", beginRow+r, beginColumn+c, err)
 					}
@@ -444,7 +565,14 @@ func SetCellValues(beginRow, beginColumn int, values [][]interface{}) WorksheetA
 //   - WorksheetAction: A function that deletes the specified rows.
 func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if rows <= 0 {
+			return fmt.Errorf("delete rows: row count %d: %w", rows, toolkiterrors.ErrInvalidCount)
+		}
+		if beginRow < 0 || beginRow >= cells.MaxGridRows || int64(beginRow)+int64(rows) > cells.MaxGridRows {
+			return fmt.Errorf("deleting %d rows at row %d runs outside the worksheet grid: %w",
+				rows, beginRow, toolkiterrors.ErrInvalidRange)
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -460,7 +588,7 @@ func DeleteRows(beginRow int, rows int, updateReference bool) WorksheetAction {
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty rows.
 func DeleteBlankRows() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -486,14 +614,14 @@ func DeleteBlankRows() WorksheetAction {
 //   - WorksheetAction: A function that deletes the specified cell range and applies the shift.
 func DeleteRange(beginRow, beginColumn, rows, columns int, shiftType string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		if rows <= 0 || columns <= 0 {
-			return fmt.Errorf("delete range: %dx%d cells: %w", rows, columns, toolkiterrors.ErrInvalidCount)
+		if err := checkSpan(beginRow, beginColumn, rows, columns); err != nil {
+			return err
 		}
 		shift, err := resolveShiftType(shiftType)
 		if err != nil {
 			return err
 		}
-		cells, err := engine.Derive(worksheet.GetCells())
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -533,7 +661,14 @@ func resolveShiftType(name string) (asposecells.ShiftType, error) {
 //   - WorksheetAction: A function that deletes the specified columns from the worksheet.
 func DeleteColumns(beginColumn int, columns int, updateReference bool) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		if columns <= 0 {
+			return fmt.Errorf("delete columns: column count %d: %w", columns, toolkiterrors.ErrInvalidCount)
+		}
+		if beginColumn < 0 || beginColumn >= cells.MaxGridCols || int64(beginColumn)+int64(columns) > cells.MaxGridCols {
+			return fmt.Errorf("deleting %d columns at column %d runs outside the worksheet grid: %w",
+				columns, beginColumn, toolkiterrors.ErrInvalidRange)
+		}
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}
@@ -548,7 +683,7 @@ func DeleteColumns(beginColumn int, columns int, updateReference bool) Worksheet
 //   - WorksheetAction: A function that modifies the worksheet by deleting empty columns.
 func DeleteBlankColumns() WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
-		cells, err := engine.Derive(worksheet.GetCells())
+		cells, err := engine.DerivePtr(worksheet.GetCells())
 		if err != nil {
 			return err
 		}

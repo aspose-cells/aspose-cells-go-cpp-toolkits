@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -57,6 +58,7 @@ type ReaderSource struct {
 	mu     sync.Mutex
 	reader io.Reader
 	buf    []byte
+	err    error
 }
 
 // NewReaderSource wraps an already-open stream as a DataSource. The returned
@@ -82,12 +84,20 @@ func (r *ReaderSource) readAll() ([]byte, error) {
 	if r.buf != nil {
 		return r.buf, nil
 	}
+	// The stream was consumed by an earlier call that failed. Report the same
+	// error again instead of silently serving an empty source: a caller may
+	// re-read a source after a failed load, and a second attempt must not look
+	// like a successful read of zero bytes.
+	if r.err != nil {
+		return nil, r.err
+	}
 	if r.reader == nil {
 		return nil, nil
 	}
 	data, err := io.ReadAll(r.reader)
 	r.reader = nil
 	if err != nil {
+		r.err = err
 		return nil, err
 	}
 	r.buf = data
@@ -101,6 +111,20 @@ type DataSink interface {
 	Write(name string, data []byte) error
 }
 
+// MultiOutputSink is a DataSink that accepts one named output per Write call
+// and keeps them all, rather than one output total. FolderSink and ZipSink
+// implement it; FilePathSink, WriterSink, and BytesSink do not.
+//
+// manipulator.Split writes one file per worksheet, so it requires this
+// interface: a single-output sink would accept every Write and silently keep
+// only the last worksheet. A custom sink that writes one output per name
+// implements MultiOutput with a no-op method to opt in.
+type MultiOutputSink interface {
+	DataSink
+	// MultiOutput marks the sink as accepting multiple named outputs.
+	MultiOutput()
+}
+
 // FilePathSink writes each Write call to a file at the given path. name is
 // ignored.
 type FilePathSink string
@@ -112,10 +136,46 @@ func (p FilePathSink) Write(_ string, data []byte) error {
 	dir := filepath.Dir(string(p))
 	if dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
+			return fmt.Errorf("create output directory %q: %w", dir, err)
 		}
 	}
-	return os.WriteFile(string(p), data, 0o644)
+	if err := writeFileAtomic(string(p), data); err != nil {
+		return fmt.Errorf("write %q: %w", string(p), err)
+	}
+	return nil
+}
+
+// writeFileAtomic writes data to a temporary file in the destination directory
+// and renames it into place. A crash or a full disk therefore leaves the
+// previous file intact instead of a truncated one at a path a later run may
+// trust.
+func writeFileAtomic(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpName) }
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		cleanup()
+		return err
+	}
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		cleanup()
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		cleanup()
+		return err
+	}
+	return nil
 }
 
 // WriterSink writes each Write call to the wrapped io.Writer. name is ignored.
@@ -128,10 +188,17 @@ func NewWriterSink(w io.Writer) *WriterSink {
 	return &WriterSink{w: w}
 }
 
-// Write forwards data to the wrapped writer.
+// Write forwards data to the wrapped writer. A short write with a nil error is
+// reported as io.ErrShortWrite rather than treated as success.
 func (s WriterSink) Write(_ string, data []byte) error {
-	_, err := s.w.Write(data)
-	return err
+	n, err := s.w.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 // BytesSink accumulates all Write calls into an in-memory buffer, so a caller
@@ -170,6 +237,18 @@ func (b *BytesSink) Bytes() []byte {
 // Exported because a custom DataSink that writes one output per name needs the
 // same check, and duplicating it invites the two copies to drift apart.
 func SafeOutputName(name string) error {
+	return safeOutputName(name, true)
+}
+
+// safeArchiveName applies the traversal checks to a zip entry name. Device
+// names and trailing dots are a filesystem concern, not an archive one, so an
+// entry named "CON" is legal even on Windows; an entry that escapes the
+// extraction directory is not.
+func safeArchiveName(name string) error {
+	return safeOutputName(name, false)
+}
+
+func safeOutputName(name string, filesystem bool) error {
 	if name == "" {
 		return fmt.Errorf("%w: name is empty", toolkiterrors.ErrUnsafeSinkName)
 	}
@@ -185,6 +264,36 @@ func SafeOutputName(name string) error {
 	if name == "." || name == ".." {
 		return fmt.Errorf("name %q denotes a directory: %w", name, toolkiterrors.ErrUnsafeSinkName)
 	}
+	if filesystem && runtime.GOOS == "windows" {
+		if err := checkWindowsFileName(name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkWindowsFileName rejects names Windows resolves to something other than
+// the requested file. The device names are reserved with or without an
+// extension ("CON.xlsx" opens the console), and a trailing dot or space is
+// silently stripped by the filesystem, so "A. " and "A" name the same file.
+func checkWindowsFileName(name string) error {
+	if strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") {
+		return fmt.Errorf("name %q ends with a dot or space, which Windows strips: %w", name, toolkiterrors.ErrUnsafeSinkName)
+	}
+	stem := name
+	if i := strings.IndexByte(stem, '.'); i >= 0 {
+		stem = stem[:i]
+	}
+	stem = strings.ToUpper(stem)
+	switch stem {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$":
+		return fmt.Errorf("name %q is a reserved Windows device name: %w", name, toolkiterrors.ErrUnsafeSinkName)
+	}
+	if len(stem) == 4 &&
+		(strings.HasPrefix(stem, "COM") || strings.HasPrefix(stem, "LPT")) &&
+		stem[3] >= '1' && stem[3] <= '9' {
+		return fmt.Errorf("name %q is a reserved Windows device name: %w", name, toolkiterrors.ErrUnsafeSinkName)
+	}
 	return nil
 }
 
@@ -197,14 +306,22 @@ type FolderSink string
 // <folder>/<name>. A name that is not a plain file name — one containing a path
 // separator or a ".." segment — is rejected with ErrUnsafeSinkName rather than
 // resolved against the folder, since the name comes from the source document.
+// MultiOutput marks FolderSink as a MultiOutputSink: each Write creates another
+// file in the folder.
+func (f FolderSink) MultiOutput() {}
+
 func (f FolderSink) Write(name string, data []byte) error {
 	if err := SafeOutputName(name); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(string(f), 0o755); err != nil {
-		return err
+		return fmt.Errorf("create output folder %q: %w", string(f), err)
 	}
-	return os.WriteFile(filepath.Join(string(f), name), data, 0o644)
+	path := filepath.Join(string(f), name)
+	if err := writeFileAtomic(path, data); err != nil {
+		return fmt.Errorf("write %q: %w", path, err)
+	}
+	return nil
 }
 
 // ZipSink writes each Write call as a new entry named name inside a
@@ -223,14 +340,24 @@ func NewZipSink(zw *zip.Writer) *ZipSink {
 // name that is not a plain file name — one containing a path separator or a
 // ".." segment — is rejected with ErrUnsafeSinkName, so the archive cannot
 // carry a zip-slip entry built from a worksheet name.
+// MultiOutput marks ZipSink as a MultiOutputSink: each Write creates another
+// archive entry.
+func (z ZipSink) MultiOutput() {}
+
 func (z ZipSink) Write(name string, data []byte) error {
-	if err := SafeOutputName(name); err != nil {
+	if err := safeArchiveName(name); err != nil {
 		return err
 	}
 	entry, err := z.zw.Create(name)
 	if err != nil {
 		return err
 	}
-	_, err = entry.Write(data)
-	return err
+	n, err := entry.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
 }

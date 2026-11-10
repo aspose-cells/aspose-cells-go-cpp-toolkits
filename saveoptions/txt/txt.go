@@ -3,6 +3,9 @@
 package txt
 
 import (
+	"fmt"
+
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
@@ -35,6 +38,18 @@ type Config struct {
 // isTsv reports whether the configured sub-format is TSV (tab-separated).
 func (c *Config) isTsv() bool { return c.format == "tsv" }
 
+// validateFormat rejects a sub-format name this package does not implement.
+// Without the check an unknown name silently saved plain TXT while GetFormat
+// reported the name the caller typed.
+func (c *Config) validateFormat() error {
+	switch c.format {
+	case "", "txt", "tsv":
+		return nil
+	}
+	return fmt.Errorf("unknown txt format %q; want txt or tsv: %w",
+		c.format, toolkiterrors.ErrInvalidEnumValue)
+}
+
 // Apply processes the given source byte slice as a Txt file and returns the converted output.
 // This method satisfies the saveoptions.SaveOption (or equivalent) interface, enabling Txt-specific export logic.
 //
@@ -48,6 +63,32 @@ func (c *Config) isTsv() bool { return c.format == "tsv" }
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
+	workbook, err := engine.OpenWorkbook(source)
+	if err != nil {
+		return nil, err
+	}
+	defer engine.CloseWorkbook(workbook)
+	return c.saveWorkbook(workbook)
+}
+
+// SaveWorkbook implements saveoptions.WorkbookApplier: it saves workbook in
+// this config's target format without reloading it from serialized bytes.
+func (c *Config) SaveWorkbook(workbook any) ([]byte, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
+	wb, ok := workbook.(*asposecells.Workbook)
+	if !ok || wb == nil {
+		return nil, toolkiterrors.ErrInvalidWorkbook
+	}
+	return c.saveWorkbook(wb)
+}
+
+// saveWorkbook builds the native save options from c and writes workbook. The
+// caller holds the engine lock.
+func (c *Config) saveWorkbook(workbook *asposecells.Workbook) ([]byte, error) {
+	if err := c.validateFormat(); err != nil {
+		return nil, err
+	}
 	var opts *asposecells.TxtSaveOptions
 	var err error
 	if c.isTsv() {
@@ -58,6 +99,7 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer asposecells.DeleteTxtSaveOptions(opts)
 	if c.separator != nil {
 		if err := opts.SetSeparator(*c.separator); err != nil {
 			return nil, err
@@ -128,11 +170,6 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err := c.ApplyCommon(opts); err != nil {
 		return nil, err
 	}
-	workbook, err := engine.OpenWorkbook(source)
-	if err != nil {
-		return nil, err
-	}
-	defer engine.CloseWorkbook(workbook)
 	saveOption := opts.ToSaveOptions()
 	result, err := workbook.Save_SaveOptions(saveOption)
 	if err != nil {

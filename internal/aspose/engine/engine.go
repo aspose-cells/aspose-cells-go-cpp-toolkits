@@ -76,6 +76,19 @@ func Derive[T any](obj T, err error) (T, error) {
 	return obj, err
 }
 
+// DerivePtr is Derive specialized to pointer handles. Derive boxes its argument
+// into an interface and inspects it with reflect to tell handles from scalars;
+// a caller that knows statically it holds a pointer — every cell loop in query
+// and editor does — skips that per-call reflection with this variant. The
+// semantics are identical: the finalizer is cleared when the handle is
+// non-nil and the load succeeded.
+func DerivePtr[T any](obj *T, err error) (*T, error) {
+	if err == nil && obj != nil {
+		disarm(obj)
+	}
+	return obj, err
+}
+
 // disarmValue disarms obj when it is a pointer, and does nothing otherwise.
 // Getter calls that read a handle and getter calls that read a scalar have the
 // same shape at the call site, so the wrapper has to accept both: a range read
@@ -126,6 +139,17 @@ func OpenWorkbookFile(path string) (*asposecells.Workbook, error) {
 // options. The caller keeps ownership of lo.
 func OpenWorkbookWithOptions(data []byte, lo *asposecells.LoadOptions) (*asposecells.Workbook, error) {
 	wb, err := asposecells.NewWorkbook_Stream_LoadOptions(data, lo)
+	if err != nil {
+		return nil, err
+	}
+	disarm(wb)
+	return wb, nil
+}
+
+// OpenWorkbookFileWithOptions is OpenWorkbookFile for a load that needs engine
+// load options. The caller keeps ownership of lo.
+func OpenWorkbookFileWithOptions(path string, lo *asposecells.LoadOptions) (*asposecells.Workbook, error) {
+	wb, err := asposecells.NewWorkbook_String_LoadOptions(path, lo)
 	if err != nil {
 		return nil, err
 	}

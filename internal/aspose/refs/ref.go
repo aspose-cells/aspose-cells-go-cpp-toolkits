@@ -117,6 +117,26 @@ func ParseCellRef(s string) (CellRef, error) {
 	return CellRef{Row: row1 - 1, Col: col}, nil
 }
 
+// ParseCellRefWithinGrid parses s like ParseCellRef and additionally requires
+// the reference to lie inside the worksheet grid.
+//
+// ParseCellRef is a syntactic parser: it accepts any positive row number, and
+// a long enough run of column letters overflows the column counter into a
+// negative value rather than failing. Either result then overflows when
+// narrowed to the engine's int32 coordinates. The engine checks neither, so
+// off-grid references are rejected here instead of silently matching nothing.
+func ParseCellRefWithinGrid(s string) (CellRef, error) {
+	ref, err := ParseCellRef(s)
+	if err != nil {
+		return CellRef{}, err
+	}
+	if ref.Row < 0 || ref.Row >= MaxGridRows || ref.Col < 0 || ref.Col >= MaxGridCols {
+		return CellRef{}, fmt.Errorf("cell reference %q lies outside the %d row x %d column worksheet grid: %w",
+			s, MaxGridRows, MaxGridCols, toolkiterrors.ErrInvalidCellRef)
+	}
+	return ref, nil
+}
+
 // ParseArea parses an Excel-style area such as "A1:C3" into an Area. A single
 // cell ("B2") is accepted as a one-cell area. Areas whose start cell lies below
 // or to the right of the end cell, or with more than one ":" separator, return

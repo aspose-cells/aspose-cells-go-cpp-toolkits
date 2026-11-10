@@ -10,10 +10,22 @@ package cells
 import (
 	"fmt"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 	"io"
+	"os"
 )
+
+// LoadOptions configures how a workbook is loaded from a datasource.DataSource.
+//
+// The zero value loads a workbook with the engine's defaults, which is what
+// every entry point did before load options existed.
+type LoadOptions struct {
+	// Password decrypts a password-protected workbook. The empty string means
+	// the workbook is not encrypted.
+	Password string
+}
 
 // ReadSource reads all bytes from a datasource.DataSource. It opens the source,
 // drains it fully into memory, and closes it. This is the single place where a
@@ -31,12 +43,76 @@ func ReadSource(source datasource.DataSource) ([]byte, error) {
 	return data, nil
 }
 
+// GetWorkbookWithDataSource loads the workbook held by source with the engine's
+// default load options.
 func GetWorkbookWithDataSource(source datasource.DataSource) (*asposecells.Workbook, error) {
+	return GetWorkbookWithDataSourceAndOptions(source, LoadOptions{})
+}
+
+// GetWorkbookWithDataSourceAndOptions loads the workbook held by source using
+// lo. A password-protected workbook is opened with the password; everything
+// else behaves like GetWorkbookWithDataSource.
+//
+// A datasource.FilePathSource is opened by path rather than read into a Go byte
+// slice first, so a large file is not copied through the runtime only to be
+// copied again into the engine. Errors opening a missing path propagate
+// unchanged, so os.IsNotExist keeps working.
+func GetWorkbookWithDataSourceAndOptions(source datasource.DataSource, lo LoadOptions) (*asposecells.Workbook, error) {
+	if path, ok := source.(datasource.FilePathSource); ok {
+		info, err := os.Stat(string(path))
+		if err != nil {
+			return nil, err
+		}
+		if info.IsDir() {
+			return nil, fmt.Errorf("%q is a folder, expected a file: %w", string(path), toolkiterrors.ErrInputIsFolder)
+		}
+		return OpenWorkbookFile(string(path), lo)
+	}
 	data, err := ReadSource(source)
 	if err != nil {
 		return nil, err
 	}
-	return engine.OpenWorkbook(data)
+	return OpenWorkbookData(data, lo)
+}
+
+// OpenWorkbookData loads an in-memory workbook from data using lo.
+func OpenWorkbookData(data []byte, lo LoadOptions) (*asposecells.Workbook, error) {
+	if lo.Password == "" {
+		return engine.OpenWorkbook(data)
+	}
+	native, err := newNativeLoadOptions(lo)
+	if err != nil {
+		return nil, err
+	}
+	defer asposecells.DeleteLoadOptions(native)
+	return engine.OpenWorkbookWithOptions(data, native)
+}
+
+// OpenWorkbookFile loads a workbook from a path on disk using lo.
+func OpenWorkbookFile(path string, lo LoadOptions) (*asposecells.Workbook, error) {
+	if lo.Password == "" {
+		return engine.OpenWorkbookFile(path)
+	}
+	native, err := newNativeLoadOptions(lo)
+	if err != nil {
+		return nil, err
+	}
+	defer asposecells.DeleteLoadOptions(native)
+	return engine.OpenWorkbookFileWithOptions(path, native)
+}
+
+// newNativeLoadOptions builds the engine load options described by lo. The
+// caller owns the returned value and must release it with DeleteLoadOptions.
+func newNativeLoadOptions(lo LoadOptions) (*asposecells.LoadOptions, error) {
+	native, err := asposecells.NewLoadOptions()
+	if err != nil {
+		return nil, err
+	}
+	if err := native.SetPassword(lo.Password); err != nil {
+		asposecells.DeleteLoadOptions(native)
+		return nil, err
+	}
+	return native, nil
 }
 
 // WorkbookToByteData serializes a workbook back to bytes in its own format: the

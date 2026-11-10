@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -11,7 +12,7 @@ import (
 // becomes an error rather than a collection that reports zero pictures, so a
 // caller can tell "this sheet has no pictures" from "the handle is unusable".
 func Pictures(ws *asposecells.Worksheet) (*asposecells.PictureCollection, error) {
-	pics, err := ws.GetPictures()
+	pics, err := engine.Derive(ws.GetPictures())
 	if err != nil {
 		return nil, err
 	}

@@ -1,12 +1,26 @@
 package transfer
 
 import (
+	"fmt"
+
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
+
+// validateBeginCell rejects a top-left cell that is off the worksheet grid.
+// The engine accepts a negative or oversized coordinate and then either
+// indexes out of bounds or silently writes nothing; the check here keeps the
+// failure at the API boundary.
+func validateBeginCell(row, col int) error {
+	if row < 0 || col < 0 || row >= cells.MaxGridRows || col >= cells.MaxGridCols {
+		return fmt.Errorf("begin cell (%d,%d) lies outside the %d row x %d column worksheet grid: %w",
+			row, col, cells.MaxGridRows, cells.MaxGridCols, toolkiterrors.ErrInvalidRange)
+	}
+	return nil
+}
 
 // ImportCSV imports CSV data into a worksheet of the source workbook and writes
 // the resulting workbook to sink. The target sheet defaults to "Sheet1", the
@@ -32,7 +46,10 @@ func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	if err := validateBeginCell(cfg.beginRow, cfg.beginColumn); err != nil {
+		return err
+	}
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -51,13 +68,14 @@ func ImportCSV(source datasource.DataSource, csvData datasource.DataSource, sink
 	}
 	err = worksheetCells.ImportCSV_Stream_String_Bool_Int_Int(data, cfg.separator, cfg.convertNumeric, int32(cfg.beginRow), int32(cfg.beginColumn))
 	if err != nil {
-		return err
+		return fmt.Errorf("import csv data: %w", err)
 	}
-	out, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return err
+	// Saves in the source's own format; a FilePathSink is written straight
+	// to disk without holding the serialized document in Go memory.
+	if err := cells.SaveWorkbookToSink(workbook, sink); err != nil {
+		return fmt.Errorf("save output: %w", err)
 	}
-	return sink.Write("", out)
+	return nil
 }
 
 // ImportJsonData imports JSON data into a worksheet of the source workbook and
@@ -74,7 +92,10 @@ func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	if err := validateBeginCell(cfg.beginRow, cfg.beginColumn); err != nil {
+		return err
+	}
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -95,15 +116,20 @@ func ImportJsonData(source datasource.DataSource, jsonData datasource.DataSource
 	if err != nil {
 		return err
 	}
+	// Released deterministically under the engine lock instead of being left to
+	// the binding's finalizer, which would enter the engine from the GC
+	// goroutine without the lock.
+	defer asposecells.DeleteJsonLayoutOptions(options)
 	_, err = asposecells.JsonUtility_ImportData(string(data), worksheetCells, int32(cfg.beginRow), int32(cfg.beginColumn), options)
 	if err != nil {
-		return err
+		return fmt.Errorf("import json data: %w", err)
 	}
-	out, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return err
+	// Saves in the source's own format; a FilePathSink is written straight
+	// to disk without holding the serialized document in Go memory.
+	if err := cells.SaveWorkbookToSink(workbook, sink); err != nil {
+		return fmt.Errorf("save output: %w", err)
 	}
-	return sink.Write("", out)
+	return nil
 }
 
 // ImportXMLData imports XML data into a worksheet of the source workbook and
@@ -120,7 +146,10 @@ func ImportXMLData(source datasource.DataSource, xmlData datasource.DataSource, 
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	if err := validateBeginCell(cfg.beginRow, cfg.beginColumn); err != nil {
+		return err
+	}
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -139,13 +168,14 @@ func ImportXMLData(source datasource.DataSource, xmlData datasource.DataSource, 
 	}
 	err = workbook.ImportXml_Stream_String_Int_Int(data, targetName, int32(cfg.beginRow), int32(cfg.beginColumn))
 	if err != nil {
-		return err
+		return fmt.Errorf("import xml data into %q: %w", targetName, err)
 	}
-	out, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return err
+	// Saves in the source's own format; a FilePathSink is written straight
+	// to disk without holding the serialized document in Go memory.
+	if err := cells.SaveWorkbookToSink(workbook, sink); err != nil {
+		return fmt.Errorf("save output: %w", err)
 	}
-	return sink.Write("", out)
+	return nil
 }
 
 // ImportCSVDataIntoSpreadsheet imports CSV data into a worksheet and returns

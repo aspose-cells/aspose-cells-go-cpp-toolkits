@@ -93,7 +93,7 @@ func AddConditionalFormatting(ws *asposecells.Worksheet, areaStr string) (*aspos
 		return nil, err
 	}
 	// Add an area to the collection
-	collection, err := formattings.Get(idx)
+	collection, err := engine.Derive(formattings.Get(idx))
 	if err != nil {
 		return nil, err
 	}
@@ -132,5 +132,5 @@ func GetCondition(collection *asposecells.FormatConditionCollection, index int) 
 		return nil, fmt.Errorf("condition index %d out of range [0, %d): %w",
 			index, count, toolkiterrors.ErrConditionNotFound)
 	}
-	return collection.Get(int32(index))
+	return engine.Derive(collection.Get(int32(index)))
 }

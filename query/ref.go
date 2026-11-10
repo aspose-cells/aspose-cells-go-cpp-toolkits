@@ -16,6 +16,12 @@ type Area = cells.Area
 // zero-based CellRef. Column letters are case-insensitive.
 func ParseCellRef(s string) (CellRef, error) { return cells.ParseCellRef(s) }
 
+// ParseCellRefWithinGrid parses an Excel-style cell reference and requires the
+// reference to lie inside the worksheet grid (1048576 rows by 16384 columns).
+// Use this when the reference will be handed to the engine: ParseCellRef alone
+// accepts references the engine cannot represent.
+func ParseCellRefWithinGrid(s string) (CellRef, error) { return cells.ParseCellRefWithinGrid(s) }
+
 // ParseArea parses an Excel-style area such as "A1:C3" into an Area. A single
 // cell ("B2") is accepted as a one-cell area.
 func ParseArea(s string) (Area, error) { return cells.ParseArea(s) }

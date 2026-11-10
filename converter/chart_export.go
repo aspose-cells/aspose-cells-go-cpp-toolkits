@@ -8,6 +8,7 @@ import (
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/datasource"
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/saveoptions/pdf"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
@@ -50,6 +51,9 @@ type ChartExportOptions struct {
 	// Quality is the JPEG quality, 1-100. Only applies to the JPEG format; zero
 	// leaves the engine's default. A value outside 1-100 is ErrInvalidValue.
 	Quality int
+	// Password opens a password-protected source workbook. The empty string
+	// means the workbook is not encrypted.
+	Password string
 }
 
 // ExportChartToSink exports a chart from a workbook to a data sink.
@@ -156,7 +160,7 @@ func exportChart(src datasource.DataSource, sheetIndex, chartIndex int, opts *Ch
 		return nil, err
 	}
 
-	chart, workbook, err := resolveChart(src, sheetIndex, chartIndex)
+	chart, workbook, err := resolveChart(src, sheetIndex, chartIndex, opts.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +188,8 @@ func exportChart(src datasource.DataSource, sheetIndex, chartIndex int, opts *Ch
 // index against the collection before touching the engine: the binding returns
 // a dangling handle for an out-of-range index, and using one crashes the
 // process. This is the only place either lookup happens.
-func resolveChart(src datasource.DataSource, sheetIndex, chartIndex int) (*asposecells.Chart, *asposecells.Workbook, error) {
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+func resolveChart(src datasource.DataSource, sheetIndex, chartIndex int, password string) (*asposecells.Chart, *asposecells.Workbook, error) {
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cells.LoadOptions{Password: password})
 	if err != nil {
 		return nil, nil, fmt.Errorf("open workbook: %w", err)
 	}
@@ -235,6 +239,10 @@ func renderChart(chart *asposecells.Chart, imageType asposecells.ImageType, opts
 	if err != nil {
 		return nil, fmt.Errorf("create image options: %w", err)
 	}
+	// Released deterministically under the engine lock instead of being left to
+	// the binding's finalizer, which would enter the engine from the GC
+	// goroutine without the lock.
+	defer asposecells.DeleteImageOrPrintOptions(imgOpts)
 	if err := imgOpts.SetImageType(imageType); err != nil {
 		return nil, fmt.Errorf("set image type: %w", err)
 	}
@@ -279,11 +287,14 @@ func renderChartToPDF(chart *asposecells.Chart, opts *ChartExportOptions, width,
 	}
 	defer engine.CloseWorkbook(workbook)
 
-	sheetBytes, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return nil, fmt.Errorf("serialize chart page: %w", err)
+	// SaveWorkbook saves the live workbook: the old path serialized it to bytes
+	// and let Apply reload a second workbook from them, doubling both the engine
+	// work and the peak memory for the same one-page PDF.
+	applier, ok := pdf.New(pdf.WithOnePagePerSheet(true)).(saveoptions.WorkbookApplier)
+	if !ok {
+		return nil, fmt.Errorf("pdf save option does not implement WorkbookApplier: %w", toolkiterrors.ErrUnsupportedFormat)
 	}
-	out, err := pdf.New(pdf.WithOnePagePerSheet(true)).Apply(sheetBytes)
+	out, err := applier.SaveWorkbook(workbook)
 	if err != nil {
 		return nil, fmt.Errorf("convert chart page to PDF: %w", err)
 	}
@@ -309,7 +320,7 @@ func chartImageWorkbook(image []byte, pxWidth, pxHeight int) (*asposecells.Workb
 		engine.CloseWorkbook(workbook)
 		return nil, err
 	}
-	pageSetup, err := worksheet.GetPageSetup()
+	pageSetup, err := engine.Derive(worksheet.GetPageSetup())
 	if err != nil {
 		engine.CloseWorkbook(workbook)
 		return nil, fmt.Errorf("get page setup: %w", err)

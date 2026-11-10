@@ -1,6 +1,6 @@
 # 设计文档:DataSource / DataSink 重构与组合函数收敛
 
-> 状态:待评审 · 适用范围:允许改动 DataSource / DataSink 相关接口及其消费方(converter / manipulator / transfer 的公开签名)
+> 状态:已实施(v26.10.0) · 适用范围:允许改动 DataSource / DataSink 相关接口及其消费方(converter / manipulator / transfer 的公开签名)
 
 ## 1. 背景与目标
 

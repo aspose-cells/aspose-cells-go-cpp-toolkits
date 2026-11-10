@@ -34,7 +34,7 @@ func XMLMapNames(workbook *asposecells.Workbook) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	maps, err := worksheets.GetXmlMaps()
+	maps, err := engine.Derive(worksheets.GetXmlMaps())
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func XMLMapNames(workbook *asposecells.Workbook) ([]string, error) {
 	}
 	names := make([]string, 0, count)
 	for i := int32(0); i < count; i++ {
-		xmlMap, err := maps.Get(i)
+		xmlMap, err := engine.Derive(maps.Get(i))
 		if err != nil {
 			return nil, err
 		}
@@ -68,13 +68,32 @@ func GetWorkbookFromBytes(data []byte) (*asposecells.Workbook, error) {
 // root element of "Rows" — so callers read the name back with XMLMapNames
 // rather than predicting it.
 func GetWorkbookFromBytesWithXMLLoad(data []byte) (*asposecells.Workbook, error) {
+	return GetWorkbookFromBytesWithXMLLoadOptions(data, LoadOptions{})
+}
+
+// GetWorkbookFromBytesWithXMLLoadOptions is GetWorkbookFromBytesWithXMLLoad
+// with engine load options, so an encrypted XML document can be opened.
+func GetWorkbookFromBytesWithXMLLoadOptions(data []byte, lo LoadOptions) (*asposecells.Workbook, error) {
 	xmlOptions, err := asposecells.NewXmlLoadOptions()
 	if err != nil {
 		return nil, err
 	}
-	engine.Disarm(xmlOptions)
+	// Released here rather than left to the binding's finalizer: the finalizer
+	// runs on the GC goroutine without the engine lock, and without this delete
+	// the native options leaked on every XML load.
+	defer asposecells.DeleteXmlLoadOptions(xmlOptions)
 	if err := xmlOptions.SetIsXmlMap(true); err != nil {
 		return nil, err
 	}
+	if lo.Password != "" {
+		if err := xmlOptions.SetPassword(lo.Password); err != nil {
+			return nil, err
+		}
+	}
+	// ToLoadOptions aliases the same native object (parentClass.ptr =
+	// instance.ptr in the binding), so the returned wrapper is borrowed: it
+	// must NOT be passed to DeleteLoadOptions, which would free the native
+	// options twice — once here and once through the deferred
+	// DeleteXmlLoadOptions.
 	return engine.OpenWorkbookWithOptions(data, xmlOptions.ToLoadOptions())
 }

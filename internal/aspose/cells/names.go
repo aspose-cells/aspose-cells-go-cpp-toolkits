@@ -16,7 +16,7 @@ func WorkbookNames(wb *asposecells.Workbook) (*asposecells.NameCollection, error
 	if err != nil {
 		return nil, err
 	}
-	return wss.GetNames()
+	return engine.Derive(wss.GetNames())
 }
 
 // FindName returns the workbook name whose text equals name (case-insensitive,
@@ -143,9 +143,10 @@ func ClearComments(ws *asposecells.Worksheet) error {
 
 // EncryptWorkbook sets the workbook's encryption password so the saved file
 // requires it to open, and selects strong (AES) encryption. A later save via
-// WorkbookToByteData produces an encrypted output. To read the file back, a
-// password must be supplied at load time (LoadOptions.Password), which the
-// toolkit's shared loader does not yet expose.
+// WorkbookToByteData produces an encrypted output. To read the file back, the
+// password must be supplied at load time; every public read path accepts one
+// (the query/transfer/converter/editor WithPassword options, wired into
+// LoadOptions.Password).
 func EncryptWorkbook(wb *asposecells.Workbook, password string) error {
 	settings, err := engine.Derive(wb.GetSettings())
 	if err != nil {

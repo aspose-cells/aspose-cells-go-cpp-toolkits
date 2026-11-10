@@ -2,84 +2,153 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.21.x"
+  ASPOSE_MODULE: github.com/aspose-cells/aspose-cells-go-cpp/v26@v26.10.0
+  # Repository secret. Empty for pull requests from forks, in which case the
+  # engine steps below are skipped and the static/compile gates still run.
+  ASPOSE_LICENSE_B64: ${{ secrets.ASPOSE_LICENSE_B64 }}
 
 jobs:
-  build-and-test:
-    name: ${{ matrix.os }}
+  quality:
+    name: Quality (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: gofmt
+        run: |
+          # agent/ResultOutput holds generated example output that is not part
+          # of the build; it is not gofmt'd upstream.
+          mapfile -t files < <(git ls-files '*.go' | grep -v '^agent/ResultOutput/')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Go files found tracked by git"
+            exit 1
+          fi
+          unformatted="$(gofmt -l "${files[@]}")"
+          if [ -n "$unformatted" ]; then
+            printf 'Unformatted files (run gofmt -w):\n%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Resolve native library
+        run: |
+          go mod download
+          lib="$(go env GOMODCACHE)/${ASPOSE_MODULE}/lib/linux_x86_64"
+          test -f "$lib/libAspose.Cells.CWrapper.so"
+          echo "LD_LIBRARY_PATH=$lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: Compile every test binary
+        run: go test ./... -run '^$' -count=1
+
+  engine:
+    name: Engine tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-    defaults:
-      run:
-        shell: bash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Build
-        run: go build ./...
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Format check
+      - name: Install MinGW (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          unformatted=$(gofmt -l .)
-          if [[ -n "$unformatted" ]]; then
-            echo "The following files are not gofmt formatted:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: Resolve native library directory
-        run: |
-          MOD_DIR=$(go list -m -f '{{.Dir}}' github.com/aspose-cells/aspose-cells-go-cpp/v26)
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            LIB_DIR="$MOD_DIR/lib/win_x86_64"
-          else
-            LIB_DIR="$MOD_DIR/lib/linux_x86_64"
-          fi
-          echo "LIB_DIR=$LIB_DIR" >> "$GITHUB_ENV"
-
-      - name: Test
-        run: |
-          export PATH="$PATH:$LIB_DIR"
-          export LD_LIBRARY_PATH="$LIB_DIR:$LD_LIBRARY_PATH"
-          go test ./...
-
-      - name: Run examples
-        run: |
-          export PATH="$PATH:$LIB_DIR"
-          export LD_LIBRARY_PATH="$LIB_DIR:$LD_LIBRARY_PATH"
-          # Each example is a self-contained command. The native engine
-          # occasionally fails a single op (the splitter intermittently reports
-          # Argument_InvalidPathChars), so retry each example a few times before
-          # giving up.
-          run_example() {
-            for attempt in 1 2 3; do
-              if ./examples/run.sh "$1"; then
-                return 0
-              fi
-              echo "example '$1' failed (attempt $attempt); retrying"
-              sleep 2
-            done
-            return 1
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            choco install mingw -y --no-progress
+            "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" |
+              Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
-          run_example chart
-          run_example chart-export
-          run_example convert
-          run_example edit
-          run_example merge-split
-          run_example query
-          run_example transfer
-          run_example validation-cf
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Resolve native library (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          lib="$(go env GOMODCACHE)/${ASPOSE_MODULE}/lib/linux_x86_64"
+          test -f "$lib/libAspose.Cells.CWrapper.so"
+          echo "LD_LIBRARY_PATH=$lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Resolve native library (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $lib = Join-Path (go env GOMODCACHE) "$($env:ASPOSE_MODULE)/lib/win_x86_64"
+          if (-not (Test-Path (Join-Path $lib "Aspose.Cells.CWrapper.dll"))) {
+            throw "Aspose.Cells.CWrapper.dll not found under $lib"
+          }
+          $lib | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Decode license (Linux)
+        if: runner.os == 'Linux' && env.ASPOSE_LICENSE_B64 != ''
+        run: |
+          mkdir -p .license
+          printf '%s' "$ASPOSE_LICENSE_B64" | base64 --decode > .license/Aspose.Cells.lic
+          echo "LicenseFilePath=$PWD/.license/Aspose.Cells.lic" >> "$GITHUB_ENV"
+
+      - name: Decode license (Windows)
+        if: runner.os == 'Windows' && env.ASPOSE_LICENSE_B64 != ''
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE ".license"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $lic = Join-Path $dir "Aspose.Cells.lic"
+          [IO.File]::WriteAllBytes($lic, [Convert]::FromBase64String($env:ASPOSE_LICENSE_B64))
+          "LicenseFilePath=$lic" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile every test binary
+        run: go test ./... -run '^$' -count=1
+
+      - name: Notice when unlicensed
+        if: env.ASPOSE_LICENSE_B64 == ''
+        run: echo "::notice::ASPOSE_LICENSE_B64 is not set; engine tests and coverage are skipped. Static and compile gates passed."
+
+      - name: Full test suite
+        if: env.ASPOSE_LICENSE_B64 != ''
+        run: go test ./... -count=1 -timeout 20m
+
+      - name: Race detector
+        if: env.ASPOSE_LICENSE_B64 != ''
+        run: go test ./tests -race -count=1 -timeout 30m
+
+      - name: Coverage (60% floor)
+        if: env.ASPOSE_LICENSE_B64 != ''
+        shell: bash
+        run: |
+          go test ./tests -count=1 -coverpkg=./... -coverprofile=coverage.out -timeout 20m
+          go tool cover -func=coverage.out | tail -1
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,"",$3); print $3}')"
+          awk -v t="$total" 'BEGIN { if (t + 0 < 60) { printf "coverage %.1f%% is below the 60%% floor\n", t; exit 1 } }'
+
+      - name: Upload coverage
+        if: always() && env.ASPOSE_LICENSE_B64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage.out
+          if-no-files-found: ignore

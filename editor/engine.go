@@ -51,6 +51,16 @@ func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([
 	return sink.Bytes(), nil
 }
 
+// EditSpreadsheetWithOptions is EditSpreadsheet with load options, e.g. a
+// password for an encrypted source workbook.
+func EditSpreadsheetWithOptions(source datasource.DataSource, opts []Option, actions ...WorkbookAction) ([]byte, error) {
+	var sink datasource.BytesSink
+	if err := EditSpreadsheetToSinkWithOptions(source, &sink, opts, actions...); err != nil {
+		return nil, err
+	}
+	return sink.Bytes(), nil
+}
+
 // EditSpreadsheetToSink applies a series of workbook actions to a spreadsheet
 // and writes the result to a datasource.DataSink. It is the sink-based form of
 // EditSpreadsheet: the caller picks the output shape (file, io.Writer, or
@@ -74,15 +84,23 @@ func EditSpreadsheet(source datasource.DataSource, actions ...WorkbookAction) ([
 //     found, invalid format, or an action-specific error). If successful, this
 //     is nil.
 func EditSpreadsheetToSink(source datasource.DataSource, sink datasource.DataSink, actions ...WorkbookAction) error {
+	return EditSpreadsheetToSinkWithOptions(source, sink, nil, actions...)
+}
+
+// EditSpreadsheetToSinkWithOptions is EditSpreadsheetToSink with load options,
+// e.g. a password for an encrypted source workbook.
+func EditSpreadsheetToSinkWithOptions(source datasource.DataSource, sink datasource.DataSink, opts []Option, actions ...WorkbookAction) error {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
+	cfg := defaultOptions()
+	applyOptions(cfg, opts)
 	if source == nil {
 		return toolkiterrors.ErrDataSourceNil
 	}
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -92,9 +110,7 @@ func EditSpreadsheetToSink(source datasource.DataSource, sink datasource.DataSin
 			return err
 		}
 	}
-	data, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return err
-	}
-	return sink.Write("", data)
+	// Saves in the source's own format; a FilePathSink is written straight
+	// to disk without holding the serialized document in Go memory.
+	return cells.SaveWorkbookToSink(workbook, sink)
 }

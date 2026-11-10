@@ -26,6 +26,10 @@ const (
 // ParseCellRef parses an Excel-style cell reference such as "B3".
 func ParseCellRef(s string) (CellRef, error) { return refs.ParseCellRef(s) }
 
+// ParseCellRefWithinGrid parses an Excel-style cell reference and requires it
+// to lie inside the worksheet grid.
+func ParseCellRefWithinGrid(s string) (CellRef, error) { return refs.ParseCellRefWithinGrid(s) }
+
 // ParseArea parses an Excel-style area such as "A1:C3"; a single cell is a
 // one-cell area.
 func ParseArea(s string) (Area, error) { return refs.ParseArea(s) }

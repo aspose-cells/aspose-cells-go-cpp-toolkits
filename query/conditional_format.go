@@ -57,7 +57,7 @@ func ConditionalFormattingCount(src datasource.DataSource, opts ...Option) (int,
 	if src == nil {
 		return 0, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return 0, err
 	}
@@ -87,7 +87,7 @@ func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...O
 	if src == nil {
 		return ConditionalFormattingInfo{}, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return ConditionalFormattingInfo{}, err
 	}
@@ -107,7 +107,7 @@ func ConditionalFormattingInfoAt(src datasource.DataSource, index int, opts ...O
 	if index < 0 || int32(index) >= count {
 		return ConditionalFormattingInfo{}, toolkiterrors.ErrConditionNotFound
 	}
-	collection, err := formattings.Get(int32(index))
+	collection, err := engine.Derive(formattings.Get(int32(index)))
 	if err != nil {
 		return ConditionalFormattingInfo{}, err
 	}
@@ -124,7 +124,7 @@ func AllConditionalFormattings(src datasource.DataSource, opts ...Option) ([]Con
 	if src == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func AllConditionalFormattings(src datasource.DataSource, opts ...Option) ([]Con
 	}
 	result := make([]ConditionalFormattingInfo, 0, count)
 	for i := 0; i < int(count); i++ {
-		collection, err := formattings.Get(int32(i))
+		collection, err := engine.Derive(formattings.Get(int32(i)))
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +185,7 @@ func readConditionalFormattingInfo(collection *asposecells.FormatConditionCollec
 	}
 	info.Conditions = make([]ConditionInfo, 0, condCount)
 	for i := 0; i < int(condCount); i++ {
-		cond, err := collection.Get(int32(i))
+		cond, err := engine.Derive(collection.Get(int32(i)))
 		if err != nil {
 			return ConditionalFormattingInfo{}, err
 		}

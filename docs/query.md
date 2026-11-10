@@ -195,6 +195,41 @@ Returns the comment note on a single cell identified by its Excel reference,
 e.g. `"B3"`. A cell without a comment returns an empty string. Write counterpart:
 [`editor.SetCellComment`](editor.md#setcellcomment).
 
+### ReadCellFormula
+
+```go
+func ReadCellFormula(source datasource.DataSource, ref string, opts ...Option) (string, error)
+```
+
+Reads the formula of one cell, e.g. `"=A1+B1"`. A cell that holds a value
+rather than a formula returns an empty string.
+
+### ReadStyle
+
+```go
+type Style struct {
+	FontName     string
+	FontSize     int32
+	Bold         bool
+	Italic       bool
+	FontColor    string  // "#RRGGBB"
+	NumberFormat int32   // built-in format id, 0 = General
+	CustomFormat string  // custom format string, empty for a built-in format
+}
+
+func ReadStyle(source datasource.DataSource, ref string, opts ...Option) (Style, error)
+```
+
+Reads a cell's formatting as plain Go values. The snapshot stays valid after the
+workbook is closed; no engine handle escapes.
+
+```go
+style, err := query.ReadStyle(datasource.FilePathSource("data.xlsx"), "B3")
+if style.Bold {
+    // ...
+}
+```
+
 ## Charts
 
 ### ChartInfo
@@ -291,7 +326,12 @@ fmt.Printf("worksheet has %d chart(s)\n", n)
 func WithSheet(name string) Option
 func WithSheetIndex(i int) Option
 func WithTrimSpace(b bool) Option
+func WithPassword(password string) Option
 ```
+
+- `WithPassword` opens a password-protected workbook with the given password. It
+  is the read half of `editor.Encrypt` and works on every query entry point,
+  including a `datasource.FilePathSource` (which the loader opens by path).
 
 - **By default** a query targets the first worksheet **by index**, not by name
   (`"Sheet1"`), because evaluation mode occasionally corrupts worksheet names
@@ -311,12 +351,20 @@ inclusive start and end cells. Both render in Excel style and parse back.
 ```go
 ref, _ := query.ParseCellRef("B3")       // query.CellRef{Row: 2, Col: 1}
 ref.String()                             // "B3"
+ref, _ = query.ParseCellRefWithinGrid("B3") // also checks the worksheet grid
 area, _ := query.ParseArea("A1:C3")      // Start: A1, End: C3
 area.String()                            // "A1:C3"
 ```
 
 Invalid references return `ErrInvalidCellRef`; malformed areas return
 `ErrInvalidRange`.
+
+`ParseCellRef` is a syntactic parser: it accepts any row number and any run of
+column letters. Use `ParseCellRefWithinGrid` when the reference will be handed
+to the engine or materialized as a read, because an off-grid reference (row
+beyond 1048576, column beyond XFD) is otherwise accepted and matches nothing.
+The toolkit's own read entry points (`ReadCell`, `ReadRange`,
+`ReadCellComment`) apply the grid check.
 
 ## Errors
 

@@ -27,3 +27,33 @@ type SaveOption interface {
 	Apply([]byte) ([]byte, error)
 	GetFormat() string
 }
+
+// WorkbookApplier is an optional extension of SaveOption for implementations
+// that can save a workbook the caller has already loaded.
+//
+// Converter, merge, and split load a workbook to do their work and then need it
+// written in a target format. With only Apply they have to serialize that
+// workbook to bytes and pass the bytes to Apply, which reloads a second
+// workbook just to save it. Implementing WorkbookApplier lets those entry
+// points skip the serialize/reload cycle. It also lets them honor load options
+// (a source password) on a source that Apply could not open by itself.
+//
+// Every SaveOption shipped by this module implements WorkbookApplier. Apply
+// remains the interface callers program against, so a third-party
+// implementation that only provides Apply keeps working, at the cost of the
+// extra serialization.
+type WorkbookApplier interface {
+	SaveOption
+	// SaveWorkbook writes workbook in this option's target format and returns
+	// the bytes.
+	//
+	// workbook is an *asposecells.Workbook; the type is any so that the
+	// toolkit's public API does not name a native binding type. An
+	// implementation that is handed anything else returns an error wrapping
+	// ErrInvalidWorkbook. The caller keeps ownership of workbook and closes it
+	// after SaveWorkbook returns; implementations must not free it.
+	//
+	// Implementations take the toolkit's re-entrant engine lock themselves, so
+	// SaveWorkbook may be called while the caller already holds it.
+	SaveWorkbook(workbook any) ([]byte, error)
+}

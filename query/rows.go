@@ -47,8 +47,8 @@ func ReadRows[T any](source datasource.DataSource, opts ...Option) ([]T, error) 
 	defer engine.UnlockEngine()
 	var zero T
 	typ := reflect.TypeOf(zero)
-	if typ.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("ReadRows: T must be a struct, got %s: %w", typ, toolkiterrors.ErrInvalidValue)
+	if typ == nil || typ.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("ReadRows: T must be a concrete struct type, got %T: %w", zero, toolkiterrors.ErrInvalidValue)
 	}
 	cols, err := rows.Columns(typ)
 	if err != nil {

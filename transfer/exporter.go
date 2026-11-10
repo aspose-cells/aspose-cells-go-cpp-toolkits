@@ -32,6 +32,7 @@ type options struct {
 	beginColumn    int
 	convertNumeric bool
 	separator      string
+	load           cells.LoadOptions
 }
 
 func defaultOptions() *options {
@@ -111,6 +112,12 @@ func WithSeparator(s string) Option {
 	return func(o *options) { o.separator = s }
 }
 
+// WithPassword opens a password-protected workbook with password. It applies
+// to every transfer entry point that reads a source workbook.
+func WithPassword(password string) Option {
+	return func(o *options) { o.load.Password = password }
+}
+
 func applyOptions(o *options, opts []Option) {
 	for _, opt := range opts {
 		if opt != nil {
@@ -155,11 +162,10 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
 	}
-	data, err := cells.ReadSource(source)
-	if err != nil {
-		return err
-	}
-	workbook, err := engine.OpenWorkbook(data)
+	// Unlike ExportSpreadsheetToXml this entry point never needs the raw bytes,
+	// so the source goes through the shared loader: a FilePathSource is opened
+	// by path instead of being copied through the Go heap first.
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -213,7 +219,7 @@ func ExportRangeToJson(source datasource.DataSource, sink datasource.DataSink, o
 	}.String()
 	optArgs = append(optArgs, jsonsaveoptions.WithExportArea(exportArea))
 	opt := jsonsaveoptions.New(optArgs...)
-	out, err := opt.Apply(data)
+	out, err := saveWorkbookBytes(opt, workbook)
 	if err != nil {
 		return err
 	}
@@ -267,9 +273,9 @@ func ExportSpreadsheetToXml(source datasource.DataSource, sink datasource.DataSi
 	// leaving the workbook with no map to export through.
 	var workbook *asposecells.Workbook
 	if cells.LooksLikeXML(raw) {
-		workbook, err = cells.GetWorkbookFromBytesWithXMLLoad(raw)
+		workbook, err = cells.GetWorkbookFromBytesWithXMLLoadOptions(raw, cfg.load)
 	} else {
-		workbook, err = cells.GetWorkbookFromBytes(raw)
+		workbook, err = cells.OpenWorkbookData(raw, cfg.load)
 	}
 	if err != nil {
 		return err

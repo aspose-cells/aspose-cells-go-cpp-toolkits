@@ -5,6 +5,7 @@ import (
 
 	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	cells "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/cells"
+	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	asposecells "github.com/aspose-cells/aspose-cells-go-cpp/v26"
 )
 
@@ -21,6 +22,9 @@ import (
 //     query.ReadCellComment.
 func SetCellComment(row, column int, text string) WorksheetAction {
 	return func(worksheet *asposecells.Worksheet) error {
+		if err := checkCell(row, column); err != nil {
+			return err
+		}
 		return cells.SetCellComment(worksheet, int32(row), int32(column), text)
 	}
 }
@@ -66,7 +70,7 @@ func DefineNamedRange(name string, startRow, startColumn, endRow, endColumn int)
 		refersTo := "='" + sheetName + "'!" +
 			(cells.CellRef{Row: startRow, Col: startColumn}).AbsoluteString() + ":" +
 			(cells.CellRef{Row: endRow, Col: endColumn}).AbsoluteString()
-		wb, err := worksheet.GetWorkbook()
+		wb, err := engine.Derive(worksheet.GetWorkbook())
 		if err != nil {
 			return err
 		}
@@ -78,9 +82,11 @@ func DefineNamedRange(name string, startRow, startColumn, endRow, endColumn int)
 // file requires password to open. It sets the workbook's encryption password
 // and selects strong (AES) encryption.
 //
-// Decrypting an encrypted workbook requires supplying the password at load
-// time, which the toolkit's loader does not yet expose; to read an encrypted
-// file back, load it with a password through the underlying engine.
+// To read the encrypted file back, supply the password at load time:
+// editor.WithPassword with EditSpreadsheetWithOptions /
+// EditSpreadsheetToSinkWithOptions, or editor.WithWriteRowsPassword for
+// WriteRows. The query, transfer, and converter packages expose WithPassword
+// options as well.
 //
 // Parameters:
 //   - password: The password the saved file will require to open.

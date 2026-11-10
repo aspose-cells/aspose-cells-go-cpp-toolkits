@@ -113,7 +113,7 @@ func AddValidation(ws *asposecells.Worksheet, areaStr string) (*asposecells.Vali
 	if err != nil {
 		return nil, err
 	}
-	return validations.Get(idx)
+	return engine.Derive(validations.Get(idx))
 }
 
 // GetValidation returns the validation at the given index, or ErrValidationNotFound.
@@ -126,5 +126,5 @@ func GetValidation(validations *asposecells.ValidationCollection, index int) (*a
 		return nil, fmt.Errorf("validation index %d out of range [0, %d): %w",
 			index, count, toolkiterrors.ErrValidationNotFound)
 	}
-	return validations.Get(int32(index))
+	return engine.Derive(validations.Get(int32(index)))
 }

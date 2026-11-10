@@ -3,6 +3,7 @@
 package image
 
 import (
+	toolkiterrors "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/errors"
 	"github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/formats"
 	engine "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/engine"
 	enums "github.com/aspose-cells/aspose-cells-go-cpp-toolkits/v26/internal/aspose/enums"
@@ -35,13 +36,40 @@ type Config struct {
 func (c *Config) Apply(source []byte) ([]byte, error) {
 	engine.LockEngine()
 	defer engine.UnlockEngine()
+	workbook, err := engine.OpenWorkbook(source)
+	if err != nil {
+		return nil, err
+	}
+	defer engine.CloseWorkbook(workbook)
+	return c.saveWorkbook(workbook)
+}
+
+// SaveWorkbook implements saveoptions.WorkbookApplier: it saves workbook in
+// this config's target format without reloading it from serialized bytes.
+func (c *Config) SaveWorkbook(workbook any) ([]byte, error) {
+	engine.LockEngine()
+	defer engine.UnlockEngine()
+	wb, ok := workbook.(*asposecells.Workbook)
+	if !ok || wb == nil {
+		return nil, toolkiterrors.ErrInvalidWorkbook
+	}
+	return c.saveWorkbook(wb)
+}
+
+// saveWorkbook builds the native save options from c and writes workbook. The
+// caller holds the engine lock.
+func (c *Config) saveWorkbook(workbook *asposecells.Workbook) ([]byte, error) {
 	opts, err := asposecells.NewImageSaveOptions()
 	if err != nil {
 		return nil, err
 	}
+	defer asposecells.DeleteImageSaveOptions(opts)
 
 	if len(c.imageType) > 0 {
-		imageOrPrintOptions, err := opts.GetImageOrPrintOptions()
+		// GetImageOrPrintOptions returns a handle owned by opts; the binding
+		// arms it with a DeleteImageOrPrintOptions finalizer, which would free
+		// memory opts still owns. Derive disarms that finalizer.
+		imageOrPrintOptions, err := engine.Derive(opts.GetImageOrPrintOptions())
 		if err != nil {
 			return nil, err
 		}
@@ -56,11 +84,6 @@ func (c *Config) Apply(source []byte) ([]byte, error) {
 	if err := c.ApplyCommon(opts); err != nil {
 		return nil, err
 	}
-	workbook, err := engine.OpenWorkbook(source)
-	if err != nil {
-		return nil, err
-	}
-	defer engine.CloseWorkbook(workbook)
 	saveOption := opts.ToSaveOptions()
 	result, err := workbook.Save_SaveOptions(saveOption)
 	if err != nil {

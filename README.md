@@ -1,5 +1,4 @@
-![](https://img.shields.io/badge/aspose.cells%20for%20Go%20via%20C++%20Toolkits-v26.10.0-green?style=for-the-badge&logo=go) ![License](https://img.shields.io/github/license/aspose-cells/aspose-cells-go-cpp-toolkits?style=for-the-badge&logo=rocket&logoColor=white)
-
+![](https://img.shields.io/badge/aspose.cells%20for%20Go%20via%20C++%20Toolkits-v26.11.0-green?style=for-the-badge&logo=go) ![License](https://img.shields.io/github/license/aspose-cells/aspose-cells-go-cpp-toolkits?style=for-the-badge&logo=rocket&logoColor=white)
 # Aspose.Cells for Go via C++ Toolkits
 
 ## Features
@@ -44,7 +43,7 @@ While the official Go via C++ version of Aspose.Cells is powerful, its API desig
 
 ## Quick Start
 
-### Create a directory for your project and a main.go file within. Add the following code to your main.go.
+### Create a directory for your project and a main.go file within. Add the following code to your main.go. 
 
 ```go
 package main
@@ -61,18 +60,34 @@ import (
 )
 
 func main() {
-  defer core.Cleanup() // release the native library before exit
+  os.Exit(run())
+}
+
+func run() int {
+  // From engine v26.10.0 the native library must be released before exit.
+  // os.Exit in main skips defers, so the defer lives here, in a function
+  // that returns to main.
+  defer core.Cleanup()
+
   if err := core.SetLicense(os.Getenv("LicenseFilePath")); err != nil {
-    log.Fatal(err)
+    log.Print(err)
+    return 1
   }
-  converter.Convert(
+  if err := converter.Convert(
     datasource.FilePathSource("examples/data/BookText.xlsx"),
     pdf.New(pdf.WithOnePagePerSheet(true)),
-    datasource.FilePathSink("out/output1.pdf"))
-  converter.Convert(
+    datasource.FilePathSink("out/output1.pdf")); err != nil {
+    log.Print(err)
+    return 1
+  }
+  if err := converter.Convert(
     datasource.FilePathSource("examples/data/BookText.xlsx"),
     markdown.New(markdown.WithClearData(true)),
-    datasource.FilePathSink("out/output1.md"))
+    datasource.FilePathSink("out/output1.md")); err != nil {
+    log.Print(err)
+    return 1
+  }
+  return 0
 }
 
 ```
@@ -93,18 +108,118 @@ go 1.21
 require github.com/aspose-cells/aspose-cells-go-cpp/v26 v26.10.0
 
 ```
-
 ### Fetch the dependencies for your project.
 
 ```powershell
 go mod tidy
 ```
-
 ### Set your PATH to point to the shared libraries in Aspose.Cells for Go via C++ in your current command shell.
 
 ```powershell
 $env:Path = $env:Path+ ";${env:GOPATH}\github.com\aspose-cells\aspose-cells-go-cpp\v26@v26.10.0\lib\win_x86_64\"
 ```
+
+## Continuous integration
+
+The repository ships two equivalent pipelines:
+
+- **GitHub Actions** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+- **GitLab CI** — [`.gitlab-ci.yml`](.gitlab-ci.yml)
+
+Both pipelines run `gofmt`, `go vet`, `go build`, and a compile-only test pass
+on every change. The engine test suite and the race detector run when a license
+is supplied as a base64-encoded secret named `ASPOSE_LICENSE_B64`; without it
+those steps are skipped with a notice, so forks and public merge requests still
+get the full static/compile gate. The native libraries are resolved from the Go
+module cache automatically.
+
+See [docs/ci.md](docs/ci.md) for secret setup, local equivalents, and the
+coverage floor.
+
+## Concurrency
+
+The Aspose.Cells engine is not safe to enter from more than one goroutine at a
+time. The toolkit serializes every engine call on a re-entrant per-goroutine
+lock, so concurrent calls from many goroutines are **safe but do not run in
+parallel**: two conversions started on different goroutines take turns, one
+after the other. Locking never deadlocks across nested entry points, because the
+lock is re-entrant for the goroutine that holds it.
+
+Throughput therefore scales with **processes, not goroutines**. For a batch of
+large conversions, run several processes (a worker pool, one engine per process)
+rather than a goroutine fan-out in one process. Pure Go work — parsing cell
+references, building a data source, writing a sink — can run concurrently
+around the engine calls.
+
+## Memory and large workbooks
+
+- A source is loaded fully into memory. A `datasource.FilePathSource` is opened
+  by path instead of being read into a Go byte slice first, which avoids one full
+  copy of the file; `BytesSource` and `ReaderSource` still hold the bytes.
+- `query.ReadWorksheet`, `ReadRange`, and the other grid reads materialize at
+  most 2,000,000 cells per call and return `ErrRangeTooLarge` beyond that. Read a
+  large sheet in row slices with `ReadRange` instead of requesting the whole
+  used range.
+- `converter.Convert`, `manipulator.Merge`, and `manipulator.Split` hand the
+  workbook they already loaded to the save option
+  (`saveoptions.WorkbookApplier`), instead of serializing it to bytes and
+  reloading a second workbook just to save it. A third-party `SaveOption` that
+  only implements `Apply` still works through the old path.
+- Call `core.Cleanup()` once before the process exits. Engine v26.10.0 must be
+  released explicitly; skipping it crashes the process after the last test or
+  request has already completed.
+
+## Reading encrypted workbooks
+
+The editor writes an encrypted workbook, and every read path accepts the
+password as a load option:
+
+```go
+encrypted, err := editor.EditSpreadsheet(src,
+	editor.Encrypt("s3cret!"),
+	editor.InWorksheet(0, editor.SetCellValue(0, 0, "classified")))
+
+// Read it back (query / transfer / converter / editor each have WithPassword).
+v, err := query.ReadCell(datasource.BytesSource(encrypted), "A1",
+	query.WithPassword("s3cret!"))
+
+var out datasource.BytesSink
+err = converter.Convert(datasource.BytesSource(encrypted),
+	formats.Get("pdf"), &out, converter.WithPassword("s3cret!"))
+```
+
+`converter.ChartExportOptions` carries its password in a `Password` field, and
+`editor.WriteRows` uses `editor.WithWriteRowsPassword`.
+
+## Migrating from v26.8.0
+
+The conversion, merge/split, and transfer entry points were consolidated onto sink-based composites. The older entry points are kept as deprecated thin wrappers, so existing code still compiles; new code should prefer the composites.
+
+| Old entry point | New entry point |
+| --- | --- |
+| `converter.ConvertSpreadsheet(source, opt) ([]byte, error)` | `converter.Convert(source, opt, &datasource.BytesSink{})` |
+| `converter.ConvertToWriter(source, w, opt)` | `converter.Convert(source, opt, datasource.NewWriterSink(w))` |
+| `converter.ConvertSpreadsheetToFile(in, out)` | `converter.Convert(datasource.FilePathSource(in), formats.Get(ext), datasource.FilePathSink(out))` |
+| `manipulator.MergeSpreadsheets(sources, opt)` | `manipulator.Merge(sources, opt, &datasource.BytesSink{})` |
+| `manipulator.SplitSpreadsheetToFolder(in, outDir)` | `manipulator.Split(datasource.FilePathSource(in), opt, datasource.FolderSink(outDir))` |
+| `manipulator.SplitSpreadsheetToZipWriter(src, zw, opt)` | `manipulator.Split(src, opt, datasource.NewZipSink(zw))` |
+| `transfer.ImportCSVFile(...)` | `transfer.ImportCSV(src, csv, datasource.FilePathSink(out), opts...)` |
+
+The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`) were replaced by sink-based versions; use `&datasource.BytesSink{}` for bytes.
+
+> **Note on evaluation mode**: when a workbook is loaded the engine occasionally corrupts a worksheet's name (observed ~2% of loads; any sheet, not just the default first sheet — and it is not present in the saved bytes, so the same file can load clean once and corrupt later). `query` and `transfer` therefore target the first worksheet **by index** by default, and `WithSheetIndex` is the recommended way to pick a sheet — index-based lookups never read a name, so they are immune to the corruption. By-name lookups (`WithSheet`) may fail with `ErrWorksheetNotFound`, and per-sheet operations such as `manipulator.Split` can emit a garbage-named output. For name-based code that cannot tolerate the occasional spurious miss, retry the whole operation on freshly loaded input — each retry re-reads the source and reloads the workbook, and the corruption is load-time only, so a fresh load usually comes back clean. The same corruption can also hit a **cell value**: on a tiny workbook where only a couple of cells are non-empty, a read-back can be garbage far more often than the load-time rate above (measured ~1 in 3 loads), so demos that seed a few cells in memory and read them back should retry the read too.
+
+## Deprecation schedule
+
+The entry points below are legacy thin wrappers kept so existing code keeps compiling through the v26 line. They are scheduled for **removal in v27.0.0**, the next major version. New code must use the sink-based composites listed in [Migrating from v26.8.0](#migrating-from-v2680).
+
+| Package | Deprecated entry points (removed in v27.0.0) |
+| --- | --- |
+| `converter` | `ConvertSpreadsheet`, `ConvertToWriter`, `ConvertSpreadsheetToFile` |
+| `manipulator` | `MergeSpreadsheets`, `MergeSpreadsheetsToWriter`, `MergeSpreadsheetsToFile`, `SplitSpreadsheet`, `SplitSpreadsheetToZipWriter`, `SplitSpreadsheetToFolder` |
+| `transfer` | `ExportWorksheetToJsonFile`, `ExportRangeToJsonFile`, `ExportSpreadsheetToXmlFile`, `ImportCSVDataIntoSpreadsheet`, `ImportCSVFile`, `ImportJsonDataIntoSpreadsheet`, `ImportJsonFile`, `ImportXMLDataIntoSpreadsheet`, `ImportXMLFile` |
+
+Every deprecated function carries a `// Deprecated:` doc comment pointing to its replacement. If you still call any of these, migrate before upgrading to v27.
 
 ## Supported Formats
 
@@ -143,7 +258,7 @@ $env:Path = $env:Path+ ";${env:GOPATH}\github.com\aspose-cells\aspose-cells-go-c
 | [DOCX](https://docs.fileformat.com/word-processing/docx/)         | A well-known format for Microsoft Word documents that is a combination of XML and binary files. |          | &radic;  |
 | [PPTX](https://docs.fileformat.com/presentation/pptx/)            | The PPTX format is based on the Microsoft PowerPoint open XML presentation file format.         |          | &radic;  |
 
-> **Format registry:** the table above lists what the engine can _save_. The [formats registry](#) exposes a subset of those formats as extension strings that `formats.Get` accepts: `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`, `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`, `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`, `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`. Formats the engine can save but the registry does not expose (`xlt`, `xlam`, `mhtml`, `sxc`, `fods`) are reachable only through a custom `saveoptions.SaveOption`.
+> **Format registry:** the table above lists what the engine can *save*. The [formats registry](#) exposes a subset of those formats as extension strings that `formats.Get` accepts: `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`, `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`, `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`, `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`. Formats the engine can save but the registry does not expose (`xlt`, `xlam`, `mhtml`, `sxc`, `fods`) are reachable only through a custom `saveoptions.SaveOption`.
 
 ## Evaluate Aspose.Cells for Go via C++ Toolkits
 
@@ -157,3 +272,4 @@ The evaluation version of Aspose. Cells for Go Toolset provides complete product
 ## Run Aspose.Cells for Go via C++ Toolkits in production
 
 A commercial license key is required in a production environment. Please contact us to <a href="https://purchase.aspose.com/buy">purchase a commercial license</a> if you want to publish application to the product server.
+

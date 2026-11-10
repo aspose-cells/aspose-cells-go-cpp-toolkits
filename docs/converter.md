@@ -102,10 +102,11 @@ const (
 
 ```go
 type ChartExportOptions struct {
-    Format  ChartExportFormat  // Output format (PNG, JPEG, SVG, or PDF)
-    Width   int                // Exact output width in pixels, or 0
-    Height  int                // Exact output height in pixels, or 0
-    Quality int                // JPEG quality 1-100; 0 leaves the engine default
+    Format   ChartExportFormat  // Output format (PNG, JPEG, SVG, or PDF)
+    Width    int                // Exact output width in pixels, or 0
+    Height   int                // Exact output height in pixels, or 0
+    Quality  int                // JPEG quality 1-100; 0 leaves the engine default
+    Password string             // Opens a password-protected source workbook; "" means unencrypted
 }
 ```
 

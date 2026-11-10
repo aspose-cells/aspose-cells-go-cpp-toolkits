@@ -10,11 +10,11 @@ import (
 
 // GetCell returns the cell at the zero-based (row, col) coordinates.
 func GetCell(ws *asposecells.Worksheet, row, col int32) (*asposecells.Cell, error) {
-	cs, err := engine.Derive(ws.GetCells())
+	cs, err := engine.DerivePtr(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
-	return engine.Derive(cs.Get_Int_Int(row, col))
+	return engine.DerivePtr(cs.Get_Int_Int(row, col))
 }
 
 // UsedRange returns the dimensions of the worksheet's used range: the maximum

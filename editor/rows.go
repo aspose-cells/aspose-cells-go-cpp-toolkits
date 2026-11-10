@@ -18,6 +18,7 @@ type WriteRowsOption func(*writeRowsConfig)
 type writeRowsConfig struct {
 	sheet       cells.Sheet
 	writeHeader bool
+	load        cells.LoadOptions
 }
 
 func defaultWriteRowsConfig() *writeRowsConfig {
@@ -54,6 +55,12 @@ func WithSheet(name string) WriteRowsOption {
 // corruption, so it is the recommended way to target a sheet.
 func WithSheetIndex(i int) WriteRowsOption {
 	return func(c *writeRowsConfig) { c.sheet = cells.Sheet{UseIndex: true, Index: i} }
+}
+
+// WithWriteRowsPassword opens a password-protected source workbook with
+// password when WriteRows loads it.
+func WithWriteRowsPassword(password string) WriteRowsOption {
+	return func(c *writeRowsConfig) { c.load.Password = password }
 }
 
 // WriteRows writes a slice of T into a worksheet and saves the result to a
@@ -94,14 +101,14 @@ func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, ro
 	}
 	var zero T
 	typ := reflect.TypeOf(zero)
-	if typ.Kind() != reflect.Struct {
-		return fmt.Errorf("WriteRows: T must be a struct, got %s: %w", typ, toolkiterrors.ErrInvalidValue)
+	if typ == nil || typ.Kind() != reflect.Struct {
+		return fmt.Errorf("WriteRows: T must be a concrete struct type, got %T: %w", zero, toolkiterrors.ErrInvalidValue)
 	}
 	cols, err := rowmap.Columns(typ)
 	if err != nil {
 		return err
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return err
 	}
@@ -113,11 +120,9 @@ func WriteRows[T any](source datasource.DataSource, sink datasource.DataSink, ro
 	if err := writeRows(ws, cols, rows, cfg.writeHeader); err != nil {
 		return err
 	}
-	data, err := cells.WorkbookToByteData(workbook)
-	if err != nil {
-		return err
-	}
-	return sink.Write("", data)
+	// Saves in the source's own format; a FilePathSink is written straight
+	// to disk without holding the serialized document in Go memory.
+	return cells.SaveWorkbookToSink(workbook, sink)
 }
 
 // writeRows writes the optional header row and each row's fields through

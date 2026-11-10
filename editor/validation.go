@@ -154,7 +154,7 @@ func DeleteValidation(index int) WorksheetAction {
 				index, count, toolkiterrors.ErrValidationNotFound)
 		}
 		// Get the validation and remove each of its areas
-		v, err := validations.Get(int32(index))
+		v, err := engine.Derive(validations.Get(int32(index)))
 		if err != nil {
 			return err
 		}

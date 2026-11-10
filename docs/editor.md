@@ -53,6 +53,18 @@ err := EditSpreadsheetToSink(fileSource, &sink, InWorksheet("Sheet1", SetCellVal
 data := sink.Bytes()
 ```
 
+### EditSpreadsheetWithOptions / EditSpreadsheetToSinkWithOptions
+
+```go
+func EditSpreadsheetWithOptions(source datasource.DataSource, opts []Option, actions ...WorkbookAction) ([]byte, error)
+func EditSpreadsheetToSinkWithOptions(source datasource.DataSource, sink datasource.DataSink, opts []Option, actions ...WorkbookAction) error
+func WithPassword(password string) Option
+```
+
+The load-option forms of the two entry points. `WithPassword` opens an encrypted
+source workbook; the result is still written in the source's original format and
+stays encrypted, so read it back with the same password.
+
 ### InWorksheet
 
 ```go
@@ -450,15 +462,35 @@ func Encrypt(password string) WorkbookAction
 
 Encrypts the workbook so the **saved file requires the password to open**. It
 sets the workbook's encryption password and selects strong (AES) encryption.
-Loading an encrypted file back requires supplying the password at load time,
-which the toolkit's loader does not yet expose — read encrypted files with a
-password through the underlying engine (`LoadOptions` + `NewWorkbook_Stream`).
+The output stays encrypted, so reading it back requires the password at load
+time: `query.WithPassword`, `transfer.WithPassword`,
+`converter.WithPassword`, `editor.WithPassword` (with
+`EditSpreadsheetWithOptions` / `EditSpreadsheetToSinkWithOptions`), or
+`editor.WithWriteRowsPassword`.
 
 ```go
 data, err := EditSpreadsheet(fileSource,
     InWorksheet("Sheet1", SetCellValue(0, 0, "confidential")),
     Encrypt("hunter2"),
 )
+```
+
+### AddPicture
+
+```go
+func AddPicture(row, column int, data []byte, opts ...PictureOption) WorksheetAction
+func WithPictureSpan(rows, cols int) PictureOption
+```
+
+Embeds a decodable image (PNG, JPEG, ...) anchored at the zero-based
+`(row, column)`. By default it covers that one cell; `WithPictureSpan` scales it
+over an inclusive `rows` x `cols` rectangle. Empty data, a reversed/negative
+rectangle, or a non-image payload is an error (`ErrPictureAddFailed` or
+`ErrInvalidRange`); a span below 1 is `ErrInvalidCount`.
+
+```go
+editor.InWorksheet(0, editor.AddPicture(1, 1, pngBytes,
+    editor.WithPictureSpan(4, 3)))
 ```
 
 ### AddChart

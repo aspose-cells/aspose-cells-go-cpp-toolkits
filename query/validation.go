@@ -82,7 +82,7 @@ func ValidationCount(src datasource.DataSource, opts ...Option) (int, error) {
 	if src == nil {
 		return 0, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return 0, err
 	}
@@ -112,7 +112,7 @@ func ValidationInfoAt(src datasource.DataSource, index int, opts ...Option) (Val
 	if src == nil {
 		return ValidationInfo{}, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return ValidationInfo{}, err
 	}
@@ -142,7 +142,7 @@ func AllValidations(src datasource.DataSource, opts ...Option) ([]ValidationInfo
 	if src == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(src)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(src, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func AllValidations(src datasource.DataSource, opts ...Option) ([]ValidationInfo
 	}
 	result := make([]ValidationInfo, 0, count)
 	for i := 0; i < int(count); i++ {
-		v, err := validations.Get(int32(i))
+		v, err := engine.Derive(validations.Get(int32(i)))
 		if err != nil {
 			return nil, err
 		}

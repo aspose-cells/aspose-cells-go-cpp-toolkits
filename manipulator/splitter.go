@@ -92,13 +92,9 @@ func renderOneWorksheet(source *asposecells.Workbook, worksheet *asposecells.Wor
 	if err := newWorkbook.SetFileName(newFilename); err != nil {
 		return fmt.Errorf("sheet %q set file name: %w", sheetname, err)
 	}
-	newData, err := newWorkbook.SaveToStream()
+	outData, err := saveWorkbookBytes(outSaveOption, newWorkbook)
 	if err != nil {
-		return fmt.Errorf("sheet %q save: %w", sheetname, err)
-	}
-	outData, err := outSaveOption.Apply(newData)
-	if err != nil {
-		return fmt.Errorf("sheet %q apply format: %w", sheetname, err)
+		return fmt.Errorf("sheet %q render: %w", sheetname, err)
 	}
 	if err := emit(newFilename, outData); err != nil {
 		return fmt.Errorf("sheet %q emit: %w", sheetname, err)
@@ -115,10 +111,12 @@ func renderOneWorksheet(source *asposecells.Workbook, worksheet *asposecells.Wor
 //     which provides the input spreadsheet content.
 //   - opt: Output options defining the split files' format and behavior,
 //     implementing the saveoptions.SaveOption interface.
-//   - sink: The output destination implementing datasource.DataSink. Use
-//     datasource.FolderSink for one file per worksheet, datasource.ZipSink for
-//     one archive entry per worksheet, or datasource.BytesSink with a
-//     datasource.ZipSink when a zip archive is required.
+//   - sink: The output destination implementing datasource.DataSink. Split
+//     writes one output per worksheet, so the sink must also implement
+//     datasource.MultiOutputSink: use datasource.FolderSink for one file per
+//     worksheet or datasource.NewZipSink for one archive entry per worksheet.
+//     A single-output sink (FilePathSink, WriterSink, BytesSink) is rejected
+//     with ErrInvalidSink rather than silently keeping only the last worksheet.
 //
 // Example:
 //
@@ -136,6 +134,10 @@ func Split(source datasource.DataSource, opt saveoptions.SaveOption, sink dataso
 	}
 	if sink == nil {
 		return toolkiterrors.ErrDataSinkNil
+	}
+	if _, ok := sink.(datasource.MultiOutputSink); !ok {
+		return fmt.Errorf("%T accepts a single output; Split writes one per worksheet, use datasource.FolderSink or datasource.ZipSink: %w",
+			sink, toolkiterrors.ErrInvalidSink)
 	}
 	workbook, err := cells.GetWorkbookWithDataSource(source)
 	if err != nil {

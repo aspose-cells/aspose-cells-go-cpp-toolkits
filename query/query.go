@@ -28,8 +28,8 @@ import (
 // that is perfectly *valid* can still be one no process could hold: a caller
 // who writes "A1:ZZ1000000" by accident would otherwise have the toolkit
 // reserve memory for every cell it names and be killed by the OS, with no
-// error to report. The grid-bounds check that ParseCellRef and Area apply
-// cannot catch this, because the range is in-grid.
+// error to report. The grid-bounds check cannot catch this, because the range
+// is in-grid.
 //
 // A CellValue is about 80 bytes, so 2,000,000 cells is roughly 160 MB of
 // result — past the point where a single in-memory grid is the right shape for
@@ -67,11 +67,11 @@ func ReadCell(source datasource.DataSource, ref string, opts ...Option) (CellVal
 	if source == nil {
 		return CellValue{}, toolkiterrors.ErrDataSourceNil
 	}
-	parsed, err := ParseCellRef(ref)
+	parsed, err := ParseCellRefWithinGrid(ref)
 	if err != nil {
 		return CellValue{}, err
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return CellValue{}, err
 	}
@@ -103,11 +103,11 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	start, err := ParseCellRef(startCell)
+	start, err := ParseCellRefWithinGrid(startCell)
 	if err != nil {
 		return nil, err
 	}
-	end, err := ParseCellRef(endCell)
+	end, err := ParseCellRefWithinGrid(endCell)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 	if err := checkReadSize(end.Row-start.Row+1, end.Col-start.Col+1); err != nil {
 		return nil, fmt.Errorf("range %s:%s: %w", startCell, endCell, err)
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -128,15 +128,19 @@ func ReadRange(source datasource.DataSource, startCell, endCell string, opts ...
 	}
 	rowCount := end.Row - start.Row + 1
 	colCount := end.Col - start.Col + 1
-	cs, err := engine.Derive(ws.GetCells())
+	cs, err := engine.DerivePtr(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
+	// One backing allocation for the whole grid, sliced into rows: a used range
+	// at the read cap is 2M cells, and a per-row make would be a million-plus
+	// small allocations the GC has to track for the same result.
+	flat := make([]CellValue, rowCount*colCount)
 	grid := make([][]CellValue, rowCount)
 	for r := 0; r < rowCount; r++ {
-		grid[r] = make([]CellValue, colCount)
+		grid[r] = flat[r*colCount : (r+1)*colCount]
 		for c := 0; c < colCount; c++ {
-			cell, err := engine.Derive(cs.Get_Int_Int(int32(start.Row+r), int32(start.Col+c)))
+			cell, err := engine.DerivePtr(cs.Get_Int_Int(int32(start.Row+r), int32(start.Col+c)))
 			if err != nil {
 				return nil, err
 			}
@@ -160,7 +164,7 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -176,15 +180,19 @@ func ReadWorksheet(source datasource.DataSource, opts ...Option) ([][]CellValue,
 	if err := checkReadSize(int(rows), int(cols)); err != nil {
 		return nil, err
 	}
-	cs, err := engine.Derive(ws.GetCells())
+	cs, err := engine.DerivePtr(ws.GetCells())
 	if err != nil {
 		return nil, err
 	}
+	// One backing allocation for the whole grid, sliced into rows (see
+	// ReadRange).
+	flat := make([]CellValue, int64(rows)*int64(cols))
 	grid := make([][]CellValue, rows)
 	for r := int32(0); r < rows; r++ {
-		grid[r] = make([]CellValue, cols)
+		rowStart := int64(r) * int64(cols)
+		grid[r] = flat[rowStart : rowStart+int64(cols)]
 		for c := int32(0); c < cols; c++ {
-			cell, err := engine.Derive(cs.Get_Int_Int(r, c))
+			cell, err := engine.DerivePtr(cs.Get_Int_Int(r, c))
 			if err != nil {
 				return nil, err
 			}
@@ -208,7 +216,7 @@ func ReadMergedCells(source datasource.DataSource, opts ...Option) ([]Area, erro
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +237,7 @@ func SheetNames(source datasource.DataSource, opts ...Option) ([]string, error) 
 	if source == nil {
 		return nil, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +255,7 @@ func Dimensions(source datasource.DataSource, opts ...Option) (rows, cols int, e
 	if source == nil {
 		return 0, 0, toolkiterrors.ErrDataSourceNil
 	}
-	workbook, err := cells.GetWorkbookWithDataSource(source)
+	workbook, err := cells.GetWorkbookWithDataSourceAndOptions(source, cfg.load)
 	if err != nil {
 		return 0, 0, err
 	}

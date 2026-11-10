@@ -62,6 +62,17 @@ The `DataSink` interface defines a writable output. The `name` parameter is used
 
 Because that `name` comes from the document being processed — `manipulator.Split` passes the source's worksheet name — it is untrusted. `FolderSink` and `ZipSink` validate it with `SafeOutputName` before writing; a custom multi-output sink should call it too.
 
+### MultiOutputSink
+
+```go
+type MultiOutputSink interface {
+	DataSink
+	MultiOutput()
+}
+```
+
+`FolderSink` and `ZipSink` implement `MultiOutputSink`; `FilePathSink`, `WriterSink`, and `BytesSink` do not. `manipulator.Split` requires it and returns `ErrInvalidSink` for a single-output sink instead of silently keeping only the last worksheet. A custom sink that keeps one output per name opts in with a no-op `MultiOutput` method.
+
 ### SafeOutputName
 
 ```go

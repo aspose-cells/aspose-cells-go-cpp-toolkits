@@ -154,7 +154,7 @@ func fromCell(cell *asposecells.Cell) (CellValue, error) {
 		// Dates are stored as serial numbers, so a numeric cell whose number
 		// format is a date/time format is a date. The engine reports it via the
 		// cell's style rather than the value type.
-		style, err := engine.Derive(cell.GetStyle())
+		style, err := engine.DerivePtr(cell.GetStyle())
 		if err != nil {
 			return CellValue{}, err
 		}
@@ -195,7 +195,9 @@ func fromCell(cell *asposecells.Cell) (CellValue, error) {
 // numericValue classifies a numeric engine value as an integer when it is a
 // whole number within int64 range, otherwise as a float.
 func numericValue(v float64) CellValue {
-	if v == math.Trunc(v) && v >= math.MinInt64 && v <= math.MaxInt64 {
+	// The upper bound is exclusive: float64(math.MaxInt64) rounds up to 2^63,
+	// which int64 cannot represent. A value at exactly 2^63 stays a float.
+	if v == math.Trunc(v) && v >= math.MinInt64 && v < math.MaxInt64 {
 		return CellValue{kind: KindInt, i: int64(v)}
 	}
 	return CellValue{kind: KindFloat, f: v}
