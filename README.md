@@ -1,4 +1,5 @@
 ![](https://img.shields.io/badge/aspose.cells%20for%20Go%20via%20C++%20Toolkits-v26.11.0-green?style=for-the-badge&logo=go) ![License](https://img.shields.io/github/license/aspose-cells/aspose-cells-go-cpp-toolkits?style=for-the-badge&logo=rocket&logoColor=white)
+
 # Aspose.Cells for Go via C++ Toolkits
 
 ## Features
@@ -17,7 +18,7 @@
 - **Data validation** — Whole-number and decimal ranges, lists, and custom formulas, with input prompts, error alerts, and dropdown controls.
 - **Classified errors** — 37 sentinel errors such as `ErrUnsupportedFormat`, `ErrWorksheetNotFound`, `ErrRangeTooLarge`, and `ErrUnsafeSinkName` work with `errors.Is`, so failures are classified instead of string-matched.
 - **Go-idiomatic design** — Clean APIs, unified error handling, and a `DataSource` / `DataSink` abstraction that covers files, bytes, and streams with one signature.
-- **Safe native lifecycle** — Engine access is serialized through an internal re-entrant lock, and `core.Cleanup()` releases the native library before exit — required by engine v26.10.0.
+- **Safe native lifecycle** — Engine access is serialized through an internal re-entrant lock, and `core.Cleanup()` releases the native library before exit — required by engine v26.11.0.
 
 ## Overview
 
@@ -43,7 +44,7 @@ While the official Go via C++ version of Aspose.Cells is powerful, its API desig
 
 ## Quick Start
 
-### Create a directory for your project and a main.go file within. Add the following code to your main.go. 
+### Create a directory for your project and a main.go file within. Add the following code to your main.go.
 
 ```go
 package main
@@ -64,7 +65,7 @@ func main() {
 }
 
 func run() int {
-  // From engine v26.10.0 the native library must be released before exit.
+  // From engine v26.11.0 the native library must be released before exit.
   // os.Exit in main skips defers, so the defer lives here, in a function
   // that returns to main.
   defer core.Cleanup()
@@ -108,11 +109,13 @@ go 1.21
 require github.com/aspose-cells/aspose-cells-go-cpp/v26 v26.10.0
 
 ```
+
 ### Fetch the dependencies for your project.
 
 ```powershell
 go mod tidy
 ```
+
 ### Set your PATH to point to the shared libraries in Aspose.Cells for Go via C++ in your current command shell.
 
 ```powershell
@@ -165,7 +168,7 @@ around the engine calls.
   (`saveoptions.WorkbookApplier`), instead of serializing it to bytes and
   reloading a second workbook just to save it. A third-party `SaveOption` that
   only implements `Apply` still works through the old path.
-- Call `core.Cleanup()` once before the process exits. Engine v26.10.0 must be
+- Call `core.Cleanup()` once before the process exits. Engine v26.11.0 must be
   released explicitly; skipping it crashes the process after the last test or
   request has already completed.
 
@@ -195,15 +198,15 @@ err = converter.Convert(datasource.BytesSource(encrypted),
 
 The conversion, merge/split, and transfer entry points were consolidated onto sink-based composites. The older entry points are kept as deprecated thin wrappers, so existing code still compiles; new code should prefer the composites.
 
-| Old entry point | New entry point |
-| --- | --- |
-| `converter.ConvertSpreadsheet(source, opt) ([]byte, error)` | `converter.Convert(source, opt, &datasource.BytesSink{})` |
-| `converter.ConvertToWriter(source, w, opt)` | `converter.Convert(source, opt, datasource.NewWriterSink(w))` |
-| `converter.ConvertSpreadsheetToFile(in, out)` | `converter.Convert(datasource.FilePathSource(in), formats.Get(ext), datasource.FilePathSink(out))` |
-| `manipulator.MergeSpreadsheets(sources, opt)` | `manipulator.Merge(sources, opt, &datasource.BytesSink{})` |
-| `manipulator.SplitSpreadsheetToFolder(in, outDir)` | `manipulator.Split(datasource.FilePathSource(in), opt, datasource.FolderSink(outDir))` |
-| `manipulator.SplitSpreadsheetToZipWriter(src, zw, opt)` | `manipulator.Split(src, opt, datasource.NewZipSink(zw))` |
-| `transfer.ImportCSVFile(...)` | `transfer.ImportCSV(src, csv, datasource.FilePathSink(out), opts...)` |
+| Old entry point                                             | New entry point                                                                                    |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `converter.ConvertSpreadsheet(source, opt) ([]byte, error)` | `converter.Convert(source, opt, &datasource.BytesSink{})`                                          |
+| `converter.ConvertToWriter(source, w, opt)`                 | `converter.Convert(source, opt, datasource.NewWriterSink(w))`                                      |
+| `converter.ConvertSpreadsheetToFile(in, out)`               | `converter.Convert(datasource.FilePathSource(in), formats.Get(ext), datasource.FilePathSink(out))` |
+| `manipulator.MergeSpreadsheets(sources, opt)`               | `manipulator.Merge(sources, opt, &datasource.BytesSink{})`                                         |
+| `manipulator.SplitSpreadsheetToFolder(in, outDir)`          | `manipulator.Split(datasource.FilePathSource(in), opt, datasource.FolderSink(outDir))`             |
+| `manipulator.SplitSpreadsheetToZipWriter(src, zw, opt)`     | `manipulator.Split(src, opt, datasource.NewZipSink(zw))`                                           |
+| `transfer.ImportCSVFile(...)`                               | `transfer.ImportCSV(src, csv, datasource.FilePathSink(out), opts...)`                              |
 
 The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRangeToJson`, `ExportSpreadsheetToXml`) were replaced by sink-based versions; use `&datasource.BytesSink{}` for bytes.
 
@@ -213,11 +216,11 @@ The three byte-returning `transfer` exports (`ExportWorksheetToJson`, `ExportRan
 
 The entry points below are legacy thin wrappers kept so existing code keeps compiling through the v26 line. They are scheduled for **removal in v27.0.0**, the next major version. New code must use the sink-based composites listed in [Migrating from v26.8.0](#migrating-from-v2680).
 
-| Package | Deprecated entry points (removed in v27.0.0) |
-| --- | --- |
-| `converter` | `ConvertSpreadsheet`, `ConvertToWriter`, `ConvertSpreadsheetToFile` |
-| `manipulator` | `MergeSpreadsheets`, `MergeSpreadsheetsToWriter`, `MergeSpreadsheetsToFile`, `SplitSpreadsheet`, `SplitSpreadsheetToZipWriter`, `SplitSpreadsheetToFolder` |
-| `transfer` | `ExportWorksheetToJsonFile`, `ExportRangeToJsonFile`, `ExportSpreadsheetToXmlFile`, `ImportCSVDataIntoSpreadsheet`, `ImportCSVFile`, `ImportJsonDataIntoSpreadsheet`, `ImportJsonFile`, `ImportXMLDataIntoSpreadsheet`, `ImportXMLFile` |
+| Package       | Deprecated entry points (removed in v27.0.0)                                                                                                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `converter`   | `ConvertSpreadsheet`, `ConvertToWriter`, `ConvertSpreadsheetToFile`                                                                                                                                                                     |
+| `manipulator` | `MergeSpreadsheets`, `MergeSpreadsheetsToWriter`, `MergeSpreadsheetsToFile`, `SplitSpreadsheet`, `SplitSpreadsheetToZipWriter`, `SplitSpreadsheetToFolder`                                                                              |
+| `transfer`    | `ExportWorksheetToJsonFile`, `ExportRangeToJsonFile`, `ExportSpreadsheetToXmlFile`, `ImportCSVDataIntoSpreadsheet`, `ImportCSVFile`, `ImportJsonDataIntoSpreadsheet`, `ImportJsonFile`, `ImportXMLDataIntoSpreadsheet`, `ImportXMLFile` |
 
 Every deprecated function carries a `// Deprecated:` doc comment pointing to its replacement. If you still call any of these, migrate before upgrading to v27.
 
@@ -258,7 +261,7 @@ Every deprecated function carries a `// Deprecated:` doc comment pointing to its
 | [DOCX](https://docs.fileformat.com/word-processing/docx/)         | A well-known format for Microsoft Word documents that is a combination of XML and binary files. |          | &radic;  |
 | [PPTX](https://docs.fileformat.com/presentation/pptx/)            | The PPTX format is based on the Microsoft PowerPoint open XML presentation file format.         |          | &radic;  |
 
-> **Format registry:** the table above lists what the engine can *save*. The [formats registry](#) exposes a subset of those formats as extension strings that `formats.Get` accepts: `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`, `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`, `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`, `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`. Formats the engine can save but the registry does not expose (`xlt`, `xlam`, `mhtml`, `sxc`, `fods`) are reachable only through a custom `saveoptions.SaveOption`.
+> **Format registry:** the table above lists what the engine can _save_. The [formats registry](#) exposes a subset of those formats as extension strings that `formats.Get` accepts: `bmp`, `csv`, `dbf`, `dif`, `docx`, `emf`, `epub`, `gif`, `html`, `jpeg`, `jpg`, `json`, `md`, `ods`, `pcl`, `pdf`, `png`, `pptx`, `sql`, `svg`, `tif`, `tiff`, `tsv`, `txt`, `xls`, `xlsb`, `xlsm`, `xlsx`, `xltm`, `xltx`, `xml`, `xps`. Formats the engine can save but the registry does not expose (`xlt`, `xlam`, `mhtml`, `sxc`, `fods`) are reachable only through a custom `saveoptions.SaveOption`.
 
 ## Evaluate Aspose.Cells for Go via C++ Toolkits
 
@@ -272,4 +275,3 @@ The evaluation version of Aspose. Cells for Go Toolset provides complete product
 ## Run Aspose.Cells for Go via C++ Toolkits in production
 
 A commercial license key is required in a production environment. Please contact us to <a href="https://purchase.aspose.com/buy">purchase a commercial license</a> if you want to publish application to the product server.
-
